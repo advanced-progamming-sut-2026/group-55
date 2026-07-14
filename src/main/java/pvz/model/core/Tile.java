@@ -23,4 +23,12 @@ public class Tile {
                 || type == TileType.LOW_BEACH
                 || type == TileType.NECROMANCY;
     }
+    public void takeDamage(double damage) {
+        if (type == TileType.FROZEN ||  type == TileType.TOMBSTONE) {
+            this.health -= damage;
+            if (this.health <= 0) {
+                this.type = TileType.NORMAL;
+            }
+        }
+    }
 }
