@@ -3,7 +3,6 @@ package pvz.model.core;
 import pvz.model.entity.plant.Plant;
 import pvz.model.entity.plant.PlantTag;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class Board {
@@ -53,10 +52,11 @@ public class Board {
         Tile tile = tiles[x][y];
         List<Plant> plants = tile.getPlants();
         if (plants.isEmpty()) {
-            return "There is no plant in tile (" + x + ", " + y + ")!";
+            return "there is no plant in tile (" + x + ", " + y + ")!";
         }
-        tile.removePlant(plants.getLast());
-        return "plucked " + plants.getLast().getName() + " at (" + x + ", " + y + ") successfully!";
+        Plant lastPlant = plants.getLast();
+        tile.removePlant(lastPlant);
+        return "plucked " + lastPlant.getName() + " at (" + x + ", " + y + ") successfully!";
     }
 
     public Tile getTile(int x, int y) { return tiles[x][y]; }

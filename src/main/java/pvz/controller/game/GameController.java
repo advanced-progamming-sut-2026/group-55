@@ -21,10 +21,10 @@ public class GameController {
             return handlePlant(m);
         }
         if ((m = GameCommand.SHOW_MAP.getMatcher(input)) != null) {
-            //return handleShowMap();TODO:I will do it.
+            return handleShowMap();
         }
         if((m = GameCommand.PLUCK.getMatcher(input)) != null){
-            //return hacdlePluck();
+            return handlePluck(m);
         }
         return "invalid command!";
     }
@@ -38,9 +38,12 @@ public class GameController {
 
         return board.plant(x, y, plant);
     }
-    private String hnadePluck(Matcher m) {
+    private String handlePluck(Matcher m) {
         int x = Integer.parseInt(m.group("x"));
         int y = Integer.parseInt(m.group("y"));
         return board.pluck(x, y);
+    }
+    private  String handleShowMap() {
+        return "Ghalboom shikast(test)";
     }
 }
