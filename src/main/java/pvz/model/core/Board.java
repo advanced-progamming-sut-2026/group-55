@@ -3,6 +3,9 @@ package pvz.model.core;
 import pvz.model.entity.plant.Plant;
 import pvz.model.entity.plant.PlantTag;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class Board {
     private final int rows;
     private final int cols;
@@ -41,6 +44,19 @@ public class Board {
         }
         tile.addPlant(plant);
         return "planted " + plant.getName() + " at (" + x + ", " + y + ") successfully!";
+    }
+
+    public String pluck(int x, int y) {
+        if (!inBounds(x, y)) {
+            return "location (" + x + ", " + y + ") is out of bounds!";
+        }
+        Tile tile = tiles[x][y];
+        List<Plant> plants = tile.getPlants();
+        if (plants.isEmpty()) {
+            return "There is no plant in tile (" + x + ", " + y + ")!";
+        }
+        tile.removePlant(plants.getLast());
+        return "plucked " + plants.getLast().getName() + " at (" + x + ", " + y + ") successfully!";
     }
 
     public Tile getTile(int x, int y) { return tiles[x][y]; }

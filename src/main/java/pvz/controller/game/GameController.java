@@ -23,6 +23,9 @@ public class GameController {
         if ((m = GameCommand.SHOW_MAP.getMatcher(input)) != null) {
             //return handleShowMap();TODO:I will do it.
         }
+        if((m = GameCommand.PLUCK.getMatcher(input)) != null){
+            //return hacdlePluck();
+        }
         return "invalid command!";
     }
 
@@ -34,5 +37,10 @@ public class GameController {
         if( plant == null ) return "unknown plant type: " + type + "!";
 
         return board.plant(x, y, plant);
+    }
+    private String hnadePluck(Matcher m) {
+        int x = Integer.parseInt(m.group("x"));
+        int y = Integer.parseInt(m.group("y"));
+        return board.pluck(x, y);
     }
 }

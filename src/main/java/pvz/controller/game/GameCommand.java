@@ -6,7 +6,8 @@ import java.util.regex.Pattern;
 public enum GameCommand {
     PLANT("^plant\\s+plant\\s+-t\\s+(?<type>.+?)\\s+-l\\s+\\((?<x>\\d+)\\s*,\\s*(?<y>\\d+)\\)$"),
     ADVANCE_TIME("^advance\\s+time\\s+-t\\s+(?<count>\\d+)\\s+ticks?$"),
-    SHOW_MAP("^show\\s+map$");
+    SHOW_MAP("^show\\s+map$"),
+    PLUCK("^pluck\\s+plant\\s+-l\\s+\\((?<x>\\d+)\\s*,\\s*(?<y>\\d+)\\)$");
 
     private final Pattern pattern;
 

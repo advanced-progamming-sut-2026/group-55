@@ -7,6 +7,6 @@ public class Projectile extends Entity {
 
     @Override
     public void update(long tick) {
-        // baadan pur mishavad
+        // baadan por mishe
     }
 }
