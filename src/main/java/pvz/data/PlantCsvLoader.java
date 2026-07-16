@@ -3,17 +3,15 @@ package pvz.data;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import pvz.model.entity.plant.PlantCategory;
 import pvz.model.entity.plant.PlantSpec;
 import pvz.model.entity.plant.PlantTag;
 
 public class PlantCsvLoader {
+
+    private PlantCsvLoader() {}
 
     public static Map<String, PlantSpec> load(String path) throws IOException {
         List<String> lines = Files.readAllLines(Path.of(path));
@@ -48,7 +46,7 @@ public class PlantCsvLoader {
             PlantSpec spec = new PlantSpec(id, name, category, tags, cost, baseHp, damage, baseAbility,
                     plantFoodEffect, lvl2, lvl3, lvl4, actionInterval, recharge);
 
-            specs.put(spec.getName(), spec);
+            specs.put(spec.getName().toLowerCase(Locale.ROOT), spec);
         }
 
         return specs;

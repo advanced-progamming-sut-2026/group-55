@@ -1,28 +1,49 @@
 package pvz.model.core;
 
+import pvz.model.entity.plant.Plant;
+import pvz.model.entity.plant.PlantTag;
+
 public class Board {
     private final int rows;
     private final int cols;
     private final Tile[][] tiles;
 
     public Board() {
-        this(5, 9);
+        this(9, 5);
     }
 
-    public Board(int rows, int cols) {
+    public Board(int cols, int rows) {
         this.rows = rows;
         this.cols = cols;
-        tiles = new Tile[rows][cols];
-        for (int r = 0; r < rows; r++)
-            for (int c = 0; c < cols; c++)
-                tiles[r][c] = new Tile(TileType.NORMAL);
+        tiles = new Tile[cols][rows];
+        for (int x = 0; x < cols; x++)
+            for (int y = 0; y < rows; y++)
+                tiles[x][y] = new Tile(TileType.NORMAL);
     }
 
-    public boolean inBounds(int row, int col) {
-        return row >= 0 && row < rows && col >= 0 && col < cols;
+    public boolean inBounds(int x, int y) {
+        return x >= 0 && x < cols && y >= 0 && y < rows;
     }
 
-    public Tile getTile(int row, int col) { return tiles[row][col]; }
+    public String plant(int x, int y, Plant plant) {
+        if (!inBounds(x, y)) {
+            return "location (" + x + ", " + y + ") is out of bounds!";
+        }
+        Tile tile = tiles[x][y];
+        if (!tile.isPlantable()) {
+            return "you can't plant on this tile!";
+        }
+        boolean tileEmpty = tile.getPlants().isEmpty();
+        boolean stackAllowed = plant.hasTag(PlantTag.STACK)
+                || tile.getPlants().stream().anyMatch(p -> p.hasTag(PlantTag.STACK));
+        if (!tileEmpty && !stackAllowed) {
+            return "tile (" + x + ", " + y + ") is already occupied!";
+        }
+        tile.addPlant(plant);
+        return "planted " + plant.getName() + " at (" + x + ", " + y + ") successfully!";
+    }
+
+    public Tile getTile(int x, int y) { return tiles[x][y]; }
     public int getRows() { return rows; }
     public int getCols() { return cols; }
 }

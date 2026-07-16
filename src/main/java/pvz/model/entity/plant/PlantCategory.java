@@ -9,5 +9,6 @@ public enum PlantCategory {
     EXPLOSIVE,
     MELEE,
     WALL,
-    MODIFIER
+    MODIFIER,
+    MINT
 }

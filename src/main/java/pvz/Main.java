@@ -1,24 +1,30 @@
 package pvz;
 
+import pvz.controller.game.GameController;
 import pvz.data.PlantCsvLoader;
 import pvz.model.core.Board;
-import pvz.model.core.Tile;
-import pvz.model.core.TileType;
+import pvz.model.entity.plant.PlantFactory;
 import pvz.model.entity.plant.PlantSpec;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.Scanner;
 
 public class Main {
-    public static void main(String[] args){
-        Board board = new Board();
+    public static void main(String[] args) {
+        Map<String, PlantSpec> plantSpecsMap;
         try {
-            Map<String, PlantSpec> plantSpecsMap = PlantCsvLoader.load("assets/Data/plants.csv");
-            System.out.println(plantSpecsMap.size());
-            System.out.println(plantSpecsMap.get("Peashooter").getCost());
+            plantSpecsMap = PlantCsvLoader.load("assets/Data/plants.csv");
         } catch (IOException e) {
             System.out.println("Error: could not read plants data file!");
-            System.out.println(e.getMessage());
+            return;
+        }
+        Board board = new Board();
+        PlantFactory factory = new PlantFactory(plantSpecsMap);
+        GameController controller = new GameController(board, factory);
+        Scanner scanner = new Scanner(System.in);
+        while (scanner.hasNextLine()) {
+            System.out.println(controller.handle(scanner.nextLine()));
         }
     }
 }

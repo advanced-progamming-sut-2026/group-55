@@ -16,7 +16,16 @@ public class Tile {
     }
 
     public TileType getType() { return type; }
-    public List<Plant> getPlants() { return plants; }
+
+    public List<Plant> getPlants() { return List.copyOf(plants); }
+
+    public void addPlant(Plant plant){
+        plants.add(plant);
+    }
+
+    public boolean removePlant(Plant plant) {
+        return plants.remove(plant);
+    }
 
     public boolean isPlantable() {
         return type == TileType.NORMAL

@@ -11,8 +11,8 @@ public class Game {
         updatables.add(u);
     }
 
-    public void advance(int ticks) {
-        for (int i = 0; i < ticks; i++) {
+    public void advance(long ticks) {
+        for (long i = 0; i < ticks; i++) {
             currentTick++;
             for (Updatable u : updatables) {
                 u.update(currentTick);
