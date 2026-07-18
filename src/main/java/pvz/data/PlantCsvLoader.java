@@ -3,11 +3,7 @@ package pvz.data;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import pvz.model.entity.plant.PlantCategory;
 import pvz.model.entity.plant.PlantSpec;
@@ -15,15 +11,18 @@ import pvz.model.entity.plant.PlantTag;
 
 public class PlantCsvLoader {
 
-    public static Map<String, PlantSpec> load(String path) throws IOException {
+    private PlantCsvLoader() {}
+
+    public static PlantData load(String path) throws IOException {
         List<String> lines = Files.readAllLines(Path.of(path));
 
-        Map<String, PlantSpec> specs = new HashMap<>();
+        Map<String, PlantSpec> byName = new HashMap<>();
+        Map<Integer, PlantSpec> byId = new HashMap<>();
 
         for (int i = 1; i < lines.size(); i++) {
             String line = lines.get(i);
 
-            String[] parts = line.split(",", -1);
+            String[] parts = splitCsvLine(line);
 
             if (parts.length != 14) {
                 throw new IllegalArgumentException(
@@ -48,10 +47,11 @@ public class PlantCsvLoader {
             PlantSpec spec = new PlantSpec(id, name, category, tags, cost, baseHp, damage, baseAbility,
                     plantFoodEffect, lvl2, lvl3, lvl4, actionInterval, recharge);
 
-            specs.put(spec.getName(), spec);
+            byName.put(spec.getName().toLowerCase(Locale.ROOT), spec);
+            byId.put(spec.getId(), spec);
         }
 
-        return specs;
+        return new PlantData(Map.copyOf(byName), Map.copyOf(byId));
     }
 
     private static Set<PlantTag> parseTags(String column) {
@@ -70,5 +70,33 @@ public class PlantCsvLoader {
             return 0;
         }
         return Double.parseDouble(column);
+    }
+
+    private static String[] splitCsvLine(String line) {
+        List<String> fields = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        boolean inQuotes = false;
+
+        for (int i = 0; i < line.length(); i++) {
+            char c = line.charAt(i);
+            if (c == '"') {
+                if (inQuotes && i + 1 < line.length() && line.charAt(i + 1) == '"') {
+                    current.append('"');
+                    i++;
+                }
+                else {
+                    inQuotes = !inQuotes;
+                }
+            }
+            else if (c == ',' && !inQuotes) {
+                fields.add(current.toString());
+                current.setLength(0);
+            }
+            else {
+                current.append(c);
+            }
+        }
+        fields.add(current.toString());
+        return fields.toArray(String[] :: new);
     }
 }

@@ -1,70 +1,70 @@
 id,name,category,tags,cost,baseHp,damage,baseAbility,plantFoodEffect,lvl2,lvl3,lvl4,actionInterval,recharge
-1,Sunflower,SUN_PRODUCER,DAY,50,300,0,تولید ۵۰ خورشید هر ۲۴ ثانیه.,تولید فوری ۱۵۰ خورشید.,Prod. Time -2s,HP +150,Double Sun Chance,24,5
-2,Twin Sunflower,SUN_PRODUCER,DAY,125,300,0,تولید ۱۰۰ خورشید در هر دور.,تولید فوری ۲۵۰ خورشید.,Prod. Time -2s,HP +150,Cost -25,24,15
-3,Sun-shroom,SUN_PRODUCER,SHROOM|RAMP_UP|NIGHT,25,300,0,رشد در ۳ مرحله و تولید خورشید بیشتر(۲۵/۵۰/۷۵). To Stg2: 24s | To Stg3: 72s,رشد آنی به سایز آخر و تولید ۲۲۵ خورشید.,Grow Time -5s,HP +150,Double Sun Chance,24,5
-4,Primal Sunflower,SUN_PRODUCER,,75,300,0,تولید خورشید بزرگ ۷۵ تایی از ابتدا.,تولید فوری ۲۲۵ خورشید.,Prod. Time -2s,HP +150,Cost -25,24,5
-5,Gold Bloom,SUN_PRODUCER,,0,0,0,تولید فوری و یک‌باره مقدار زیادی خورشید و سپس ناپدید شدن.(۳۷۵ خورشید),ندارد (مصرفی آنی),Cooldown -5s,Sun +50,Cost -25,0,75
-6,Peashooter,SHOOTER,PEA,100,300,20,شلیک تیر مستقیم.,شلیک رگباری سریع برای چند ثانیه.,Dmg +10,HP +150,Cost -25,1.5,5
-7,Repeater,SHOOTER,PEA,200,300,20x2,شلیک ۲ تیر مستقیم متوالی.,شلیک رگباری سنگین + ۱ نخود غول‌پیکر (دمیج 20 برابر).,Dmg +10,HP +200,Cost -25,1.5,5
-8,Threepeater,SHOOTER,PEA,300,300,20,شلیک همزمان تیر در ۳ لاین موازی.,شلیک رگباری بادبزنی در تمام لاین‌ها.,Cost -25,Dmg +10,HP +200,1.5,5
-9,Snow Pea,SHOOTER,ICE|PEA,150,300,20,شلیک تیر مستقیم کندکننده سرعت.,انجماد لاین و شلیک رگباری یخی.,Dmg +10,Chill Time +2s,Cost -25,1.5,5
-10,Rotobaga,SHOOTER,,150,300,10x3,شلیک در ۴ جهت اریب.,شلیک رگباری در هر ۴ جهت اریب.,Dmg +10,HP +150,Cost -25,1.5,5
-11,Pea Pod,SHOOTER,PEA|STACK,125,300,20/40/60/80/100,شلیک تیر مستقیم به ازای هر سر کاشته شده روی هم (تا ۵ سر).,شلیک یک نخود غول‌پیکر به ازای هر سر(دمیج 20 برابر).,Dmg +10,HP +200,Cost -25,1.5,5
-12,Split Pea,SHOOTER,PEA,125,300,20,شلیک ۱ تیر به جلو و ۲ تیر به عقب.,شلیک رگباری همزمان از جلو و عقب.,Dmg +10,HP +200,Cost -25,1.5,5
-13,Citron,SHOOTER,CHARGE,350,300,800,شلیک تیر سنگین مستقیم (نیازمند زمان شارژ).,شلیک توپ پلاسمایی پاکسازی‌کننده کل لاین.,Charge Time -1s,Dmg +150,Cost -50,9,5
-14,Caulipower,HOMING,MAGIC|CHARGE,250,300,Insta-kill,شلیک تیر جادویی (جهت رندوم، عبور از موانع، هیپنوتیزم‌کننده).,هیپنوتیزم کردن چند زامبی تصادفی در باغچه.,Cooldown -2s,HP +150,Cost -50,12,15
-15,Electric Blueberry,HOMING,CHARGE,150,300,5000,شلیک رعدوبرق (جهت رندوم، نابودی کامل یک زامبی).,نابودی کامل ۳ زامبی تصادفی.,Cooldown -2s,Target Priority Up,Cost -25,12,15
-16,Bowling Bulb,SHOOTER,CHARGE,200,300,40/120/180,شلیک 3 نوع پیاز که بین لاین‌ها کمانه می‌کند (مثل wall nut bowling). تاخیر هر یک Cyan: 2s | Blue: 5s | Orange: 10s,شلیک ۳ پیاز انفجاری بزرگ که کمانه می‌کنند.,Regen -1s,Dmg +15,Cost -25,2,5
-17,Cactus,STRIKE_THROUGH,,175,300,30,شلیک خار مستقیم (عبور از ۳ زامبی).,تیغ‌های برقی با دمیج بالا و نفوذ نامحدود.,Pierce +1,Dmg +10,Cost -25,1.5,5
-18,Fire Peashooter,SHOOTER,FIRE|PEA,175,300,40,شلیک تیر مستقیم آتشی (دمیج ۲ برابر).,شلیک رگباری آتشین در کل لاین.,Dmg +10,HP +200,Cost -25,1.5,5
-19,Starfruit,SHOOTER,,150,300,20,شلیک در ۵ جهت ستاره‌ای شامل عقب.,شلیک رگباری ستاره در تمام جهات.,Atk Speed +10%,Dmg +10,Cost -25,1.5,5
-20,Goo Peashooter,SHOOTER,POISON,125,300,20,شلیک تیر مستقیم (نادیده گرفتن زره + آسیب مستمر).,شلیک رگباری سمی که زامبی‌ها را درجا مسموم می‌کند.,Dmg/Tick +5,HP +150,Cost -25,1.5,5
-21,Mega Gatling Pea,SHOOTER,PEA,400,300,20x4,شلیک ۴ تیر مستقیم متوالی با سرعت بسیار بالا.,شلیک رگباری عظیم و طولانی در لاین به همراه 4 تیر غول‌پیکر.,Dmg +10,Plant Food Chance +5%,Cost -50,1.5,5
-22,Sea-shroom,SHOOTER,SHROOM|WATER,0,300,20,شلیک تیر با برد کوتاه. دارای طول عمر محدود 60 ثانیه.,شلیک رگباری و ریست شدن طول عمر تمام Sea-shroomها.,Range +1 Tile,Dmg +5,Lifespan +10s,1.5,15
-23,Puff-shroom,SHOOTER,SHROOM,0,300,20,شلیک تیر با برد کوتاه. دارای طول عمر محدود 60 ثانیه.,شلیک رگباری و ریست شدن طول عمر تمامی Puff-shroomها.,Lifespan +10s,Dmg +10,Range +1 Tile,1.5,5
-24,Fume-shroom,STRIKE_THROUGH,SHROOM,125,300,20,شلیک دود با برد متوسط که از زامبی‌ها رد می‌شود.,پرتاب توده دود عظیم که زامبی‌ها را به عقب می‌راند.,Range +1 Tile,Dmg +10,Cost -25,1.5,5
-25,Cabbage-pult,LOBBER,,100,300,40,شلیک هوایی از روی موانع.,پرتاب کلم به چند زامبی تصادفی.,Dmg +10,Atk Speed +15%,HP +150,2.9,5
-26,Kernel-pult,LOBBER,,100,300,20/40,شلیک دانه ذرت (آسیب کم) یا کره (توقف موقت زامبی).,پرتاب کره به سر تمامی زامبی‌های زمین.,Butter +5%,Dmg +10,HP +150,2.9,5
-27,Melon-pult,LOBBER,AOE,325,300,80,شلیک هوایی سنگین با آسیب مساحتی.,پرتاب هندوانه غول‌پیکر به زامبی‌های تصادفی.,Cost -25,AoE Dmg +15,Dmg +30,2.9,5
-28,Winter Melon,LOBBER,ICE|AOE,500,300,80,شلیک هوایی سنگین با آسیب مساحتی (کندکننده سرعت).,پرتاب هندوانه یخی به زامبی‌های تصادفی.,Cost -50,AoE Dmg +15,Cost -25,2.9,5
-29,Pepper-pult,LOBBER,FIRE|AOE,200,300,50,شلیک هوایی با آسیب مساحتی (گرم‌کننده محیط اطراف).,پرتاب فلفل‌های بزرگ به ۳ زامبی تصادفی.,Dmg +15,Warmth Radius +1,Cost -25,2.9,5
-30,Potato Mine,EXPLOSIVE,TRAP|CHARGE,25,300,1800,مسلح شدن با تاخیر ۱۵ ثانیه؛ انفجار هنگام تماس.,مسلح شدن آنی و پرتاب ۲ مین کلون دیگر.,Arm Time -3s,Cooldown -5s,Dmg +600,-,25
-31,Primal Potato Mine,EXPLOSIVE,TRAP|CHARGE,50,300,2400,مسلح شدن سریع‌تر ۵ ثانیه ای و انفجار مساحتی ۳x۳.,مسلح شدن آنی و پرتاب ۲ مین به نقاط دیگر.,Arm Time -1s,Cooldown -3s,Dmg +400,-,5
-32,Cherry Bomb,EXPLOSIVE,,150,0,1800,انفجار فوری مساحت ۳x۳.,ندارد (مصرفی آنی),Cooldown -5s,Dmg +600,Cost -25,-,35
-33,Squash,EXPLOSIVE,TRAP,50,300,1800,له کردن اولین زامبی مجاور.,له کردن ۲ زامبی تصادفی در سطح زمین.,Cooldown -3s,Dmg +600,Can crush 2x,-,20
-34,Grapeshot,EXPLOSIVE,,150,0,1800,انفجار مساحتی ۳x۳ و پرتاب حبه‌های کمانه‌کننده که پس از ۵ ثانیه نابود می‌شوند.,ندارد (مصرفی آنی),Dmg +600,Bounces +1,Cost -25,-,35
-35,Jalapeno,EXPLOSIVE,FIRE,125,0,1800,آتش زدن کل زامبی‌های یک لاین به صورت آنی (ذوب یخ).,ندارد (مصرفی آنی),Cooldown -5s,Dmg +600,Cost -25,-,35
-36,Doom-shroom,EXPLOSIVE,SHROOM,125,0,1800,انفجار مهیب در کل باغچه و ایجاد یک گودال غیرقابل کشت.,ندارد (مصرفی آنی),Cooldown -5s,Dmg +800,Cost -50,-,15
-37,Tangle Kelp,EXPLOSIVE,TRAP|WATER,25,300,Insta-kill,کشیدن اولین زامبی آبی به زیر آب و نابودی آن (مخصوص ساحل).,کشیدن چند زامبی تصادفی در آب به زیر آب.,Cooldown -5s,Targets +1,Cost -25,-,15
-38,Iceberg Lettuce,EXPLOSIVE,TRAP|ICE,0,300,0,یخ زدن اولین زامبی که روی آن پا بگذارد.,یخ زدن تمامی زامبی‌های موجود در تصویر.,Cooldown -2s,Freeze Time +2s,Cost -0,-,20
-39,Bonk Choy,MELEE,,150,300,15,ضربه فیزیکی به خانه‌های جلو و عقب.,مشت زدن رگباری به شعاع ۳x۳ اطراف خود.,Dmg +5,Atk Speed +10%,HP +200,0.25,5
-40,Phat Beet,MELEE,AOE,150,300,15,ضربه صوتی به مساحت ۳x۳ اطراف.,ضربه صوتی بسیار قدرتمند به تمام زامبی‌های اطراف.,Dmg +10,Atk Speed +10%,HP +200,2,5
-41,Chomper,MELEE,,150,300,Insta-kill,بلعیدن آنی؛ نابودی یک زامبی درجا و سپس توقف برای هضم به مدت ۴۰ ثانیه.,بلعیدن همزمان ۳ زامبی از فاصله دور.,Digest -2s,HP +200,Digest -3s,40,5
-42,Wasabi Whip,MELEE,FIRE,150,300,40,ضربه شلاق به خانه‌های جلو و عقب (گرم‌کننده محیط).,چرخش شلاق در مساحت ۳x۳.,Dmg +10,Range +1 Tile,HP +200,2,5
-43,Kiwibeast,MELEE,AOE|RAMP_UP,175,300,15/30/45,موج صوتی مساحتی؛ با گذر زمان بزرگتر شده و دمیج بیشتر می‌دهد. To Stg2: 24s | To Stg3: 72s,پرش و کوبیدن محکم به زمین با دمیج مساحتی.,HP +200,Dmg +15,Max Size +1,2,5
-44,Wall-nut,WALL,,50,4000,0,سد دفاعی مقاوم برای متوقف کردن زامبی‌ها.,دریافت زره دائمی به اندازه ۴۰۰۰ جان اضافه‌تر.,HP +1000,Cooldown -5s,HP +1500,-,20
-45,Tall-nut,WALL,,125,8000,0,سد بلند؛ جلوگیری از پریدن زامبی‌ها از روی آن.,دریافت زره دائمی ۸۰۰۰ تایی.,HP +2000,Cooldown -5s,HP +3000,-,20
-46,Endurian,WALL,,100,3000,20,سد دفاعی با قابلیت بازتاب دمیج به زامبی مهاجم.,دریافت زره فلزی و افزایش دمیج انعکاسی.,Reflect Dmg +5,HP +1000,Cost -25,-,15
-47,Garlic,WALL,MOVE_ZOMBIES,50,300,0,با خورده شدن، زامبی را مجبور به حرکت به لاین مجاور می‌کند.,انتقال اجباری تمام زامبی‌های لاین به لاین‌های دیگر.,HP +150,Cooldown -3s,HP +250,-,20
-48,Sweet Potato,WALL,MOVE_ZOMBIES,150,3000,0,جذب‌کننده؛ زامبی‌های لاین‌های مجاور را به لاین خود می‌کشد.,جذب تمام زامبی‌های اطراف و بازیابی کامل جان.,HP +1000,Cooldown -5s,HP +1500,-,20
-49,Explode-o-nut,WALL,EXPLOSIVE,50,4000,1800,سد دفاعی که به محض از بین رفتن جانش، انفجار مساحتی ایجاد می‌کند.,دریافت زره فلزی (هنگام نابودی زره نیز منفجر می‌شود).,HP +1000,Explode Dmg +200,Cost -25,-,20
-50,Pumpkin,WALL,STACK,150,4000,0,سد دفاعی پوششی؛ روی سایر گیاهان کاشته می‌شود تا از آن‌ها محافظت کند.,دریافت زره فلزی قدرتمند.,HP +1000,Cooldown -5s,HP +1500,-,20
-51,Sun Bean,WALL,SUN,50,1000,0,مثل دیوار دفاعی عمل می‌کند و با هر ضربه 5 خورشید تولید می‌کند.,دریافت زره فلزی قدرتمند.,Sun Drop +5,HP +150,Cost -25,-,20
-52,Torchwood,MODIFIER,FIRE,175,300,0,تغییر خواص تیر؛ تبدیل تیر عبوری به آتشی (دمیج دو برابر و ذوب یخ).,ایجاد شعله آبی (دمیج تیرها را ۳ برابر می‌کند).,HP +300,AoE on Death,Cost -25,-,5
-53,Magnet-shroom,HOMING,SHROOM|MAGIC,100,300,0,خلع سلاح؛ جذب اشیای فلزی (سطل/کلاهخود) از سر زامبی‌ها.,جذب چندین فلز همزمان و هضم آنها,Range +1 Tile,Cooldown -5s,HP +200,10,15
-54,Hypno-shroom,MODIFIER,SHROOM|MAGIC,125,300,0,با خورده شدن، زامبی مهاجم هیپنوتیزم شده و به نفع بازیکن می‌جنگد.,تبدیل زامبی خورنده به غول متفق (Gargantuar).,Cost -25,Zombie HP Buff,Zombie Dmg Buff,-,20
-55,Cat-tail,HOMING,,175,300,15,تیر هدف‌دار به سمت نزدیک‌ترین زامبی شلیک می‌کند,شلیک رگباری تیر هدف‌دار,Dmg +10,HP +200,Cost -25,1.5,20
-56,Imitater,MODIFIER,,0,0,0,کپی کردن یک گیاه دیگر (امکان استفاده از دو کارت یکسان).,ندارد (بر اساس گیاه کپی شده),Cooldown -2s,Cost -25,plant food on enterance,-,0
-57,Ice-shroom,EXPLOSIVE,SHROOM|ICE,75,0,0,یخ زدن و توقف موقت تمامی زامبی‌های موجود در کل نقشه.,ندارد (مصرفی آنی),Freeze Time +2s,Cooldown -5s,Dmg +50,-,50
-58,Lily Pad,MODIFIER,WATER|STACK,25,300,0,بستر کاشت سایر گیاهان روی آب (ضروری برای ساحل).,ایجاد چند کپی از خود روی خانه‌های خالی آب.,Cost -25,HP +200,Cooldown -2s,-,5
-59,Hot Potato,EXPLOSIVE,FIRE,0,0,0,کاشت روی یخ برای آب کردن فوری آن (ضروری برای غار یخ‌زده).,ندارد (مصرفی آنی),Cooldown -2s,Melt Area 3x3,Explode on Finish,-,5
-60,Grave Buster,EXPLOSIVE,,0,0,Insta-kill,از بین بردن قبرها. (ضروری برای مراحل مصر باستان و قرون تاریک).,ندارد (مصرفی آنی),Eat Time -1s,Cooldown -2s,Explode on Finish,-,10
-61,Enlighten-mint,SUN_PRODUCER,,0,0,0,اعمال موقت پلنت فود به تمامی گیاهان خانواده خود,ندارد (مصرفی آنی),Duration +1s,Cooldown -5s,reset family cooldowns,-,85
-62,Appease-mint,SHOOTER,,0,0,0,اعمال موقت پلنت فود به تمامی گیاهان خانواده خود,ندارد (مصرفی آنی),Duration +1s,Cooldown -5s,reset family cooldowns,-,85
-63,Arma-mint,LOBBER,,0,0,0,اعمال موقت پلنت فود به تمامی گیاهان خانواده خود,ندارد (مصرفی آنی),Duration +1s,Cooldown -5s,reset family cooldowns,-,85
-64,Bombard-mint,EXPLOSIVE,,0,0,0,اعمال موقت پلنت فود به تمامی گیاهان خانواده خود,ندارد (مصرفی آنی),Duration +1s,Cooldown -5s,reset family cooldowns,-,85
-65,Enforce-mint,MELEE,,0,0,0,اعمال موقت پلنت فود به تمامی گیاهان خانواده خود,ندارد (مصرفی آنی),Duration +1s,Cooldown -5s,reset family cooldowns,-,85
-66,Reinforce-mint,WALL,,0,0,0,اعمال موقت پلنت فود به تمامی گیاهان خانواده خود,ندارد (مصرفی آنی),Duration +1s,Cooldown -5s,reset family cooldowns,-,85
-67,Enchant-mint,MODIFIER,,0,0,0,اعمال موقت پلنت فود به تمامی گیاهان خانواده خود,ندارد (مصرفی آنی),Duration +1s,Cooldown -5s,reset family cooldowns,-,85
-68,Pierce-mint,STRIKE_THROUGH,,0,0,0,اعمال موقت پلنت فود به تمامی گیاهان خانواده خود,ندارد (مصرفی آنی),Duration +1s,Cooldown -5s,reset family cooldowns,-,85
-69,catTail-mint,HOMING,,0,0,0,اعمال موقت پلنت فود به تمامی گیاهان خانواده خود,ندارد (مصرفی آنی),Duration +1s,Cooldown -5s,reset family cooldowns,-,85
+1,Sunflower,SUN_PRODUCER,DAY,50,300,0,Produces 50 sun every 24 seconds.,Instantly produces 150 sun.,Prod. Time -2s,HP +150,Double Sun Chance,24,5
+2,Twin Sunflower,SUN_PRODUCER,DAY,125,300,0,Produces 100 sun per cycle.,Instantly produces 250 sun.,Prod. Time -2s,HP +150,Cost -25,24,15
+3,Sun-shroom,SUN_PRODUCER,SHROOM|RAMP_UP|NIGHT,25,300,0,"Grows in 3 stages, producing more sun (25/50/75). To Stg2: 24s | To Stg3: 72s",Instantly grows to full size and produces 225 sun.,Grow Time -5s,HP +150,Double Sun Chance,24,5
+4,Primal Sunflower,SUN_PRODUCER,,75,300,0,Produces large 75-sun drops right from the start.,Instantly produces 225 sun.,Prod. Time -2s,HP +150,Cost -25,24,5
+5,Gold Bloom,SUN_PRODUCER,,0,0,0,"Instantly bursts out a large amount of sun, then disappears. (375 sun)",None (single-use).,Cooldown -5s,Sun +50,Cost -25,0,75
+6,Peashooter,SHOOTER,PEA,100,300,20,Shoots straight peas.,Fires a rapid volley of peas for a few seconds.,Dmg +10,HP +150,Cost -25,1.5,5
+7,Repeater,SHOOTER,PEA,200,300,20x2,Shoots 2 straight peas in quick succession.,Fires a heavy volley plus 1 giant pea (20x damage).,Dmg +10,HP +200,Cost -25,1.5,5
+8,Threepeater,SHOOTER,PEA,300,300,20,Shoots peas across 3 parallel lanes at once.,Fires a fanned volley across every lane.,Cost -25,Dmg +10,HP +200,1.5,5
+9,Snow Pea,SHOOTER,ICE|PEA,150,300,20,Shoots straight peas that slow zombies down.,Freezes the lane and fires an icy volley.,Dmg +10,Chill Time +2s,Cost -25,1.5,5
+10,Rotobaga,SHOOTER,,150,300,10x3,Shoots in 4 diagonal directions.,Fires a volley in all 4 diagonal directions.,Dmg +10,HP +150,Cost -25,1.5,5
+11,Pea Pod,SHOOTER,PEA|STACK,125,300,20/40/60/80/100,Shoots one straight pea per stacked head (up to 5 heads).,Fires a giant pea per head (20x damage).,Dmg +10,HP +200,Cost -25,1.5,5
+12,Split Pea,SHOOTER,PEA,125,300,20,Shoots 1 pea forward and 2 peas backward.,Fires volleys forward and backward at the same time.,Dmg +10,HP +200,Cost -25,1.5,5
+13,Citron,SHOOTER,CHARGE,350,300,800,Shoots a heavy straight shot (requires charge time).,Fires a plasma ball that clears the entire lane.,Charge Time -1s,Dmg +150,Cost -50,9,5
+14,Caulipower,HOMING,MAGIC|CHARGE,250,300,Insta-kill,"Shoots magic bolts (random target, passes through obstacles, hypnotizes).",Hypnotizes several random zombies on the lawn.,Cooldown -2s,HP +150,Cost -50,12,15
+15,Electric Blueberry,HOMING,CHARGE,150,300,5000,"Strikes with lightning (random target, destroys one zombie completely).",Completely destroys 3 random zombies.,Cooldown -2s,Target Priority Up,Cost -25,12,15
+16,Bowling Bulb,SHOOTER,CHARGE,200,300,40/120/180,Rolls 3 bulb types that ricochet between lanes (like Wall-nut Bowling). Regen per bulb - Cyan: 2s | Blue: 5s | Orange: 10s,Rolls 3 giant explosive bulbs that ricochet.,Regen -1s,Dmg +15,Cost -25,2,5
+17,Cactus,STRIKE_THROUGH,,175,300,30,Shoots straight spikes that pierce through 3 zombies.,Fires high-damage electric spikes with unlimited piercing.,Pierce +1,Dmg +10,Cost -25,1.5,5
+18,Fire Peashooter,SHOOTER,FIRE|PEA,175,300,40,Shoots straight flaming peas (2x damage).,Fires a blazing volley across the entire lane.,Dmg +10,HP +200,Cost -25,1.5,5
+19,Starfruit,SHOOTER,,150,300,20,"Shoots stars in 5 directions, including backward.",Fires a volley of stars in every direction.,Atk Speed +10%,Dmg +10,Cost -25,1.5,5
+20,Goo Peashooter,SHOOTER,POISON,125,300,20,Shoots straight peas (ignores armor + damage over time).,Fires a toxic volley that poisons zombies on the spot.,Dmg/Tick +5,HP +150,Cost -25,1.5,5
+21,Mega Gatling Pea,SHOOTER,PEA,400,300,20x4,Shoots 4 straight peas in rapid succession at very high speed.,"Unleashes a massive, long volley down the lane plus 4 giant peas.",Dmg +10,Plant Food Chance +5%,Cost -50,1.5,5
+22,Sea-shroom,SHOOTER,SHROOM|WATER,0,300,20,Shoots short-range spores. Limited lifespan of 60 seconds.,Fires a volley and resets the lifespan of all Sea-shrooms.,Range +1 Tile,Dmg +5,Lifespan +10s,1.5,15
+23,Puff-shroom,SHOOTER,SHROOM,0,300,20,Shoots short-range spores. Limited lifespan of 60 seconds.,Fires a volley and resets the lifespan of all Puff-shrooms.,Lifespan +10s,Dmg +10,Range +1 Tile,1.5,5
+24,Fume-shroom,STRIKE_THROUGH,SHROOM,125,300,20,Shoots medium-range fumes that pass through zombies.,Blasts a huge fume cloud that knocks zombies back.,Range +1 Tile,Dmg +10,Cost -25,1.5,5
+25,Cabbage-pult,LOBBER,,100,300,40,Lobs shots over obstacles.,Hurls cabbages at several random zombies.,Dmg +10,Atk Speed +15%,HP +150,2.9,5
+26,Kernel-pult,LOBBER,,100,300,20/40,Lobs kernels (low damage) or butter (briefly stops zombies).,Hurls butter at every zombie on the lawn.,Butter +5%,Dmg +10,HP +150,2.9,5
+27,Melon-pult,LOBBER,AOE,325,300,80,Lobs heavy shots with area damage.,Hurls a giant melon at random zombies.,Cost -25,AoE Dmg +15,Dmg +30,2.9,5
+28,Winter Melon,LOBBER,ICE|AOE,500,300,80,Lobs heavy shots with area damage (slows zombies).,Hurls icy melons at random zombies.,Cost -50,AoE Dmg +15,Cost -25,2.9,5
+29,Pepper-pult,LOBBER,FIRE|AOE,200,300,50,Lobs shots with area damage (warms nearby tiles).,Hurls large peppers at 3 random zombies.,Dmg +15,Warmth Radius +1,Cost -25,2.9,5
+30,Potato Mine,EXPLOSIVE,TRAP|CHARGE,25,300,1800,Arms after a 15-second delay; explodes on contact.,Arms instantly and launches 2 extra mine clones.,Arm Time -3s,Cooldown -5s,Dmg +600,-,25
+31,Primal Potato Mine,EXPLOSIVE,TRAP|CHARGE,50,300,2400,Arms faster (5 seconds) with a 3x3 area explosion.,Arms instantly and launches 2 mines to other spots.,Arm Time -1s,Cooldown -3s,Dmg +400,-,5
+32,Cherry Bomb,EXPLOSIVE,,150,0,1800,Instantly explodes in a 3x3 area.,None (single-use).,Cooldown -5s,Dmg +600,Cost -25,-,35
+33,Squash,EXPLOSIVE,TRAP,50,300,1800,Squashes the first nearby zombie.,Squashes 2 random zombies on the lawn.,Cooldown -3s,Dmg +600,Can crush 2x,-,20
+34,Grapeshot,EXPLOSIVE,,150,0,1800,Explodes in a 3x3 area and launches ricocheting grapes that vanish after 5 seconds.,None (single-use).,Dmg +600,Bounces +1,Cost -25,-,35
+35,Jalapeno,EXPLOSIVE,FIRE,125,0,1800,Instantly ignites every zombie in the lane (melts ice).,None (single-use).,Cooldown -5s,Dmg +600,Cost -25,-,35
+36,Doom-shroom,EXPLOSIVE,SHROOM,125,0,1800,"Massive explosion across the whole lawn, leaving an unplantable crater.",None (single-use).,Cooldown -5s,Dmg +800,Cost -50,-,15
+37,Tangle Kelp,EXPLOSIVE,TRAP|WATER,25,300,Insta-kill,Drags the first water zombie underwater and destroys it (beach only).,Drags several random zombies in the water under the surface.,Cooldown -5s,Targets +1,Cost -25,-,15
+38,Iceberg Lettuce,EXPLOSIVE,TRAP|ICE,0,300,0,Freezes the first zombie that steps on it.,Freezes every zombie on the screen.,Cooldown -2s,Freeze Time +2s,Cost -0,-,20
+39,Bonk Choy,MELEE,,150,300,15,Punches zombies in the tiles ahead and behind.,Throws a flurry of punches in a 3x3 area around itself.,Dmg +5,Atk Speed +10%,HP +200,0.25,5
+40,Phat Beet,MELEE,AOE,150,300,15,Sonic blast hitting a 3x3 area around itself.,Unleashes a devastating sonic blast on all nearby zombies.,Dmg +10,Atk Speed +10%,HP +200,2,5
+41,Chomper,MELEE,,150,300,Insta-kill,"Instantly swallows one zombie, then digests for 40 seconds.",Swallows 3 zombies at once from a distance.,Digest -2s,HP +200,Digest -3s,40,5
+42,Wasabi Whip,MELEE,FIRE,150,300,40,Whips the tiles ahead and behind (warms nearby tiles).,Spins its whip across a 3x3 area.,Dmg +10,Range +1 Tile,HP +200,2,5
+43,Kiwibeast,MELEE,AOE|RAMP_UP,175,300,15/30/45,"Area sonic wave; grows over time, dealing more damage. To Stg2: 24s | To Stg3: 72s","Leaps and slams the ground, dealing area damage.",HP +200,Dmg +15,Max Size +1,2,5
+44,Wall-nut,WALL,,50,4000,0,Tough defensive barrier that stops zombies.,Gains permanent armor worth 4000 extra HP.,HP +1000,Cooldown -5s,HP +1500,-,20
+45,Tall-nut,WALL,,125,8000,0,Tall barrier; stops zombies from vaulting over it.,Gains permanent armor worth 8000 HP.,HP +2000,Cooldown -5s,HP +3000,-,20
+46,Endurian,WALL,,100,3000,20,Defensive barrier that reflects damage back at attackers.,Gains metal armor and increased reflect damage.,Reflect Dmg +5,HP +1000,Cost -25,-,15
+47,Garlic,WALL,MOVE_ZOMBIES,50,300,0,"When bitten, forces the zombie to move to an adjacent lane.",Forces every zombie in the lane into other lanes.,HP +150,Cooldown -3s,HP +250,-,20
+48,Sweet Potato,WALL,MOVE_ZOMBIES,150,3000,0,Lure; pulls zombies from adjacent lanes into its own lane.,Pulls in all nearby zombies and fully restores its HP.,HP +1000,Cooldown -5s,HP +1500,-,20
+49,Explode-o-nut,WALL,EXPLOSIVE,50,4000,1800,Defensive barrier that explodes in an area when destroyed.,Gains metal armor (the armor also explodes when destroyed).,HP +1000,Explode Dmg +200,Cost -25,-,20
+50,Pumpkin,WALL,STACK,150,4000,0,Protective shell; planted over other plants to shield them.,Gains powerful metal armor.,HP +1000,Cooldown -5s,HP +1500,-,20
+51,Sun Bean,WALL,SUN,50,1000,0,Acts as a defensive wall and produces 5 sun with every hit it takes.,Gains powerful metal armor.,Sun Drop +5,HP +150,Cost -25,-,20
+52,Torchwood,MODIFIER,FIRE,175,300,0,"Modifies peas; turns passing peas fiery (2x damage, melts ice).",Burns with blue flame (triples pea damage).,HP +300,AoE on Death,Cost -25,-,5
+53,Magnet-shroom,HOMING,SHROOM|MAGIC,100,300,0,Disarms zombies; pulls metal objects (buckets/helmets) off their heads.,Pulls in several metal objects at once and digests them.,Range +1 Tile,Cooldown -5s,HP +200,10,15
+54,Hypno-shroom,MODIFIER,SHROOM|MAGIC,125,300,0,"When bitten, hypnotizes the attacking zombie to fight for you.",Turns the zombie that eats it into an allied Gargantuar.,Cost -25,Zombie HP Buff,Zombie Dmg Buff,-,20
+55,Cat-tail,HOMING,,175,300,15,Fires homing spikes at the nearest zombie.,Fires a volley of homing spikes.,Dmg +10,HP +200,Cost -25,1.5,20
+56,Imitater,MODIFIER,,0,0,0,Copies another plant (lets you use two of the same card).,None (depends on the copied plant).,Cooldown -2s,Cost -25,plant food on enterance,-,0
+57,Ice-shroom,EXPLOSIVE,SHROOM|ICE,75,0,0,Freezes and briefly stops every zombie on the map.,None (single-use).,Freeze Time +2s,Cooldown -5s,Dmg +50,-,50
+58,Lily Pad,MODIFIER,WATER|STACK,25,300,0,Planting platform for other plants on water (essential for the beach).,Creates several copies of itself on empty water tiles.,Cost -25,HP +200,Cooldown -2s,-,5
+59,Hot Potato,EXPLOSIVE,FIRE,0,0,0,Plant on ice to melt it instantly (essential for the frozen cave).,None (single-use).,Cooldown -2s,Melt Area 3x3,Explode on Finish,-,5
+60,Grave Buster,EXPLOSIVE,,0,0,Insta-kill,Destroys graves (essential for Ancient Egypt and Dark Ages levels).,None (single-use).,Eat Time -1s,Cooldown -2s,Explode on Finish,-,10
+61,Enlighten-mint,SUN_PRODUCER,,0,0,0,Temporarily applies Plant Food to every plant in its family.,None (single-use).,Duration +1s,Cooldown -5s,reset family cooldowns,-,85
+62,Appease-mint,SHOOTER,,0,0,0,Temporarily applies Plant Food to every plant in its family.,None (single-use).,Duration +1s,Cooldown -5s,reset family cooldowns,-,85
+63,Arma-mint,LOBBER,,0,0,0,Temporarily applies Plant Food to every plant in its family.,None (single-use).,Duration +1s,Cooldown -5s,reset family cooldowns,-,85
+64,Bombard-mint,EXPLOSIVE,,0,0,0,Temporarily applies Plant Food to every plant in its family.,None (single-use).,Duration +1s,Cooldown -5s,reset family cooldowns,-,85
+65,Enforce-mint,MELEE,,0,0,0,Temporarily applies Plant Food to every plant in its family.,None (single-use).,Duration +1s,Cooldown -5s,reset family cooldowns,-,85
+66,Reinforce-mint,WALL,,0,0,0,Temporarily applies Plant Food to every plant in its family.,None (single-use).,Duration +1s,Cooldown -5s,reset family cooldowns,-,85
+67,Enchant-mint,MODIFIER,,0,0,0,Temporarily applies Plant Food to every plant in its family.,None (single-use).,Duration +1s,Cooldown -5s,reset family cooldowns,-,85
+68,Pierce-mint,STRIKE_THROUGH,,0,0,0,Temporarily applies Plant Food to every plant in its family.,None (single-use).,Duration +1s,Cooldown -5s,reset family cooldowns,-,85
+69,catTail-mint,HOMING,,0,0,0,Temporarily applies Plant Food to every plant in its family.,None (single-use).,Duration +1s,Cooldown -5s,reset family cooldowns,-,85
