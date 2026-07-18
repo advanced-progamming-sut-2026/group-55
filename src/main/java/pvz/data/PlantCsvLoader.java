@@ -13,11 +13,11 @@ public class PlantCsvLoader {
 
     private PlantCsvLoader() {}
 
-    public static Map<String, PlantSpec> load(String path) throws IOException {
+    public static PlantData load(String path) throws IOException {
         List<String> lines = Files.readAllLines(Path.of(path));
 
-        Map<String, PlantSpec> specs = new HashMap<>();
-        Map<Integer, PlantSpec> specInts = new HashMap<>();
+        Map<String, PlantSpec> byName = new HashMap<>();
+        Map<Integer, PlantSpec> byId = new HashMap<>();
 
         for (int i = 1; i < lines.size(); i++) {
             String line = lines.get(i);
@@ -47,12 +47,11 @@ public class PlantCsvLoader {
             PlantSpec spec = new PlantSpec(id, name, category, tags, cost, baseHp, damage, baseAbility,
                     plantFoodEffect, lvl2, lvl3, lvl4, actionInterval, recharge);
 
-            specs.put(spec.getName().toLowerCase(Locale.ROOT), spec);
-            specInts.put(spec.getId(), spec);
-
+            byName.put(spec.getName().toLowerCase(Locale.ROOT), spec);
+            byId.put(spec.getId(), spec);
         }
 
-        return specs;
+        return new PlantData(Map.copyOf(byName), Map.copyOf(byId));
     }
 
     private static Set<PlantTag> parseTags(String column) {

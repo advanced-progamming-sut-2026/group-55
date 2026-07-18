@@ -1,23 +1,22 @@
 package pvz;
 
 import java.io.IOException;
-import java.util.Map;
 import java.util.Scanner;
 import pvz.controller.game.GameController;
 import pvz.data.PlantCsvLoader;
+import pvz.data.PlantData;
 import pvz.model.core.Board;
 import pvz.model.core.Game;
 import pvz.model.entity.plant.PlantFactory;
-import pvz.model.entity.plant.PlantSpec;
 
 public final class Main {
     private Main() {
     }
 
     public static void main(String[] args) {
-        Map<String, PlantSpec> plantSpecs;
+        PlantData plantData;
         try {
-            plantSpecs = PlantCsvLoader.load("assets/Data/plants.csv");
+            plantData = PlantCsvLoader.load("assets/Data/plants.csv");
         } catch (IOException | IllegalArgumentException exception) {
             System.out.println("Error: could not read plants data file: " + exception.getMessage());
             return;
@@ -27,7 +26,7 @@ public final class Main {
         Board board = new Board();
         game.register(board);
 
-        PlantFactory factory = new PlantFactory(plantSpecs);
+        PlantFactory factory = new PlantFactory(plantData.byName());
         GameController controller = new GameController(board, factory, game);
         try (Scanner scanner = new Scanner(System.in)) {
             while (scanner.hasNextLine()) {
