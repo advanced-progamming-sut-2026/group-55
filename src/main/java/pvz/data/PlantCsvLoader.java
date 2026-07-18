@@ -17,11 +17,12 @@ public class PlantCsvLoader {
         List<String> lines = Files.readAllLines(Path.of(path));
 
         Map<String, PlantSpec> specs = new HashMap<>();
+        Map<Integer, PlantSpec> specInts = new HashMap<>();
 
         for (int i = 1; i < lines.size(); i++) {
             String line = lines.get(i);
 
-            String[] parts = line.split(",", -1);
+            String[] parts = splitCsvLine(line);
 
             if (parts.length != 14) {
                 throw new IllegalArgumentException(
@@ -47,6 +48,8 @@ public class PlantCsvLoader {
                     plantFoodEffect, lvl2, lvl3, lvl4, actionInterval, recharge);
 
             specs.put(spec.getName().toLowerCase(Locale.ROOT), spec);
+            specInts.put(spec.getId(), spec);
+
         }
 
         return specs;
@@ -68,5 +71,33 @@ public class PlantCsvLoader {
             return 0;
         }
         return Double.parseDouble(column);
+    }
+
+    private static String[] splitCsvLine(String line) {
+        List<String> fields = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        boolean inQuotes = false;
+
+        for (int i = 0; i < line.length(); i++) {
+            char c = line.charAt(i);
+            if (c == '"') {
+                if (inQuotes && i + 1 < line.length() && line.charAt(i + 1) == '"') {
+                    current.append('"');
+                    i++;
+                }
+                else {
+                    inQuotes = !inQuotes;
+                }
+            }
+            else if (c == ',' && !inQuotes) {
+                fields.add(current.toString());
+                current.setLength(0);
+            }
+            else {
+                current.append(c);
+            }
+        }
+        fields.add(current.toString());
+        return fields.toArray(String[] :: new);
     }
 }
