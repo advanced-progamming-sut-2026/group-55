@@ -23,13 +23,31 @@ public class Projectile extends Entity {
     @Override
     public void update(long tick) {
         double previousX = x;
-        x += TILES_PER_SECOND / Game.TICKS_PER_SECOND;
-        Zombie target = world.board().findHitZombie(row, previousX, x);
-        if (target != null) {
-            target.takeDamage(damage);
+        double nextX = x + TILES_PER_SECOND / Game.TICKS_PER_SECOND;
+
+        Zombie zombie = world.board().findHitZombie(row, previousX, nextX);
+
+        Integer blockingTileColumn =
+                world.board().findHitBlockingTile(row, previousX, nextX);
+
+        x = nextX;
+
+        boolean tileIsFirst =
+                blockingTileColumn != null
+                        && (zombie == null || blockingTileColumn <= zombie.getX());
+
+        if (tileIsFirst) {
+            world.board().damageTerrain(blockingTileColumn, row, damage);
             world.game().unregister(this);
             return;
         }
+
+        if (zombie != null) {
+            zombie.takeDamage(damage);
+            world.game().unregister(this);
+            return;
+        }
+
         if (x > world.board().getCols() + 1) {
             world.game().unregister(this);
         }

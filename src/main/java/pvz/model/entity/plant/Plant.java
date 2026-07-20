@@ -83,7 +83,8 @@ public class Plant extends Entity {
     }
 
     private void updateShooter(long tick, long intervalTicks) {
-        if (tick - lastActionTick >= intervalTicks && world.board().hasZombieAhead(y, x)) {
+        if (tick - lastActionTick >= intervalTicks && (world.board().hasZombieAhead(y, x)
+                || world.board().hasTileObstacleAhead(y, x))) {
             lastActionTick = tick;
             world.game().register(new Projectile(world, name + " projectile", y, x, getShotDamage()));
         }
