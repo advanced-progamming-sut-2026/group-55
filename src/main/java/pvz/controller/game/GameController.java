@@ -6,10 +6,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Matcher;
-import pvz.model.core.Board;
-import pvz.model.core.Game;
-import pvz.model.core.GameEvents;
-import pvz.model.core.World;
+import pvz.model.core.*;
 import pvz.model.entity.plant.Plant;
 import pvz.model.entity.plant.PlantFactory;
 import pvz.model.entity.zombie.BasicZombie;
@@ -140,7 +137,7 @@ public class GameController {
         return "zombie " + zombie.getName() + " spawned at (" + x + ", " + y + ")";
     }
 
-    private String handleShowMap() {
+    private String handleShowMap() {//TODO: bada mishe bein plant zombie tile khali va .... rang entekhab kar behtar beshe
         StringBuilder output = new StringBuilder();
         output.append("tick: ").append(game.getCurrentTick())
                 .append(" | sun: ").append(world.sunBank().getBalance()).append('\n');
@@ -150,7 +147,8 @@ public class GameController {
             }
             output.append('\n');
         }
-        output.append("Z = zombie, letter = plant's first letter, . = empty");
+        output.append("Z = zombie, capital letter = plant's first," +
+                " little letter = unnormal tile's first letter, . = normal tile's");
         return output.toString();
     }
 
@@ -163,6 +161,10 @@ public class GameController {
         List<Plant> plants = board.getTile(x, y).getPlants();
         if (!plants.isEmpty()) {
             return Character.toUpperCase(plants.get(0).getName().charAt(0));
+        }
+        Tile tile = board.getTile(x, y);
+        if (tile.getType() != TileType.NORMAL) {
+            return tile.getType().toString().toLowerCase().charAt(0);
         }
         return '.';
     }
