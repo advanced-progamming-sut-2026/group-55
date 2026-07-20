@@ -4,17 +4,17 @@ import java.util.Set;
 import pvz.model.core.Game;
 import pvz.model.core.GameEvents;
 import pvz.model.core.World;
-import pvz.model.entity.Entity;
+import pvz.model.entity.LivingEntity;
 import pvz.model.entity.projectile.Projectile;
 
-public class Plant extends Entity {
+public class Plant extends LivingEntity {
     private static final int PRODUCED_SUN_VALUE = 50;
     private static final double DEFAULT_SHOT_DAMAGE = 20;
 
     private final PlantSpec spec;
     private World world;
-    private int x;
-    private int y;
+    private int column;
+    private int row;
     private long lastActionTick;
     private boolean uncollectedSun;
 
@@ -26,22 +26,23 @@ public class Plant extends Entity {
 
     public void place(World world, int x, int y, long currentTick) {
         this.world = world;
-        this.x = x;
-        this.y = y;
+        this.column = x;
         this.row = y;
         this.lastActionTick = currentTick;
     }
 
+    @Override
+    public double getX() {
+        return tileCenter(column);
+    }
+
+    @Override
+    public double getY() {
+        return tileCenter(row);
+    }
+
     public PlantSpec getSpec() {
         return spec;
-    }
-
-    public void takeDamage(double damage) {
-        health -= damage;
-    }
-
-    public boolean isDead() {
-        return health <= 0;
     }
 
     public boolean hasTag(PlantTag plantTag) {
@@ -78,15 +79,15 @@ public class Plant extends Entity {
         if (!uncollectedSun && tick - lastActionTick >= intervalTicks) {
             uncollectedSun = true;
             lastActionTick = tick;
-            GameEvents.publish("plant " + name + " produced a sun at (" + x + ", " + y + ")");
+            GameEvents.publish("plant " + name + " produced a sun at (" + column + ", " + row + ")");
         }
     }
 
     private void updateShooter(long tick, long intervalTicks) {
-        if (tick - lastActionTick >= intervalTicks && (world.board().hasZombieAhead(y, x)
-                || world.board().hasTileObstacleAhead(y, x))) {
+        if (tick - lastActionTick >= intervalTicks && (world.board().hasZombieAhead(row, getX())
+                || world.board().hasTileObstacleAhead(row, column))) {
             lastActionTick = tick;
-            world.game().register(new Projectile(world, name + " projectile", y, x, getShotDamage()));
+            world.game().register(new Projectile(world, name + " projectile", column, row, getShotDamage()));
         }
     }
 

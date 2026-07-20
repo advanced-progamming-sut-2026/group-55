@@ -154,7 +154,7 @@ public class GameController {
 
     private char cellSymbol(int x, int y) {
         for (Zombie zombie : board.getZombies()) {
-            if (zombie.getRow() == y && (int) Math.floor(zombie.getX()) == x) {
+            if (zombie.getTileY() == y && zombie.getTileX() == x) {
                 return 'Z';
             }
         }
