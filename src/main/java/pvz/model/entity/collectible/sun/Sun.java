@@ -2,17 +2,20 @@ package pvz.model.entity.collectible.sun;
 
 import java.util.Objects;
 
-import pvz.model.entity.collectible.Collectible;
 import pvz.model.core.Game;
-import pvz.model.entity.plant.Plant;
+import pvz.model.core.GameEvents;
 import pvz.model.core.World;
+import pvz.model.entity.collectible.Collectible;
+import pvz.model.entity.plant.Plant;
 
 public final class Sun extends Collectible {
+    private static final long SKY_FALL_DURATION_TICKS =
+            5L * Game.TICKS_PER_SECOND;
+
     private static final long AVAILABLE_LIFETIME_TICKS =
             8L * Game.TICKS_PER_SECOND;
 
-    private static final double FALL_SPEED_PER_TICK = 0.1;
-
+    private final World world;
     private final SunSource source;
     private final Plant producer;
     private final int value;
@@ -20,14 +23,11 @@ public final class Sun extends Collectible {
     private final double targetX;
     private final double targetY;
 
-    private double currentX;
-    private double currentY;
+    private final long landingTick;
 
     private SunType type;
     private SunState state;
     private long availableTicksLeft;
-
-    private final World world;
 
     private Sun(
             World world,
@@ -35,10 +35,10 @@ public final class Sun extends Collectible {
             Plant producer,
             SunType type,
             int value,
-            double currentX,
-            double currentY,
             double targetX,
             double targetY,
+            long spawnTick,
+            long landingTick,
             SunState state
     ) {
         this.world = Objects.requireNonNull(world);
@@ -47,10 +47,9 @@ public final class Sun extends Collectible {
         this.producer = producer;
         this.type = Objects.requireNonNull(type);
         this.value = value;
-        this.currentX = currentX;
-        this.currentY = currentY;
         this.targetX = targetX;
         this.targetY = targetY;
+        this.landingTick = landingTick;
         this.state = Objects.requireNonNull(state);
 
         if (state == SunState.AVAILABLE) {
@@ -65,6 +64,8 @@ public final class Sun extends Collectible {
             double y,
             int value
     ) {
+        long currentTick = world.game().getCurrentTick();
+
         return new Sun(
                 world,
                 SunSource.PLANT,
@@ -73,8 +74,8 @@ public final class Sun extends Collectible {
                 value,
                 x,
                 y,
-                x,
-                y,
+                currentTick,
+                currentTick,
                 SunState.AVAILABLE
         );
     }
@@ -83,10 +84,11 @@ public final class Sun extends Collectible {
             World world,
             SunType type,
             double targetX,
-            double startY,
             double targetY,
             int value
     ) {
+        long spawnTick = world.game().getCurrentTick();
+
         return new Sun(
                 world,
                 SunSource.SKY,
@@ -94,9 +96,9 @@ public final class Sun extends Collectible {
                 type,
                 value,
                 targetX,
-                startY,
-                targetX,
                 targetY,
+                spawnTick,
+                spawnTick + SKY_FALL_DURATION_TICKS,
                 SunState.FALLING
         );
     }
@@ -104,28 +106,29 @@ public final class Sun extends Collectible {
     @Override
     public void update(long tick) {
         if (state == SunState.FALLING) {
-            updateFalling();
+            updateFalling(tick);
         }
         else if (state == SunState.AVAILABLE) {
             updateAvailable();
         }
     }
 
-    private void updateFalling() {
-        double remainingDistance = currentY - targetY;
-
-        if (remainingDistance <= FALL_SPEED_PER_TICK) {
-            currentX = targetX;
-            currentY = targetY;
-            state = SunState.AVAILABLE;
-            availableTicksLeft = AVAILABLE_LIFETIME_TICKS;
-
-            if (type == SunType.RADIOACTIVE) {
-                type = SunType.NORMAL;
-            }
+    private void updateFalling(long tick) {
+        if (tick < landingTick) {
             return;
         }
-        currentY -= FALL_SPEED_PER_TICK;
+
+        state = SunState.AVAILABLE;
+        availableTicksLeft = AVAILABLE_LIFETIME_TICKS;
+
+        if (type == SunType.RADIOACTIVE) {
+            type = SunType.NORMAL;
+        }
+
+        GameEvents.publish(
+                "Sun reached the ground at position ("
+                        + getTileX() + ", " + getTileY() + ")"
+        );
     }
 
     private void updateAvailable() {
@@ -153,16 +156,21 @@ public final class Sun extends Collectible {
 
     @Override
     public double getX() {
-        return currentX;
+        return targetX;
     }
 
     @Override
     public double getY() {
-        return currentY;
+        return targetY;
     }
 
     public boolean isFalling() {
         return state == SunState.FALLING;
+    }
+
+    public boolean isRadioactiveWhileFalling() {
+        return type == SunType.RADIOACTIVE
+                && state == SunState.FALLING;
     }
 
     public boolean isRemoved() {
@@ -195,5 +203,9 @@ public final class Sun extends Collectible {
 
     public double getTargetY() {
         return targetY;
+    }
+    
+    public long getLandingTick() {
+        return landingTick;
     }
 }

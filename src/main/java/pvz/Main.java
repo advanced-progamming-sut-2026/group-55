@@ -9,6 +9,7 @@ import pvz.model.core.Board;
 import pvz.model.core.Game;
 import pvz.model.core.SunBank;
 import pvz.model.core.World;
+import pvz.model.entity.collectible.sun.SkySunSpawner;
 import pvz.model.entity.plant.PlantFactory;
 
 public final class Main {
@@ -30,6 +31,7 @@ public final class Main {
         Board board = new Board();
         game.register(board);
         World world = new World(game, board, new SunBank(STARTING_SUN));
+        game.register(new SkySunSpawner(world));
 
         PlantFactory factory = new PlantFactory(plantData.byName());
         GameController controller = new GameController(world, factory);

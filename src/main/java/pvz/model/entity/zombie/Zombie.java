@@ -46,14 +46,6 @@ public abstract class Zombie extends LivingEntity {
     }
 
     @Override
-    public void takeDamage(double damage) {
-        super.takeDamage(damage);
-        if (isDead()) {
-            die();
-        }
-    }
-
-    @Override
     public void update(long tick) {
         if (reachedHouse) {
             return;
@@ -86,19 +78,20 @@ public abstract class Zombie extends LivingEntity {
 
     private void bite(Plant plant) {
         plant.takeDamage(damagePerSecond);
-        if (plant.isDead()) {
-            int column = getTileX();
-            int row = getTileY();
-            world.board().getTile(column, row).removePlant(plant);
-            world.game().unregister(plant);
-            GameEvents.publish("Plant " + plant.getName() + " at ("
-                    + column + ", " + row + ") is destroyed.");
-        }
     }
 
-    private void die() {
-        GameEvents.publish("Zombie of type " + name + " is dead at ("
-                + getTileX() + ", " + getTileY() + ")");
+    @Override
+    protected void onDeath() {
+        if (world == null) {
+            return;
+        }
+
+        GameEvents.publish(
+                "Zombie of type " + name + " is dead at ("
+                        + getTileX() + ", "
+                        + getTileY() + ")"
+        );
+
         world.board().removeZombie(this);
         world.game().unregister(this);
     }

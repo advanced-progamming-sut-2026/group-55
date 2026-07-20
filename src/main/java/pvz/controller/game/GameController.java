@@ -9,6 +9,7 @@ import java.util.regex.Matcher;
 import pvz.model.core.*;
 import pvz.model.entity.collectible.Collectible;
 import pvz.model.entity.collectible.sun.Sun;
+import pvz.model.entity.collectible.sun.SunCollectionOutcome;
 import pvz.model.entity.plant.Plant;
 import pvz.model.entity.plant.PlantFactory;
 import pvz.model.entity.zombie.BasicZombie;
@@ -130,8 +131,13 @@ public class GameController {
                 continue;
             }
 
-            world.sunBank().add(sun.getValue());
-            sun.remove();
+            SunCollectionOutcome outcome = world.collectSun(sun);
+
+            if (outcome == SunCollectionOutcome.EXPLODED) {
+                return "radioactive sun exploded at ("
+                        + x + ", " + y
+                        + "); no sun was added";
+            }
 
             return "collected " + sun.getValue()
                     + " sun; you now have "

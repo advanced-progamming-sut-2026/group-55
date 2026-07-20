@@ -173,4 +173,23 @@ public class Plant extends LivingEntity {
             return DEFAULT_SHOT_DAMAGE;
         }
     }
+
+    @Override
+    protected void onDeath() {
+        if (world == null) {
+            return;
+        }
+
+        world.board()
+                .getTile(column, row)
+                .removePlant(this);
+
+        world.game().unregister(this);
+
+        GameEvents.publish(
+                "Plant " + name + " at ("
+                        + column + ", " + row
+                        + ") is destroyed."
+        );
+    }
 }

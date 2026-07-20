@@ -3,15 +3,28 @@ package pvz.model.entity;
 public abstract class LivingEntity extends Entity {
     protected double health;
 
+    private boolean deathHandled;
+
     public double getHealth() {
         return health;
     }
 
-    public void takeDamage(double damage) {
-        health -= damage;
+    public final void takeDamage(double damage) {
+        if (damage <= 0 || deathHandled) {
+            return;
+        }
+
+        health = Math.max(0, health - damage);
+
+        if (health == 0) {
+            deathHandled = true;
+            onDeath();
+        }
     }
 
-    public boolean isDead() {
+    public final boolean isDead() {
         return health <= 0;
     }
+
+    protected abstract void onDeath();
 }

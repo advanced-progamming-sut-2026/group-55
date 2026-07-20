@@ -12,7 +12,6 @@ import pvz.model.core.World;
 public final class SkySunSpawner implements Updatable {
     private static final int NORMAL_CHANCE_PERCENT = 80;
     private static final int SPECIAL_CHANCE_PERCENT = 15;
-    /// RADIOACTIVE_CHALENCE_PERCENT = 5;
 
     private static final double BASE_INTERVAL_SECONDS = 6.0;
     private static final double MINIMUM_INTERVAL_SECONDS = 12.0;
@@ -59,16 +58,10 @@ public final class SkySunSpawner implements Updatable {
         double targetX = targetColumn - 0.5;
         double targetY = targetRow - 0.5;
 
-
-        double startY = Math.nextDown( // In method yek adad haddi nazdik rows mide(kamtar)
-                (double) world.board().getRows()
-        );
-
         Sun sun = Sun.fromSky(
                 world,
                 type,
                 targetX,
-                startY,
                 targetY,
                 value
         );
