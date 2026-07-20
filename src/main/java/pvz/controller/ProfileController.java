@@ -1,7 +1,7 @@
 package pvz.controller;
 
-import pvz.model.Command.Command;
-import pvz.model.Command.ProfileCommand;
+import pvz.model.command.Command;
+import pvz.model.command.ProfileCommand;
 import pvz.model.account.User;
 import pvz.model.account.UserManager;
 import pvz.model.utils.AppState;
@@ -21,10 +21,6 @@ public class ProfileController extends BaseController {
         if (!(command instanceof ProfileCommand profileCmd)) return null;
 
         User currentUser = appState.getCurrentUser();
-        if (currentUser == null) {
-            view.showError(SystemMessage.USER_NOT_LOGGED_IN.getMessage());
-            return null;
-        }
 
         switch (profileCmd.getAction()) {
             case CHANGE_USERNAME -> {

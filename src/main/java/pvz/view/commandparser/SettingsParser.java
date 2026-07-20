@@ -1,7 +1,7 @@
 package pvz.view.commandparser;
 
-import pvz.model.Command.Command;
-import pvz.model.Command.SettingsCommand;
+import pvz.model.command.Command;
+import pvz.model.command.SettingsCommand;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 

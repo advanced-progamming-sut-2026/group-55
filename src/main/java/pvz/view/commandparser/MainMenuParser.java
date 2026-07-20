@@ -1,6 +1,6 @@
 package pvz.view.commandparser;
 
-import pvz.model.Command.Command;
+import pvz.model.command.Command;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -19,7 +19,6 @@ public class MainMenuParser {
         if (menuEnterMatcher.matches()) {
             return new Command.MenuEnterCommand(menuEnterMatcher.group("menuName"));
         }
-
         return switch (trimmed) {
             case "menu show current" -> new Command.MenuShowCurrentCommand();
             case "menu exit" -> new Command.MenuExitCommand();

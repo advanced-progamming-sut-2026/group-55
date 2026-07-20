@@ -1,6 +1,6 @@
 package pvz.controller;
 
-import pvz.model.Command.Command;
+import pvz.model.command.Command;
 import pvz.model.utils.Message;
 
 public interface Controller {

@@ -1,4 +1,4 @@
-package pvz.model.Command;
+package pvz.model.command;
 
 public class GameMenuCommand implements Command {
 
@@ -68,7 +68,6 @@ public class GameMenuCommand implements Command {
     public static GameMenuCommand createCheatAdd(int amount, String resourceType) {
         return new GameMenuCommand(Action.CHEAT_ADD, amount, resourceType);
     }
-
 
     public Action getAction() { return action; }
     public String getStringArg() { return stringArg; }

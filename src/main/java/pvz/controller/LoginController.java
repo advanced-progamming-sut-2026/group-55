@@ -1,7 +1,7 @@
 package pvz.controller;
 
-import pvz.model.Command.LoginCommand;
-import pvz.model.Command.Command;
+import pvz.model.command.LoginCommand;
+import pvz.model.command.Command;
 import pvz.model.account.User;
 import pvz.model.account.UserManager;
 import pvz.model.service.AuthService;

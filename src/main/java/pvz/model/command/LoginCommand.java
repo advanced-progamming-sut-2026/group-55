@@ -1,4 +1,4 @@
-package pvz.model.Command;
+package pvz.model.command;
 
 public class LoginCommand implements Command {
 

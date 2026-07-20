@@ -3,8 +3,8 @@ package pvz.controller;
 import pvz.model.account.User;
 import pvz.model.account.UserManager;
 import pvz.model.service.AuthService;
-import pvz.model.Command.RegisterCommand;
-import pvz.model.Command.Command;
+import pvz.model.command.RegisterCommand;
+import pvz.model.command.Command;
 import pvz.model.utils.*;
 import pvz.view.MenuView;
 

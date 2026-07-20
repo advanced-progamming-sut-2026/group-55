@@ -1,7 +1,7 @@
 package pvz.controller;
 
 import pvz.model.account.UserManager;
-import pvz.model.Command.Command;
+import pvz.model.command.Command;
 import pvz.model.utils.*;
 import pvz.view.MenuView;
 
@@ -42,8 +42,7 @@ public abstract class BaseController implements Controller {
         }
 
         if (command instanceof Command.MenuEnterCommand) {
-            String inputName = ((Command.MenuEnterCommand) command).getMenuName().toUpperCase();
-
+            String inputName = ((Command.MenuEnterCommand) command).getMenuName().toUpperCase().replace("-", "_");
             MenuName targetMenu = null;
             for (MenuName menu : MenuName.values()) {
                 if (menu.name().equals(inputName)) {
@@ -93,6 +92,19 @@ public abstract class BaseController implements Controller {
     }
 
     protected void handleMenuEnter(MenuName targetMenu) {
+        boolean isLoggedIn = (appState.getCurrentUser() != null);
+        if (!isLoggedIn) {
+            if (targetMenu != MenuName.REGISTER && targetMenu != MenuName.LOGIN) {
+                view.showError(SystemMessage.MENU_REQUIRES_LOGIN.getMessage());
+                return;
+            }
+        }
+        else {
+            if (targetMenu == MenuName.REGISTER || targetMenu == MenuName.LOGIN) {
+                view.showError(SystemMessage.MENU_ALREADY_LOGGED_IN.getMessage());
+                return;
+            }
+        }
         appState.setCurrentMenu(targetMenu);
         view.showSuccess("menu entered " + targetMenu.name().toLowerCase());
     }

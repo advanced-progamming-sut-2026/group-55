@@ -1,6 +1,6 @@
 package pvz.controller;
 
-import pvz.model.Command.Command;
+import pvz.model.command.Command;
 import pvz.model.utils.*;
 import pvz.model.account.UserManager;
 import pvz.view.MenuView;
@@ -13,21 +13,6 @@ public class MainMenuController extends BaseController {
 
     @Override
     protected Message handleSpecificCommand(Command command) {
-
-        if (command instanceof Command.MenuEnterCommand) {
-            String menuName = ((Command.MenuEnterCommand) command).getMenuName().toLowerCase();
-
-            switch (menuName) {
-                case "play", "game" -> appState.setCurrentMenu(MenuName.GAME);
-                case "settings"     -> appState.setCurrentMenu(MenuName.SETTINGS);
-                case "profile"      -> appState.setCurrentMenu(MenuName.PROFILE);
-                case "network"   -> appState.setCurrentMenu(MenuName.NETWORK);
-                case "news"      -> appState.setCurrentMenu(MenuName.NEWS);
-
-                default -> view.showError(SystemMessage.INVALID_COMMAND.getMessage());
-            }
-            return null;
-        }
 
         if (command instanceof Command.MenuLogoutCommand) {
             if (appState.getCurrentUser() != null) {

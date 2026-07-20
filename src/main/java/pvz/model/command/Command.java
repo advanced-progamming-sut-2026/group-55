@@ -1,4 +1,4 @@
-package pvz.model.Command;
+package pvz.model.command;
 
 public interface Command {
 
@@ -27,6 +27,6 @@ public interface Command {
 
         public String getText() { return text; }
     }
-    
+
     class EmptyCommand implements Command {}
 }

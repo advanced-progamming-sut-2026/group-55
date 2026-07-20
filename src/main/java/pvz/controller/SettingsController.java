@@ -1,7 +1,7 @@
 package pvz.controller;
 
-import pvz.model.Command.Command;
-import pvz.model.Command.SettingsCommand;
+import pvz.model.command.Command;
+import pvz.model.command.SettingsCommand;
 import pvz.model.account.User;
 import pvz.model.account.UserManager;
 import pvz.model.utils.*;

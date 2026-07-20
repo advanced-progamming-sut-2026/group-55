@@ -1,7 +1,7 @@
 package pvz.view.commandparser;
 
-import pvz.model.Command.Command;
-import pvz.model.Command.GameMenuCommand;
+import pvz.model.command.Command;
+import pvz.model.command.GameMenuCommand;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 

@@ -1,6 +1,6 @@
 package pvz.view.commandparser;
 
-import pvz.model.Command.LoginCommand;
+import pvz.model.command.LoginCommand;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 

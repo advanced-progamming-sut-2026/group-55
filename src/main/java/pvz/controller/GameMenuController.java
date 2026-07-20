@@ -2,8 +2,8 @@ package pvz.controller;
 
 import pvz.model.account.User;
 import pvz.model.account.UserManager;
-import pvz.model.Command.Command;
-import pvz.model.Command.GameMenuCommand;
+import pvz.model.command.Command;
+import pvz.model.command.GameMenuCommand;
 import pvz.model.utils.*;
 import pvz.view.MenuView;
 
