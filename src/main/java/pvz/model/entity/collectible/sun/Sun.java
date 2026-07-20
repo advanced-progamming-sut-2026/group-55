@@ -1,13 +1,15 @@
-package pvz.model.collectible.sun;
+package pvz.model.entity.collectible.sun;
 
 import java.util.Objects;
 
+import pvz.model.entity.collectible.Collectible;
 import pvz.model.core.Game;
 import pvz.model.entity.plant.Plant;
+import pvz.model.core.World;
 
-public final class Sun {
+public final class Sun extends Collectible {
     private static final long AVAILABLE_LIFETIME_TICKS =
-            5L * Game.TICKS_PER_SECOND;
+            8L * Game.TICKS_PER_SECOND;
 
     private static final double FALL_SPEED_PER_TICK = 0.1;
 
@@ -25,7 +27,10 @@ public final class Sun {
     private SunState state;
     private long availableTicksLeft;
 
+    private final World world;
+
     private Sun(
+            World world,
             SunSource source,
             Plant producer,
             SunType type,
@@ -36,6 +41,8 @@ public final class Sun {
             double targetY,
             SunState state
     ) {
+        this.world = Objects.requireNonNull(world);
+        this.name = "sun";
         this.source = Objects.requireNonNull(source);
         this.producer = producer;
         this.type = Objects.requireNonNull(type);
@@ -52,12 +59,14 @@ public final class Sun {
     }
 
     public static Sun fromPlant(
+            World world,
             Plant producer,
             double x,
             double y,
             int value
     ) {
         return new Sun(
+                world,
                 SunSource.PLANT,
                 Objects.requireNonNull(producer),
                 SunType.NORMAL,
@@ -71,6 +80,7 @@ public final class Sun {
     }
 
     public static Sun fromSky(
+            World world,
             SunType type,
             double targetX,
             double startY,
@@ -78,6 +88,7 @@ public final class Sun {
             int value
     ) {
         return new Sun(
+                world,
                 SunSource.SKY,
                 null,
                 type,
@@ -90,7 +101,8 @@ public final class Sun {
         );
     }
 
-    public void update() {
+    @Override
+    public void update(long tick) {
         if (state == SunState.FALLING) {
             updateFalling();
         }
@@ -120,20 +132,33 @@ public final class Sun {
         availableTicksLeft--;
 
         if (availableTicksLeft <= 0) {
-            state = SunState.REMOVED;
+            remove();
         }
     }
 
-    void remove() {
+    public void remove() {
+        if (state == SunState.REMOVED) {
+            return;
+        }
+
         state = SunState.REMOVED;
+
+        if (producer != null) {
+            producer.onProducedSunRemoved();
+        }
+
+        world.removeCollectible(this);
+        world.game().unregister(this);
     }
 
-    public int getTileX() {
-        return (int) Math.floor(currentX) + 1;
+    @Override
+    public double getX() {
+        return currentX;
     }
 
-    public int getTileY() {
-        return (int) Math.floor(currentY) + 1;
+    @Override
+    public double getY() {
+        return currentY;
     }
 
     public boolean isFalling() {
@@ -162,14 +187,6 @@ public final class Sun {
 
     public int getValue() {
         return value;
-    }
-
-    public double getCurrentX() {
-        return currentX;
-    }
-
-    public double getCurrentY() {
-        return currentY;
     }
 
     public double getTargetX() {
