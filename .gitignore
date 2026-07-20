@@ -40,3 +40,5 @@ build/
 .idea/
 target/
 *.iml
+# AI / MCP local configuration
+.ai/

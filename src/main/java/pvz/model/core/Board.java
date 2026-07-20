@@ -29,7 +29,7 @@ public final class Board implements Updatable {
         tiles = new Tile[columns][rows];
         for (int x = 0; x < columns; x++) {
             for (int y = 0; y < rows; y++) {
-                tiles[x][y] = new Tile(TileType.NORMAL);
+                tiles[x][y] = new Tile(TileType.NORMAL, x + 1 , y + 1);
             }
         }
     }
@@ -55,41 +55,11 @@ public final class Board implements Updatable {
         if (!tile.isPlantableFor(plant)) {
             return "you can't plant " + plant.getName() + " on this tile!";
         }
-        if (!canStack(tile, plant)) {
+        if (!tile.canStack( plant)) {
             return "tile (" + x + ", " + y + ") is already occupied!";
         }
         tile.addPlant(plant);
         return "planted " + plant.getName() + " at (" + x + ", " + y + ") successfully!";
-    }
-
-    private boolean canStack(Tile tile, Plant newPlant) {
-        List<Plant> currentPlants = tile.getPlants();
-        if (currentPlants.isEmpty()) {
-            return true;
-        }
-        if (tile.getType() == TileType.WATER && hasLilyPad(currentPlants)) {
-            return currentPlants.size() == 1;
-        }
-        if (newPlant.getName().equalsIgnoreCase("Pea Pod")) {
-            return currentPlants.size() < 5
-                    && currentPlants.stream().allMatch(this::isPeaPod);
-        }
-        if (newPlant.getName().equalsIgnoreCase("Pumpkin")) {
-            return currentPlants.size() == 1 && !hasPumpkin(currentPlants);
-        }
-        return false;
-    }
-
-    private boolean isPeaPod(Plant plant) {
-        return plant.getName().equalsIgnoreCase("Pea Pod");
-    }
-
-    private boolean hasLilyPad(List<Plant> plants) {
-        return plants.stream().anyMatch(plant -> plant.getName().equalsIgnoreCase("Lily Pad"));
-    }
-
-    private boolean hasPumpkin(List<Plant> plants) {
-        return plants.stream().anyMatch(plant -> plant.getName().equalsIgnoreCase("Pumpkin"));
     }
 
     public Plant removeTopPlant(int x, int y) {
@@ -98,7 +68,7 @@ public final class Board implements Updatable {
         if (plants.isEmpty()) {
             return null;
         }
-        Plant lastPlant = plants.get(plants.size() - 1);
+        Plant lastPlant = plants.getLast();
         tile.removePlant(lastPlant);
         return lastPlant;
     }
@@ -115,13 +85,28 @@ public final class Board implements Updatable {
         return List.copyOf(zombies);
     }
 
-    /** @return true when some zombie in this row is at or beyond the given x. */
     public boolean hasZombieAhead(int row, double fromX) {
         return zombies.stream()
                 .anyMatch(zombie -> zombie.getRow() == row && zombie.getX() >= fromX);
     }
 
+    public boolean hasTileObstacleAhead(int row, int fromX) {
+        for (int column = fromX + 1; column <= columns; column++) {
+            if (getTile(column, row).blocksStraightProjectiles()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public Zombie findHitZombie(int row, double fromX, double toX) {
+        if (toX <= fromX) {
+            return null;
+        }
+
+        if (row < 1 || row > rows) {
+            throw new IndexOutOfBoundsException("row " + row + " is out of bounds");
+        }
         Zombie first = null;
         for (Zombie zombie : zombies) {
             if (zombie.getRow() == row && zombie.getX() > fromX && zombie.getX() <= toX
@@ -130,6 +115,29 @@ public final class Board implements Updatable {
             }
         }
         return first;
+    }
+
+    public Integer findHitBlockingTile(int row, double fromX, double toX) {
+        if (toX <= fromX) {
+            return null;
+        }
+
+        if (row < 1 || row > rows) {
+            throw new IndexOutOfBoundsException(
+                    "row " + row + " is out of bounds"
+            );
+        }
+
+        int firstColumn = Math.max(1, xToColumn(fromX));
+        int lastColumn = Math.min(columns, xToColumn(toX));
+
+        for (int column = firstColumn; column <= lastColumn; column++) {
+            if (getTile(column, row).blocksStraightProjectiles()) {
+                return column;
+            }
+        }
+
+        return null;
     }
 
     public boolean damageTerrain(int x, int y, double damage) {
@@ -177,6 +185,10 @@ public final class Board implements Updatable {
         if (!inBounds(x, y)) {
             throw new IndexOutOfBoundsException("location (" + x + ", " + y + ") is out of bounds");
         }
+    }
+
+    private int xToColumn(double x) {
+        return (int) Math.floor(x) + 1;
     }
 
     public int getRows() {
