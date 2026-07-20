@@ -7,6 +7,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import pvz.model.core.*;
+import pvz.model.entity.collectible.Collectible;
+import pvz.model.entity.collectible.sun.Sun;
+import pvz.model.entity.collectible.sun.SunCollectionOutcome;
 import pvz.model.entity.plant.Plant;
 import pvz.model.entity.plant.PlantFactory;
 import pvz.model.entity.zombie.BasicZombie;
@@ -110,15 +113,38 @@ public class GameController {
     private String handleCollectSun(Matcher matcher) {
         int x = Integer.parseInt(matcher.group("x"));
         int y = Integer.parseInt(matcher.group("y"));
+
         if (!board.inBounds(x, y)) {
             return "location (" + x + ", " + y + ") is out of bounds!";
         }
-        for (Plant plant : board.getTile(x, y).getPlants()) {
-            if (plant.hasUncollectedSun()) {
-                world.sunBank().add(plant.collectSun());
-                return "collected sun; you now have " + world.sunBank().getBalance() + " sun";
+
+        for (Collectible collectible : world.getCollectibles()) {
+            if (!(collectible instanceof Sun sun)) {
+                continue;
             }
+
+            if (sun.isRemoved()) {
+                continue;
+            }
+
+            if (sun.getTileX() != x || sun.getTileY() != y) {
+                continue;
+            }
+
+            SunCollectionOutcome outcome = world.collectSun(sun);
+
+            if (outcome == SunCollectionOutcome.EXPLODED) {
+                return "radioactive sun exploded at ("
+                        + x + ", " + y
+                        + "); no sun was added";
+            }
+
+            return "collected " + sun.getValue()
+                    + " sun; you now have "
+                    + world.sunBank().getBalance()
+                    + " sun";
         }
+
         return "there is no sun at (" + x + ", " + y + ")!";
     }
 
@@ -154,7 +180,7 @@ public class GameController {
 
     private char cellSymbol(int x, int y) {
         for (Zombie zombie : board.getZombies()) {
-            if (zombie.getRow() == y && (int) Math.floor(zombie.getX()) == x) {
+            if (zombie.getTileY() == y && zombie.getTileX() == x) {
                 return 'Z';
             }
         }

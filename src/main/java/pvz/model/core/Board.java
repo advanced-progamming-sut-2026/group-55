@@ -87,11 +87,11 @@ public final class Board implements Updatable {
 
     public boolean hasZombieAhead(int row, double fromX) {
         return zombies.stream()
-                .anyMatch(zombie -> zombie.getRow() == row && zombie.getX() >= fromX);
+                .anyMatch(zombie -> zombie.getTileY() == row && zombie.getX() >= fromX);
     }
 
-    public boolean hasTileObstacleAhead(int row, int fromX) {
-        for (int column = fromX + 1; column <= columns; column++) {
+    public boolean hasTileObstacleAhead(int row, int fromColumn) {
+        for (int column = fromColumn + 1; column <= columns; column++) {
             if (getTile(column, row).blocksStraightProjectiles()) {
                 return true;
             }
@@ -109,7 +109,7 @@ public final class Board implements Updatable {
         }
         Zombie first = null;
         for (Zombie zombie : zombies) {
-            if (zombie.getRow() == row && zombie.getX() > fromX && zombie.getX() <= toX
+            if (zombie.getTileY() == row && zombie.getX() > fromX && zombie.getX() <= toX
                     && (first == null || zombie.getX() < first.getX())) {
                 first = zombie;
             }
