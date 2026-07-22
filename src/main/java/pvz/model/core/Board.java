@@ -34,10 +34,7 @@ public final class Board implements Updatable {
         }
     }
 
-    public boolean inBounds(int x, int y) {
-        return x >= 1 && x <= columns && y >= 1 && y <= rows;
-    }
-
+    //Tile:
     public Tile getTile(int x, int y) {
         requireInBounds(x, y);
         return tiles[x - 1][y - 1];
@@ -47,6 +44,70 @@ public final class Board implements Updatable {
         getTile(x, y).setType(Objects.requireNonNull(type));
     }
 
+    public boolean inBounds(int x, int y) {
+        return x >= 1 && x <= columns && y >= 1 && y <= rows;
+    }
+
+    public boolean hasTileObstacleAhead(int row, int fromColumn) {
+        for (int column = fromColumn + 1; column <= columns; column++) {
+            if (getTile(column, row).blocksStraightProjectiles()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public Integer findHitBlockingTile(int row, double fromX, double toX) {
+        if (toX <= fromX) {
+            return null;
+        }
+
+        if (row < 1 || row > rows) {
+            throw new IndexOutOfBoundsException(
+                    "row " + row + " is out of bounds"
+            );
+        }
+
+        int firstColumn = Math.max(1, xToColumn(fromX));
+        int lastColumn = Math.min(columns, xToColumn(toX));
+
+        for (int column = firstColumn; column <= lastColumn; column++) {
+            if (getTile(column, row).blocksStraightProjectiles()) {
+                return column;
+            }
+        }
+
+        return null;
+    }
+
+    public boolean placeTombstone(int column, int row) {
+        if(!inBounds(column, row)) {
+            return false;
+        }
+        Tile  tile = getTile(column, row);
+        if(tile.getType() != TileType.NORMAL || !tile.getPlants().isEmpty()) {
+            return false;
+        }
+        setTileType(column, row, TileType.TOMBSTONE);
+        return true;
+    }
+
+    private void damageFrozenTilesNearFirePlants() {
+        for (int x = 1; x <= columns; x++) {
+            for (int y = 1; y <= rows; y++) {
+                Tile tile = getTile(x, y);
+                if (tile.getType() == TileType.FROZEN && hasAdjacentFirePlant(x, y)) {
+                    tile.applyFireDamage(ADJACENT_FIRE_DAMAGE_PER_SECOND);
+                }
+            }
+        }
+    }
+
+    public boolean damageTerrain(int x, int y, double damage) {
+        return getTile(x, y).takeDamage(damage);
+    }
+
+    //Plant:
     public String plant(int x, int y, Plant plant) {
         if (!inBounds(x, y)) {
             return "location (" + x + ", " + y + ") is out of bounds!";
@@ -73,6 +134,20 @@ public final class Board implements Updatable {
         return lastPlant;
     }
 
+    private boolean hasAdjacentFirePlant(int centerX, int centerY) {
+        for (int x = centerX - 1; x <= centerX + 1; x++) {
+            for (int y = centerY - 1; y <= centerY + 1; y++) {
+                if ((x != centerX || y != centerY)
+                        && inBounds(x, y)
+                        && getTile(x, y).hasFirePlant()) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    //Zombie:
     public void addZombie(Zombie zombie) {
         zombies.add(Objects.requireNonNull(zombie));
     }
@@ -88,15 +163,6 @@ public final class Board implements Updatable {
     public boolean hasZombieAhead(int row, double fromX) {
         return zombies.stream()
                 .anyMatch(zombie -> zombie.getTileY() == row && zombie.getX() >= fromX);
-    }
-
-    public boolean hasTileObstacleAhead(int row, int fromColumn) {
-        for (int column = fromColumn + 1; column <= columns; column++) {
-            if (getTile(column, row).blocksStraightProjectiles()) {
-                return true;
-            }
-        }
-        return false;
     }
 
     public Zombie findHitZombie(int row, double fromX, double toX) {
@@ -117,33 +183,6 @@ public final class Board implements Updatable {
         return first;
     }
 
-    public Integer findHitBlockingTile(int row, double fromX, double toX) {
-        if (toX <= fromX) {
-            return null;
-        }
-
-        if (row < 1 || row > rows) {
-            throw new IndexOutOfBoundsException(
-                    "row " + row + " is out of bounds"
-            );
-        }
-
-        int firstColumn = Math.max(1, xToColumn(fromX));
-        int lastColumn = Math.min(columns, xToColumn(toX));
-
-        for (int column = firstColumn; column <= lastColumn; column++) {
-            if (getTile(column, row).blocksStraightProjectiles()) {
-                return column;
-            }
-        }
-
-        return null;
-    }
-
-    public boolean damageTerrain(int x, int y, double damage) {
-        return getTile(x, y).takeDamage(damage);
-    }
-
     public int shiftRowForSlipperyTile(int x, int y, int currentRow) {
         int shiftedRow = currentRow + getTile(x, y).getType().getLaneShift();
         return Math.max(1, Math.min(rows, shiftedRow));
@@ -156,31 +195,7 @@ public final class Board implements Updatable {
         }
         damageFrozenTilesNearFirePlants();
     }
-
-    private void damageFrozenTilesNearFirePlants() {
-        for (int x = 1; x <= columns; x++) {
-            for (int y = 1; y <= rows; y++) {
-                Tile tile = getTile(x, y);
-                if (tile.getType() == TileType.FROZEN && hasAdjacentFirePlant(x, y)) {
-                    tile.applyFireDamage(ADJACENT_FIRE_DAMAGE_PER_SECOND);
-                }
-            }
-        }
-    }
-
-    private boolean hasAdjacentFirePlant(int centerX, int centerY) {
-        for (int x = centerX - 1; x <= centerX + 1; x++) {
-            for (int y = centerY - 1; y <= centerY + 1; y++) {
-                if ((x != centerX || y != centerY)
-                        && inBounds(x, y)
-                        && getTile(x, y).hasFirePlant()) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
+    //helpier method
     private void requireInBounds(int x, int y) {
         if (!inBounds(x, y)) {
             throw new IndexOutOfBoundsException("location (" + x + ", " + y + ") is out of bounds");
