@@ -1,5 +1,6 @@
 package pvz;
 
+import java.awt.*;
 import java.io.IOException;
 import java.util.List;
 import java.util.Scanner;
@@ -34,16 +35,20 @@ public final class Main {
         PlantFactory plantFactory = new PlantFactory(plantData.byName());
         GameSessionFactory sessionFactory = new GameSessionFactory(plantFactory);
 
-        GameSessionConfig config = new GameSessionConfig(
-                "test-level",
-                9,
-                5,
-                STARTING_SUN,
-                3,
-                true,
-                List.copyOf(plantData.byName().keySet()),
-                Set.of()
-        );
+        GameSessionConfig config =
+                new GameSessionConfig.Builder(
+                        "test-level",
+                        List.copyOf(plantData.byName().keySet())
+                )
+                        .startingSun(STARTING_SUN)
+                        .tombCoordinates(
+                                List.of(
+                                        new Point(3, 2),
+                                        new Point(6, 4),
+                                        new Point(8, 1)
+                                )
+                        )
+                        .build();
 
         GameSession session = sessionFactory.create(config);
         session.start();
