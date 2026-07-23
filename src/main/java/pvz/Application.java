@@ -20,7 +20,8 @@ public class Application {
 
     private final AppState appState = new AppState();
     private PlantData plantData;
-    private final UserManager userManager = new UserManager();
+
+    private final UserManager userManager = new UserManager("save.json");
 
     private final MainMenuParser parser = new MainMenuParser();
     private final RegisterParser registerParser = new RegisterParser();

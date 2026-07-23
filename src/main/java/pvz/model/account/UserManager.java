@@ -9,9 +9,6 @@ public class UserManager extends BaseManager<User> {
     public UserManager(String filePath) {
         super(filePath, new TypeToken<ArrayList<User>>(){}.getType());}
 
-    public UserManager() {
-        this("save.json");}
-
     public boolean userExists(String username) {
         return this.exists(u -> u.getUsername().equals(username));}
 
