@@ -1,4 +1,4 @@
-package pvz.model.entity.plant;
+package pvz.model.entity.plant.sunprofile;
 
 import java.util.Collections;
 import java.util.List;

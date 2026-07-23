@@ -10,15 +10,50 @@ public class Projectile extends Entity {
 
     private final World world;
     private final double damage;
+    private final ProjectileType type;
+
+    private final double maximumX;
+
     protected double x;
     protected double y;
 
-    public Projectile(World world, String name, int startColumn, int startRow, double damage) {
+    public Projectile(
+            World world,
+            String name,
+            int startColumn,
+            int startRow,
+            double damage,
+            ProjectileType type,
+            int rangeTiles
+    ) {
+        if (rangeTiles <= 0) {
+            throw new IllegalArgumentException("projectile range must be positive");
+        }
+
         this.world = world;
         this.name = name;
         this.x = tileCenter(startColumn);
         this.y = tileCenter(startRow);
         this.damage = damage;
+        this.type = type;
+        this.maximumX = calculateMaximumX(startColumn, rangeTiles);
+    }
+
+    public ProjectileType getType() {
+        return type;
+    }
+
+    private double calculateMaximumX(int startColumn, int rangeTiles) {
+        if (rangeTiles == Integer.MAX_VALUE) {
+            return world.board().getCols();
+        }
+
+        int lastReachableColumn = Math.min(
+                world.board().getCols(),
+                startColumn + rangeTiles
+        );
+
+        return lastReachableColumn;
     }
 
     @Override
@@ -34,7 +69,7 @@ public class Projectile extends Entity {
     @Override
     public void update(long tick) {
         double previousX = x;
-        double nextX = x + TILES_PER_SECOND / Game.TICKS_PER_SECOND;
+        double nextX = Math.min(x + TILES_PER_SECOND / Game.TICKS_PER_SECOND, maximumX);
         int row = getTileY();
 
         Zombie zombie = world.board().findHitZombie(row, previousX, nextX);
@@ -57,7 +92,7 @@ public class Projectile extends Entity {
             return;
         }
 
-        if (x >= world.board().getCols()) {
+        if (x >= maximumX) {
             world.game().unregister(this);
         }
     }

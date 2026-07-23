@@ -1,4 +1,4 @@
-package pvz.model.entity.plant;
+package pvz.model.entity.plant.sunprofile;
 
 import java.util.List;
 
@@ -6,8 +6,8 @@ import pvz.model.core.Game;
 import pvz.model.entity.collectible.sun.SunValue;
 
 public final class SunShroomProfile implements SunProfile {
-    private static final int SECOND_STAGE_SECONDS = 48;
-    private static final int FINAL_STAGE_SECONDS = 96;
+    private static final int SECOND_STAGE_SECONDS = 24;
+    private static final int FINAL_STAGE_SECONDS = 72;
 
     private final long plantedTick;
     private boolean forcedFinalStage;
@@ -24,7 +24,7 @@ public final class SunShroomProfile implements SunProfile {
         long ageInSeconds =
                 (currentTick - plantedTick) / Game.TICKS_PER_SECOND;
 
-        if (ageInSeconds < SECOND_STAGE_SECONDS) {
+        if (ageInSeconds <= SECOND_STAGE_SECONDS) {
             return 1;
         }
 

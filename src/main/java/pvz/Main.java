@@ -40,12 +40,11 @@ public final class Main {
                         "test-level",
                         List.copyOf(plantData.byName().keySet())
                 )
-                        .startingSun(STARTING_SUN)
+                        .startingSun(STARTING_SUN + 200)
                         .tombCoordinates(
                                 List.of(
-                                        new Point(3, 2),
-                                        new Point(6, 4),
-                                        new Point(8, 1)
+                                        new Point(4, 2),
+                                        new Point(7, 2)
                                 )
                         )
                         .build();
