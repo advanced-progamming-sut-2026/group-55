@@ -118,8 +118,13 @@ public class Application {
     }
 
     private void handleCommand(Command command) {
-        if (command == null || command instanceof Command.EmptyCommand) return;
-
+        if (command == null) {
+            view.showError(SystemMessage.INVALID_COMMAND.getMessage());
+            return;
+        }
+        if (command instanceof Command.EmptyCommand) {
+            return;
+        }
         if (command instanceof Command.MenuEnterCommand menuEnterCmd) {
             if (!isValidMenuTransition(appState.getCurrentMenu(), menuEnterCmd.getMenuName())) {
                 view.showError(SystemMessage.MENU_NAVIGATION_NOT_ALLOWED.getMessage());

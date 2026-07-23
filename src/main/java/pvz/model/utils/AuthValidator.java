@@ -16,7 +16,7 @@ public class AuthValidator {
         if (password.equals(password.toUpperCase())) return SystemMessage.WEAK_PASS_LOWER;
         if (!password.matches(".*\\d.*")) return SystemMessage.WEAK_PASS_DIGIT;
 
-        String specialCharsRegex = ".*[?><,\"'\\/;|\\[\\]}{+=()*&^%$#!].*";
+        String specialCharsRegex = ".*[?><,\"'\\\\/:;|\\[\\]}{+=()*&^%$#!].*";
         if (!password.matches(specialCharsRegex)) return SystemMessage.WEAK_PASS_SPECIAL;
 
         return null;

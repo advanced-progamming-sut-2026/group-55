@@ -33,10 +33,11 @@ public class GameMenuController extends BaseController {
                         view.showSuccess(SystemMessage.ENTERED_CHAPTER.getMessage() + " " + chapterName);
                         appState.setCurrentMenu(MenuName.CHAPTER);
                     } else {
-                        view.showError(SystemMessage.CHAPTER_LOCKED.getMessage());
+                        view.showError(SystemMessage.CHAPTER_LOCKED.getMessage());}
+                    }else {
+                    view.showError(SystemMessage.INVALID_COMMAND.getMessage());
                     }
                 }
-            }
 
             case ENTER_COLLECTION -> {
                 appState.setCurrentMenu(MenuName.COLLECTION);
@@ -101,6 +102,6 @@ public class GameMenuController extends BaseController {
 
     private boolean isValidChapterName(String name) {
         return name.equals("ancient-egypt") || name.equals("frostbite-caves") ||
-                name.equals("big_wave-beach") || name.equals("dark-ages");
+                name.equals("big-wave-beach") || name.equals("dark-ages");
     }
 }

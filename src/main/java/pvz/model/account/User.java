@@ -36,7 +36,7 @@ public class User {
         this.stayLoggedIn = false;
 
         this.unlockedChapters = new ArrayList<>();
-        this.unlockedChapters.add("ancient_egypt");
+        this.unlockedChapters.add("ancient-egypt");
 
         this.unlockedPlants.add(new PlayerPlant("peashooter"));
         this.unlockedPlants.add(new PlayerPlant("sunflower"));
