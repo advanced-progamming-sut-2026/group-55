@@ -7,8 +7,6 @@ public class AppState {
     private User currentUser;
     private boolean running = true;
 
-    private boolean stayLoggedIn = false;
-
     public MenuName getCurrentMenu() {
         return currentMenu;
     }
@@ -32,23 +30,4 @@ public class AppState {
     public void setRunning(boolean running) {
         this.running = running;
     }
-
-    public boolean isStayLoggedIn() {
-        return stayLoggedIn;
-    }
-
-    public void setStayLoggedIn(boolean stayLoggedIn) {
-        this.stayLoggedIn = stayLoggedIn;
-    }
-
-    private int difficultyLevel = 3;
-
-    public int getDifficultyLevel() {
-        return difficultyLevel;
-    }
-
-    public void setDifficultyLevel(int level) {
-        this.difficultyLevel = level;
-    }
-
 }

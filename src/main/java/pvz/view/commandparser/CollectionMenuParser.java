@@ -13,30 +13,33 @@ public class CollectionMenuParser {
     private final Pattern upgradePlantPattern = Pattern.compile("^menu collection upgrade-plant -p (?<plantname>.+)$");
 
     public Command parse(String input) {
-        if (input == null || input.trim().isEmpty()) return null;
+        if (input == null || input.isBlank()) return null;
         String trimmed = input.trim();
 
-        Matcher showPlantMatcher = showPlantPattern.matcher(trimmed);
-        if (showPlantMatcher.matches()) {
-            return new CollectionCommand(CollectionCommand.Action.SHOW_PLANT_DETAILS, showPlantMatcher.group("plantname"));
-        }
+        Command regexCommand = tryParseRegexCommands(trimmed);
+        if (regexCommand != null) return regexCommand;
 
-        Matcher showZombieMatcher = showZombiePattern.matcher(trimmed);
-        if (showZombieMatcher.matches()) {
-            return new CollectionCommand(CollectionCommand.Action.SHOW_ZOMBIE_DETAILS, showZombieMatcher.group("zombiename"));
-        }
+        return tryParseFixedCommands(trimmed);
+    }
 
-        Matcher purchaseMatcher = purchasePlantPattern.matcher(trimmed);
-        if (purchaseMatcher.matches()) {
-            return new CollectionCommand(CollectionCommand.Action.PURCHASE_PLANT, purchaseMatcher.group("plantname"));
-        }
+    private Command tryParseRegexCommands(String input) {
+        Matcher showPlant = showPlantPattern.matcher(input);
+        if (showPlant.matches()) return new CollectionCommand(CollectionCommand.Action.SHOW_PLANT_DETAILS, showPlant.group("plantname"));
 
-        Matcher upgradeMatcher = upgradePlantPattern.matcher(trimmed);
-        if (upgradeMatcher.matches()) {
-            return new CollectionCommand(CollectionCommand.Action.UPGRADE_PLANT, upgradeMatcher.group("plantname"));
-        }
+        Matcher showZombie = showZombiePattern.matcher(input);
+        if (showZombie.matches()) return new CollectionCommand(CollectionCommand.Action.SHOW_ZOMBIE_DETAILS, showZombie.group("zombiename"));
 
-        return switch (trimmed) {
+        Matcher purchase = purchasePlantPattern.matcher(input);
+        if (purchase.matches()) return new CollectionCommand(CollectionCommand.Action.PURCHASE_PLANT, purchase.group("plantname"));
+
+        Matcher upgrade = upgradePlantPattern.matcher(input);
+        if (upgrade.matches()) return new CollectionCommand(CollectionCommand.Action.UPGRADE_PLANT, upgrade.group("plantname"));
+
+        return null;
+    }
+
+    private Command tryParseFixedCommands(String input) {
+        return switch (input) {
             case "menu collection show-plants" -> new CollectionCommand(CollectionCommand.Action.SHOW_PLANTS);
             case "menu collection show-all-plants" -> new CollectionCommand(CollectionCommand.Action.SHOW_ALL_PLANTS);
             case "menu collection show-zombies" -> new CollectionCommand(CollectionCommand.Action.SHOW_ZOMBIES);

@@ -21,39 +21,39 @@ public class NewsController extends BaseController {
     @Override
     protected Message handleSpecificCommand(Command command) {
 
-        if (command instanceof NewsCommand) {
-            NewsCommand newsCmd = (NewsCommand) command;
-            User currentUser = appState.getCurrentUser();
-
-            if (newsCmd.getAction() == NewsCommand.Action.SHOW_UNREAD) {
-                List<NewsItem> unread = currentUser.getUnreadNews();
-                if (unread.isEmpty()) {
-                    view.showSuccess(SystemMessage.NEWS_NO_UNREAD.getMessage());
-                } else {
-                    view.showSuccess(SystemMessage.NEWS_UNREAD_HEADER.getMessage());
-                    for (NewsItem news : unread) {
-                        view.showSuccess("* " + news.getMessage());
-                    }
-                    currentUser.markAllAsRead();
-                    userManager.save();
-                }
-            }
-            else if (newsCmd.getAction() == NewsCommand.Action.SHOW_ALL) {
-                List<NewsItem> all = currentUser.getAllNews();
-                if (all.isEmpty()) {
-                    view.showSuccess(SystemMessage.NEWS_EMPTY_INBOX.getMessage());
-                } else {
-                    view.showSuccess(SystemMessage.NEWS_ALL_HEADER.getMessage());
-                    for (NewsItem news : all) {
-                        String status = news.isRead() ?
-                                SystemMessage.NEWS_STATUS_READ.getMessage() :
-                                SystemMessage.NEWS_STATUS_NEW.getMessage();
-
-                        view.showSuccess(status + " " + news.getMessage());
-                    }
-                }
-            }
+        if (!(command instanceof NewsCommand newsCmd)) {
+            view.showError(SystemMessage.INVALID_COMMAND.getMessage());
             return null;
+        }
+
+        User currentUser = appState.getCurrentUser();
+
+        if (newsCmd.getAction() == NewsCommand.Action.SHOW_UNREAD) {
+            List<NewsItem> unread = currentUser.getUnreadNews();
+            if (unread.isEmpty()) {
+                view.showSuccess(SystemMessage.NEWS_NO_UNREAD.getMessage());
+            } else {
+                view.showSuccess(SystemMessage.NEWS_UNREAD_HEADER.getMessage());
+                for (NewsItem news : unread) {
+                    view.showSuccess("* " + news.getMessage());
+                }
+                currentUser.markAllAsRead();
+                userManager.save();
+            }
+        } else if (newsCmd.getAction() == NewsCommand.Action.SHOW_ALL) {
+            List<NewsItem> all = currentUser.getAllNews();
+            if (all.isEmpty()) {
+                view.showSuccess(SystemMessage.NEWS_EMPTY_INBOX.getMessage());
+            } else {
+                view.showSuccess(SystemMessage.NEWS_ALL_HEADER.getMessage());
+                for (NewsItem news : all) {
+                    String status = news.isRead() ?
+                            SystemMessage.NEWS_STATUS_READ.getMessage() :
+                            SystemMessage.NEWS_STATUS_NEW.getMessage();
+
+                    view.showSuccess(status + " " + news.getMessage());
+                }
+            }
         }
 
         return null;

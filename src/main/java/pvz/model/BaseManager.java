@@ -1,9 +1,6 @@
 package pvz.model;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-
-import java.io.*;
+import pvz.model.utils.SaveManager;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
@@ -13,24 +10,12 @@ import java.util.stream.Collectors;
 public abstract class BaseManager<T> {
     protected final String filePath;
     protected final List<T> items;
-    protected final Gson gson;
     private final Type listType;
 
     public BaseManager(String filePath, Type listType) {
         this.filePath = filePath;
         this.listType = listType;
-        this.gson = new GsonBuilder().setPrettyPrinting().create();
-        this.items = loadAll();
-    }
-
-    private List<T> loadAll() {
-        try (FileReader reader = new FileReader(filePath)) {
-            List<T> loaded = gson.fromJson(reader, listType);
-            return loaded != null ? loaded : new ArrayList<>();
-        } catch (IOException e) {
-
-            return new ArrayList<>();
-        }
+        this.items = SaveManager.load(listType);
     }
 
     public void add(T item) {
@@ -59,13 +44,6 @@ public abstract class BaseManager<T> {
     }
 
     public boolean save() {
-        try (FileWriter writer = new FileWriter(filePath)) {
-            gson.toJson(items, writer);
-            writer.flush();
-            return true;
-        } catch (IOException e) {
-            e.printStackTrace();
-            return false;
-        }
+        return SaveManager.save(items);
     }
 }

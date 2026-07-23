@@ -19,6 +19,7 @@ public abstract class BaseController implements Controller {
     @Override
     public final Message handle(Command command) {
         if (command == null || command instanceof Command.EmptyCommand) {
+            view.showError(SystemMessage.INVALID_COMMAND.getMessage());
             return null;
         }
         if (handleGlobalCommand(command)) return null;
@@ -42,7 +43,13 @@ public abstract class BaseController implements Controller {
         }
 
         if (command instanceof Command.MenuEnterCommand) {
-            String inputName = ((Command.MenuEnterCommand) command).getMenuName().toUpperCase().replace("-", "_");
+            String inputName = (
+                    (Command.MenuEnterCommand) command).getMenuName().toUpperCase().replace("-", "_");
+
+            if (inputName.equals("PLAY")) {
+                inputName = "GAME";
+            }
+
             MenuName targetMenu = null;
             for (MenuName menu : MenuName.values()) {
                 if (menu.name().equals(inputName)) {
@@ -53,14 +60,18 @@ public abstract class BaseController implements Controller {
 
             if (targetMenu != null) {
                 handleMenuEnter(targetMenu);
-            } else {
-                view.showError(SystemMessage.INVALID_COMMAND.getMessage());
+                return true;
             }
-            return true;
+            return false;
         }
 
         if (command instanceof Command.MenuLogoutCommand) {
             if (appState.getCurrentMenu() == MenuName.MAIN) {
+                if (appState.getCurrentUser() != null) {
+                    appState.getCurrentUser().setStayLoggedIn(false);
+                    userManager.save();
+                }
+
                 appState.setCurrentUser(null);
                 appState.setCurrentMenu(MenuName.REGISTER);
                 view.showSuccess(SystemMessage.LOGOUT_SUCCESS.getMessage());
@@ -77,13 +88,22 @@ public abstract class BaseController implements Controller {
         switch (appState.getCurrentMenu()) {
             case REGISTER -> {
                 appState.setRunning(false);
-                view.showMessage(SystemMessage.EXITING_GAME.getMessage());
             }
             case LOGIN -> {
                 appState.setCurrentMenu(MenuName.REGISTER);
                 view.showSuccess(SystemMessage.MENU_ENTERED_REGISTER.getMessage());
             }
-            case MAIN -> view.showError(SystemMessage.LOGOUT_REQUIRED_MAIN.getMessage());
+            case MAIN -> {
+                view.showError(SystemMessage.LOGOUT_REQUIRED_MAIN.getMessage());
+            }
+            case CHAPTER, COLLECTION, GREENHOUSE, TRAVEL_LOG, LEADERBOARD -> {
+                appState.setCurrentMenu(MenuName.GAME);
+                view.showSuccess(SystemMessage.MENU_ENTERED_GAME.getMessage());
+            }
+            case GAME, SETTINGS, NEWS, PROFILE -> {
+                appState.setCurrentMenu(MenuName.MAIN);
+                view.showSuccess(SystemMessage.MENU_ENTERED_MAIN.getMessage());
+            }
             default -> {
                 appState.setCurrentMenu(MenuName.MAIN);
                 view.showSuccess(SystemMessage.MENU_ENTERED_MAIN.getMessage());
@@ -106,6 +126,10 @@ public abstract class BaseController implements Controller {
             }
         }
         appState.setCurrentMenu(targetMenu);
-        view.showSuccess("menu entered " + targetMenu.name().toLowerCase());
+        if (targetMenu == MenuName.GAME) {
+            view.showSuccess(SystemMessage.MENU_ENTERED_GAME.getMessage());
+        } else {
+            view.showSuccess("menu entered " + targetMenu.name().toLowerCase());
+        }
     }
 }

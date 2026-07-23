@@ -14,7 +14,6 @@ public class User {
     private boolean stayLoggedIn;
 
     private int coins = 0;
-    private int seedPackets = 0;
     private int diamonds = 0;
 
     private int gamesPlayed = 0;
@@ -34,13 +33,15 @@ public class User {
         this.nickname = nickname;
         this.email = email;
         this.gender = gender;
+        this.stayLoggedIn = false;
 
         this.unlockedChapters = new ArrayList<>();
-        this.unlockedChapters.add("chapter1");
+        this.unlockedChapters.add("ancient_egypt");
 
         this.unlockedPlants.add(new PlayerPlant("peashooter"));
         this.unlockedPlants.add(new PlayerPlant("sunflower"));
     }
+
 
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
@@ -72,18 +73,8 @@ public class User {
     public boolean spendCoins(int amount) {
         if (this.coins >= amount) {
             this.coins -= amount;
-            return true;
-        }
-        return false;
-    }
+            return true;}
 
-    public int getSeedPackets() { return seedPackets; }
-    public void addSeedPackets(int amount) { this.seedPackets += amount; }
-    public boolean spendSeedPackets(int amount) {
-        if (this.seedPackets >= amount) {
-            this.seedPackets -= amount;
-            return true;
-        }
         return false;
     }
 
@@ -91,6 +82,9 @@ public class User {
     public void addDiamonds(int amount) { this.diamonds += amount; }
 
     public boolean isChapterUnlocked(String chapterName) { return unlockedChapters.contains(chapterName); }
+    public void unlockChapter(String chapterName) {
+        if (!this.unlockedChapters.contains(chapterName)) {
+            this.unlockedChapters.add(chapterName);}}
 
     public int getDifficultyLevel() { return difficultyLevel; }
     public void setDifficultyLevel(int difficultyLevel) { this.difficultyLevel = difficultyLevel; }

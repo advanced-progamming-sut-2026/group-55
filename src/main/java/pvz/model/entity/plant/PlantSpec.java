@@ -18,7 +18,20 @@ public class PlantSpec {
     private final double actionInterval;
     private final double recharge;
 
-    public PlantSpec(int id, String name, PlantCategory category, Set<PlantTag> tags, int cost, int baseHp, String damage, String baseAbility, String plantFoodEffect, String lvl2, String lvl3, String lvl4, double actionInterval, double recharge) {
+    public PlantSpec(int id,
+                     String name,
+                     PlantCategory category,
+                     Set<PlantTag> tags,
+                     int cost,
+                     int baseHp,
+                     String damage,
+                     String baseAbility,
+                     String plantFoodEffect,
+                     String lvl2,
+                     String lvl3,
+                     String lvl4,
+                     double actionInterval,
+                     double recharge) {
         this.id = id;
         this.name = name;
         this.category = category;
@@ -35,59 +48,18 @@ public class PlantSpec {
         this.recharge = recharge;
     }
 
-    public int getBaseHp() {
-        return baseHp;
-    }
-
-    public String getDamage() {
-        return damage;
-    }
-
-    public String getBaseAbility() {
-        return baseAbility;
-    }
-
-    public String getPlantFoodEffect() {
-        return plantFoodEffect;
-    }
-
-    public String getLvl2() {
-        return lvl2;
-    }
-
-    public String getLvl3() {
-        return lvl3;
-    }
-
-    public String getLvl4() {
-        return lvl4;
-    }
-
-    public double getActionInterval() {
-        return actionInterval;
-    }
-
-    public double getRecharge() {
-        return recharge;
-    }
-
-    public int getCost() {
-        return cost;
-    }
-
-    public int getId() {
-        return id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public PlantCategory getCategory() {
-        return category;
-    }
-
-    public Set<PlantTag> getTags() {
-        return tags;
-    }
+    public int getBaseHp() { return baseHp; }
+    public String getDamage() { return damage; }
+    public String getBaseAbility() { return baseAbility; }
+    public String getPlantFoodEffect() { return plantFoodEffect; }
+    public String getLvl2() { return lvl2; }
+    public String getLvl3() { return lvl3; }
+    public String getLvl4() { return lvl4; }
+    public double getActionInterval() { return actionInterval; }
+    public double getRecharge() { return recharge; }
+    public int getCost() { return cost; }
+    public int getId() { return id; }
+    public String getName() { return name; }
+    public PlantCategory getCategory() { return category; }
+    public Set<PlantTag> getTags() { return tags; }
 }

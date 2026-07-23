@@ -6,20 +6,21 @@ import java.util.regex.Pattern;
 
 public class RegisterParser {
 
-    private final Pattern registerPattern = Pattern.compile("^register -u (?<username>\\S+) -p (?<password>\\S+) " +
-            "(?<passwordConfirm>\\S+) -n (?<nickname>\\S+) -e (?<email>\\S+) -g (?<gender>\\S+)$");
+    private final Pattern registerPattern = Pattern.compile(
+            "^register -u (?<username>\\S+) -p (?<password>\\S+) (?<passwordConfirm>\\S+) " +
+                    "-n (?<nickname>\\S+) -e (?<email>\\S+) -g (?<gender>\\S+)$");
 
-    private final Pattern pickQuestionPattern = Pattern.compile("^pick question -q (?<questionNumber>\\d+) " +
-            "-a (?<answer>\\S+) -c (?<answerConfirm>\\S+)$");
+    private final Pattern pickQuestionPattern = Pattern.compile(
+            "^pick question -q (?<questionNumber>\\d+) -a (?<answer>\\S+) -c (?<answerConfirm>\\S+)$");
 
     public RegisterCommand parse(String input) {
-        if (input == null || input.trim().isEmpty()) {
-            return null;
-        }
+        if (input == null || input.isBlank()) return null;
 
-        String trimmed = input.trim();
+        return tryParseRegexCommands(input.trim());
+    }
 
-        Matcher registerMatcher = registerPattern.matcher(trimmed);
+    private RegisterCommand tryParseRegexCommands(String input) {
+        Matcher registerMatcher = registerPattern.matcher(input);
         if (registerMatcher.matches()) {
             return RegisterCommand.createRegister(
                     registerMatcher.group("username"),
@@ -31,7 +32,7 @@ public class RegisterParser {
             );
         }
 
-        Matcher pickQuestionMatcher = pickQuestionPattern.matcher(trimmed);
+        Matcher pickQuestionMatcher = pickQuestionPattern.matcher(input);
         if (pickQuestionMatcher.matches()) {
             return RegisterCommand.createPickQuestion(
                     Integer.parseInt(pickQuestionMatcher.group("questionNumber")),

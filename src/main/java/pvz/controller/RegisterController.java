@@ -19,28 +19,23 @@ public class RegisterController extends BaseController {
 
     @Override
     protected Message handleSpecificCommand(Command command) {
-
-        if (command instanceof RegisterCommand) {
-            RegisterCommand regCommand = (RegisterCommand) command;
-
+        if (command instanceof RegisterCommand regCommand) {
             switch (regCommand.getAction()) {
-                case REGISTER:
-                    processRegistration(regCommand);
-                    break;
-                case PICK_QUESTION:
-                    processPickQuestion(regCommand);
-                    break;
+                case REGISTER -> processRegistration(regCommand);
+                case PICK_QUESTION -> processPickQuestion(regCommand);
             }
         } else {
             view.showError(SystemMessage.INVALID_COMMAND.getMessage());
         }
-
         return null;
     }
 
     private void processRegistration(RegisterCommand reg) {
+
+        this.pendingUser = null;
+
         try {
-            this.pendingUser = authService.processInitialRegistration(
+            this.pendingUser = authService.createDraftUser(
                     reg.getUsername(), reg.getPassword(), reg.getPasswordConfirm(),
                     reg.getNickname(), reg.getEmail(), reg.getGender());
             view.showSuccess(SystemMessage.SUCCESS_REGISTRATION.getMessage());
@@ -50,8 +45,20 @@ public class RegisterController extends BaseController {
     }
 
     private void processPickQuestion(RegisterCommand reg) {
+        if (pendingUser == null) {
+            view.showError(SystemMessage.INVALID_COMMAND.getMessage());
+            return;
+        }
         try {
-            authService.saveQuestionAnswer(reg.getQuestionNumber(), reg.getAnswer(), reg.getAnswerConfirm());
+            authService.setSecurityInfo(
+                    pendingUser, reg.getQuestionNumber(), reg.getAnswer(), reg.getAnswerConfirm());
+
+
+            userManager.add(pendingUser);
+            userManager.save();
+
+            this.pendingUser = null;
+            appState.setCurrentMenu(MenuName.LOGIN);
             view.showSuccess(SystemMessage.SUCCESS_CREATION.getMessage());
         } catch (Exception e) {
             view.showError(e.getMessage());

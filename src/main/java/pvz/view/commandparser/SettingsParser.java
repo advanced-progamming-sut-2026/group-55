@@ -10,10 +10,13 @@ public class SettingsParser {
     private final Pattern changeDifficultyPattern = Pattern.compile("^menu settings change-difficulty -l (?<level>\\d+)$");
 
     public Command parse(String input) {
-        if (input == null || input.trim().isEmpty()) return null;
-        String trimmed = input.trim();
+        if (input == null || input.isBlank()) return null;
 
-        Matcher difficultyMatcher = changeDifficultyPattern.matcher(trimmed);
+        return tryParseRegexCommands(input.trim());
+    }
+
+    private Command tryParseRegexCommands(String input) {
+        Matcher difficultyMatcher = changeDifficultyPattern.matcher(input);
         if (difficultyMatcher.matches()) {
             return SettingsCommand.createChangeDifficulty(Integer.parseInt(difficultyMatcher.group("level")));
         }

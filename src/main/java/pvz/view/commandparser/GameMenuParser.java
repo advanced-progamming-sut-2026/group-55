@@ -7,35 +7,39 @@ import java.util.regex.Pattern;
 
 public class GameMenuParser {
 
-    private final Pattern enterChapterPattern = Pattern.compile("^menu enter chapter c (?<chaptername>.+)$");
+    private final Pattern enterChapterPattern = Pattern.compile("^menu enter chapter -c (?<chaptername>.+)$");
     private final Pattern cheatAddPattern = Pattern.compile("^menu cheat add (?<amount>\\d+) (?<type>coin|diamond)$");
     private final Pattern changeWorldPattern = Pattern.compile("^menu world (?<worldname>.+)$");
 
     public Command parse(String input) {
-        if (input == null || input.trim().isEmpty()) {
-            return null;
-        }
-
+        if (input == null || input.isBlank()) return null;
         String trimmed = input.trim();
 
-        Matcher enterChapterMatcher = enterChapterPattern.matcher(trimmed);
-        if (enterChapterMatcher.matches()) {
-            return GameMenuCommand.createEnterChapter(enterChapterMatcher.group("chaptername"));
-        }
+        Command regexCmd = tryParseRegexCommands(trimmed);
+        if (regexCmd != null) return regexCmd;
 
-        Matcher cheatMatcher = cheatAddPattern.matcher(trimmed);
-        if (cheatMatcher.matches()) {
+        return tryParseFixedCommands(trimmed);
+    }
+
+    private Command tryParseRegexCommands(String input) {
+        Matcher enterChapter = enterChapterPattern.matcher(input);
+        if (enterChapter.matches()) return GameMenuCommand.createEnterChapter(enterChapter.group("chaptername"));
+
+        Matcher cheat = cheatAddPattern.matcher(input);
+        if (cheat.matches()) {
             return GameMenuCommand.createCheatAdd(
-                    Integer.parseInt(cheatMatcher.group("amount")),
-                    cheatMatcher.group("type"));
+                    Integer.parseInt(cheat.group("amount")),
+                    cheat.group("type"));
         }
 
-        Matcher worldMatcher = changeWorldPattern.matcher(trimmed);
-        if (worldMatcher.matches()) {
-            return GameMenuCommand.createChangeWorld(worldMatcher.group("worldname"));
-        }
+        Matcher world = changeWorldPattern.matcher(input);
+        if (world.matches()) return GameMenuCommand.createChangeWorld(world.group("worldname"));
 
-        return switch (trimmed) {
+        return null;
+    }
+
+    private Command tryParseFixedCommands(String input) {
+        return switch (input) {
             case "menu enter collection" -> GameMenuCommand.createEnterCollection();
             case "menu greenhouse" -> GameMenuCommand.createGreenhouse();
             case "menu travel-log" -> GameMenuCommand.createTravelLog();
@@ -44,6 +48,5 @@ public class GameMenuParser {
             case "menu gem-wallet" -> GameMenuCommand.createGemWallet();
             default -> null;
         };
-
     }
 }

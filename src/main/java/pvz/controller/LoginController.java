@@ -21,8 +21,13 @@ public class LoginController extends BaseController {
     @Override
     protected Message handleSpecificCommand(Command command) {
 
-        if (isWaitingForNewPassword && command instanceof Command.RawTextCommand) {
-            handleNewPassword(((Command.RawTextCommand) command).getText());
+        if (isWaitingForNewPassword) {
+            if (command instanceof Command.RawTextCommand) {
+                handleNewPassword(((Command.RawTextCommand) command).getText());
+            } else {
+                view.showError(SystemMessage.INVALID_COMMAND.getMessage());
+                resetRecoveryState();
+            }
             return null;
         }
 
@@ -53,6 +58,7 @@ public class LoginController extends BaseController {
             view.showError(passErr.getMessage());
         } else {
             recoveryUser.setPassword(authService.hashPasswordSHA256(newPassword));
+            userManager.save();
             resetRecoveryState();
             view.showSuccess(SystemMessage.PASSWORD_CHANGED_SUCCESS.getMessage());
         }
@@ -66,10 +72,17 @@ public class LoginController extends BaseController {
             view.showError(SystemMessage.LOGIN_FAILED.getMessage());
         } else {
             appState.setCurrentUser(user);
-            if (login.isStayLoggedIn()) {
-                user.setStayLoggedIn(true);
-                userManager.save();
+
+            boolean keepLoggedIn = login.isStayLoggedIn();
+
+            for (User u : userManager.getAll()) {
+                u.setStayLoggedIn(false);
             }
+
+            user.setStayLoggedIn(keepLoggedIn);
+
+            userManager.save();
+
             appState.setCurrentMenu(MenuName.MAIN);
             view.showSuccess(SystemMessage.LOGIN_SUCCESS.getMessage());
         }
@@ -83,7 +96,9 @@ public class LoginController extends BaseController {
             view.showError(SystemMessage.FORGET_PASS_FAILED.getMessage());
         } else {
             this.recoveryUser = user;
-            view.showMessage(user.getSecurityQuestionNumber() + " - Please answer your security answer.");
+
+            String questionText = SystemMessage.getSecurityQuestion(user.getSecurityQuestionNumber());
+            view.showMessage(questionText);
         }
     }
 

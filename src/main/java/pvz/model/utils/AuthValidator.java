@@ -9,7 +9,7 @@ public class AuthValidator {
     public static SystemMessage getPasswordWeaknessReason(String password) {
         if (password == null || password.length() < 8) return SystemMessage.WEAK_PASS_LENGTH;
 
-        String allowedCharsRegex = "^[a-zA-Z0-9?><,\"'\\/;|\\[\\]}{+=()*&^%$#!]+$";
+        String allowedCharsRegex = "^[a-zA-Z0-9?><,\"'\\\\/:;|\\[\\]}{+=()*&^%$#!]+$";
         if (!password.matches(allowedCharsRegex)) return SystemMessage.WEAK_PASS_CHARS;
 
         if (password.equals(password.toLowerCase())) return SystemMessage.WEAK_PASS_UPPER;
@@ -28,7 +28,7 @@ public class AuthValidator {
 
     public static boolean isValidEmail(String email) {
 
-        String regex = "^(?!.*\\.\\.)[a-zA-Z0-9]([a-zA-Z0-9.\\-_]*[a-zA-Z0-9])?@[a-zA-Z0-9]([a-zA-Z0-9\\-]*[a-zA-Z0-9])?\\.[a-zA-Z]{2,}$";
+        String regex = "^(?!.*\\.\\.)[a-zA-Z0-9]([a-zA-Z0-9.\\-_]*[a-zA-Z0-9])?@[a-zA-Z0-9]([a-zA-Z0-9.\\-]*[a-zA-Z0-9])?\\.[a-zA-Z]{2,}$";
         return email != null && email.matches(regex);
     }
 

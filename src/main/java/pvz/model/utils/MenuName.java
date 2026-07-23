@@ -13,5 +13,6 @@ public enum MenuName {
     PLANT_SELECTION,
     GREENHOUSE,
     TRAVEL_LOG,
-    LEADERBOARD
+    LEADERBOARD,
+    CHAPTER
 }
