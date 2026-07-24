@@ -48,31 +48,85 @@ public final class Board implements Updatable {
         return x >= 1 && x <= columns && y >= 1 && y <= rows;
     }
 
-    public boolean hasTileObstacleAhead(int row, int fromColumn) {
-        for (int column = fromColumn + 1; column <= columns; column++) {
-            if (getTile(column, row).blocksStraightProjectiles()) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public Integer findHitBlockingTile(int row, double fromX, double toX) {
-        if (toX <= fromX) {
-            return null;
-        }
-
+    public Integer findHitBlockingTile(
+            int row,
+            double fromX,
+            double toX
+    ) {
         if (row < 1 || row > rows) {
             throw new IndexOutOfBoundsException(
                     "row " + row + " is out of bounds"
             );
         }
 
-        int firstColumn = Math.max(1, xToColumn(fromX));
-        int lastColumn = Math.min(columns, xToColumn(toX));
+        if (toX > fromX) {
+            return findRightBlockingTile(
+                    row,
+                    fromX,
+                    toX
+            );
+        }
 
-        for (int column = firstColumn; column <= lastColumn; column++) {
-            if (getTile(column, row).blocksStraightProjectiles()) {
+        if (toX < fromX) {
+            return findLeftBlockingTile(
+                    row,
+                    fromX,
+                    toX
+            );
+        }
+
+        return null;
+    }
+
+    private Integer findRightBlockingTile(
+            int row,
+            double fromX,
+            double toX
+    ) {
+        int firstColumn = Math.max(
+                1,
+                xToColumn(fromX)
+        );
+
+        int lastColumn = Math.min(
+                columns,
+                xToColumn(toX)
+        );
+
+        for (int column = firstColumn;
+             column <= lastColumn;
+             column++) {
+
+            if (getTile(column, row)
+                    .blocksStraightProjectiles()) {
+                return column;
+            }
+        }
+
+        return null;
+    }
+
+    private Integer findLeftBlockingTile(
+            int row,
+            double fromX,
+            double toX
+    ) {
+        int firstColumn = Math.min(
+                columns,
+                xToColumnMovingLeft(fromX)
+        );
+
+        int lastColumn = Math.max(
+                1,
+                xToColumnMovingLeft(toX)
+        );
+
+        for (int column = firstColumn;
+             column >= lastColumn;
+             column--) {
+
+            if (getTile(column, row)
+                    .blocksStraightProjectiles()) {
                 return column;
             }
         }
@@ -105,6 +159,54 @@ public final class Board implements Updatable {
 
     public boolean damageTerrain(int x, int y, double damage) {
         return getTile(x, y).takeDamage(damage);
+    }
+
+    private int calculateLastReachableColumn(
+            int startColumn,
+            int rangeTiles,
+            HorizontalDirection direction
+    ) {
+        if (rangeTiles == Integer.MAX_VALUE) {
+            return direction == HorizontalDirection.RIGHT ? columns : 1;
+        }
+
+        if (direction == HorizontalDirection.RIGHT) {
+            return Math.min(columns, startColumn + rangeTiles);
+        }
+
+        return Math.max(1, startColumn - rangeTiles);
+    }
+
+    private boolean hasBlockingTileInDirection(
+            int row,
+            int startColumn,
+            int lastColumn,
+            HorizontalDirection direction
+    ) {
+        int column = startColumn + direction.sign();
+
+        while (isColumnBeforeOrAtEnd(column, lastColumn, direction)) {
+            if (getTile(column, row)
+                    .blocksStraightProjectiles()) {
+                return true;
+            }
+
+            column += direction.sign();
+        }
+
+        return false;
+    }
+
+    private boolean isColumnBeforeOrAtEnd(
+            int column,
+            int lastColumn,
+            HorizontalDirection direction
+    ) {
+        if (direction == HorizontalDirection.RIGHT) {
+            return column <= lastColumn;
+        }
+
+        return column >= lastColumn;
     }
 
     //Plant:
@@ -146,6 +248,76 @@ public final class Board implements Updatable {
         }
         return false;
     }
+    public boolean hasStraightTargetAhead(
+            int row,
+            double fromX
+    ) {
+        return hasStraightTargetAhead(
+                row,
+                fromX,
+                Integer.MAX_VALUE
+        );
+    }
+    public boolean hasStraightTargetAhead(
+            int row,
+            double fromX,
+            int rangeTiles
+    ) {
+        return hasStraightTarget(
+                row,
+                fromX,
+                rangeTiles,
+                HorizontalDirection.RIGHT
+        );
+    }
+    public boolean hasStraightTarget(
+            int row,
+            double fromX,
+            int rangeTiles,
+            HorizontalDirection direction
+    ) {
+        if (row < 1 || row > rows) {
+            throw new IndexOutOfBoundsException(
+                    "row " + row + " is out of bounds"
+            );
+        }
+
+        if (rangeTiles <= 0) {
+            throw new IllegalArgumentException(
+                    "range must be positive"
+            );
+        }
+
+        Objects.requireNonNull(
+                direction,
+                "direction cannot be null"
+        );
+
+        int startColumn = xToColumn(fromX);
+
+        int lastColumn = calculateLastReachableColumn(
+                startColumn,
+                rangeTiles,
+                direction
+        );
+
+        if (hasZombieInDirection(
+                row,
+                fromX,
+                lastColumn,
+                direction
+        )) {
+            return true;
+        }
+
+        return hasBlockingTileInDirection(
+                row,
+                startColumn,
+                lastColumn,
+                direction
+        );
+    }
+
 
     //Zombie:
     public void addZombie(Zombie zombie) {
@@ -165,22 +337,106 @@ public final class Board implements Updatable {
                 .anyMatch(zombie -> zombie.getTileY() == row && zombie.getX() >= fromX);
     }
 
-    public Zombie findHitZombie(int row, double fromX, double toX) {
-        if (toX <= fromX) {
-            return null;
+    public Zombie findHitZombie(
+            int row,
+            double fromX,
+            double toX
+    ) {
+        if (row < 1 || row > rows) {
+            throw new IndexOutOfBoundsException(
+                    "row " + row + " is out of bounds"
+            );
         }
 
-        if (row < 1 || row > rows) {
-            throw new IndexOutOfBoundsException("row " + row + " is out of bounds");
+        if (toX > fromX) {
+            return findRightMovingProjectileHit(
+                    row,
+                    fromX,
+                    toX
+            );
         }
-        Zombie first = null;
+
+        if (toX < fromX) {
+            return findLeftMovingProjectileHit(
+                    row,
+                    fromX,
+                    toX
+            );
+        }
+
+        return null;
+    }
+
+    private Zombie findRightMovingProjectileHit(
+            int row,
+            double fromX,
+            double toX
+    ) {
+        Zombie nearest = null;
+
         for (Zombie zombie : zombies) {
-            if (zombie.getTileY() == row && zombie.getX() > fromX && zombie.getX() <= toX
-                    && (first == null || zombie.getX() < first.getX())) {
-                first = zombie;
+            if (zombie.getTileY() != row || zombie.getX() <= fromX || zombie.getX() > toX) {
+                continue;
+            }
+
+            if (nearest == null || zombie.getX() < nearest.getX()) {
+                nearest = zombie;
             }
         }
-        return first;
+
+        return nearest;
+    }
+
+    private Zombie findLeftMovingProjectileHit(
+            int row,
+            double fromX,
+            double toX
+    ) {
+        Zombie nearest = null;
+
+        for (Zombie zombie : zombies) {
+            if (zombie.getTileY() != row || zombie.getX() >= fromX || zombie.getX() < toX) {
+                continue;
+            }
+
+            if (nearest == null || zombie.getX() > nearest.getX()) {
+                nearest = zombie;
+            }
+        }
+
+        return nearest;
+    }
+
+    private boolean hasZombieInDirection(
+            int row,
+            double fromX,
+            int lastColumn,
+            HorizontalDirection direction
+    ) {
+        return zombies.stream()
+                .anyMatch(zombie -> zombie.getTileY() == row
+                                && isZombieInDirection(
+                                zombie,
+                                fromX,
+                                lastColumn,
+                                direction
+                        )
+                );
+    }
+
+    private boolean isZombieInDirection(
+            Zombie zombie,
+            double fromX,
+            int lastColumn,
+            HorizontalDirection direction
+    ) {
+        if (direction == HorizontalDirection.RIGHT) {
+            return zombie.getX() >= fromX
+                    && zombie.getTileX() <= lastColumn;
+        }
+
+        return zombie.getX() <= fromX
+                && zombie.getTileX() >= lastColumn;
     }
 
     public int shiftRowForSlipperyTile(int x, int y, int currentRow) {
@@ -200,6 +456,10 @@ public final class Board implements Updatable {
         if (!inBounds(x, y)) {
             throw new IndexOutOfBoundsException("location (" + x + ", " + y + ") is out of bounds");
         }
+    }
+
+    private int xToColumnMovingLeft(double x) {
+        return (int) Math.ceil(x);
     }
 
     private int xToColumn(double x) {
