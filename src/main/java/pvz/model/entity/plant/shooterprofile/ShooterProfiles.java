@@ -4,13 +4,14 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 
+import pvz.model.core.HorizontalDirection;
 import pvz.model.entity.plant.PlantCategory;
 import pvz.model.entity.plant.PlantSpec;
 import pvz.model.entity.projectile.ProjectileType;
 
 public final class ShooterProfiles {
     private static final double DEFAULT_SHOT_DAMAGE = 20;
-    private static final long RAPID_SHOT_GAP_TICKS = 2;
+    private static final long RAPID_SHOT_GAP_TICKS = 3;
     private static final int FULL_BOARD_RANGE = Integer.MAX_VALUE;
     private static final int SHORT_RANGE_TILES = 3;
 
@@ -37,6 +38,13 @@ public final class ShooterProfiles {
                     ProjectileType.NORMAL
             );
 
+            case "pea pod" -> singleLaneProfile(
+                    20,
+                    1,
+                    0,
+                    ProjectileType.NORMAL
+            );
+
             case "repeater" -> singleLaneProfile(
                     20,
                     2,
@@ -46,9 +54,12 @@ public final class ShooterProfiles {
 
             case "threepeater" -> new ShooterProfile(
                     20,
-                    1,
                     0,
-                    List.of(-1, 0, 1),
+                    List.of(
+                            new StraightShotPath(-1, HorizontalDirection.RIGHT, 1),
+                            new StraightShotPath(0, HorizontalDirection.RIGHT, 1),
+                            new StraightShotPath(1, HorizontalDirection.RIGHT, 1)
+                    ),
                     ProjectileType.NORMAL,
                     FULL_BOARD_RANGE
             );
@@ -73,7 +84,24 @@ public final class ShooterProfiles {
                             0,
                             ProjectileType.NORMAL,
                             SHORT_RANGE_TILES
-                    );
+            );
+
+            case "split pea" -> new ShooterProfile(
+                    20,
+                    RAPID_SHOT_GAP_TICKS,
+                    List.of(
+                            new StraightShotPath(0, HorizontalDirection.RIGHT, 1),
+                            new StraightShotPath(0, HorizontalDirection.LEFT, 2)
+                    ),
+                    ProjectileType.NORMAL,
+                    FULL_BOARD_RANGE
+            );
+            case "citron" -> singleLaneProfile(
+                    800,
+                    1,
+                    0,
+                    ProjectileType.NORMAL
+            );
 
             default -> createFallbackProfile(spec);
         };
@@ -102,9 +130,10 @@ public final class ShooterProfiles {
     ) {
         return new ShooterProfile(
                 damage,
-                shotsPerLane,
                 ticksBetweenShots,
-                List.of(0),
+                List.of(
+                        new StraightShotPath(0, HorizontalDirection.RIGHT, shotsPerLane)
+                ),
                 projectileType,
                 rangeTiles
         );

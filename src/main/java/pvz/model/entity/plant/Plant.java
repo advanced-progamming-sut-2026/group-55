@@ -12,11 +12,11 @@ import pvz.model.entity.collectible.sun.Sun;
 import pvz.model.entity.collectible.sun.SunValue;
 import pvz.model.entity.plant.shooterprofile.ShooterProfile;
 import pvz.model.entity.plant.shooterprofile.ShooterProfiles;
+import pvz.model.entity.plant.shooterprofile.StraightShotPath;
 import pvz.model.entity.plant.sunprofile.FixedSunProfile;
 import pvz.model.entity.plant.sunprofile.SunProfile;
 import pvz.model.entity.plant.sunprofile.SunShroomProfile;
 import pvz.model.entity.projectile.Projectile;
-import pvz.model.entity.projectile.ProjectileType;
 
 public class Plant extends LivingEntity {
 
@@ -27,17 +27,28 @@ public class Plant extends LivingEntity {
     private int row;
     private long lastActionTick;
 
-    private int remainingShotsInBurst;
+    //lifetime
+    private final PlantLifetimeProfile lifetimeProfile;
+
+    private long expirationTick = Long.MAX_VALUE;
+    private boolean removedFromWorld;
+
+    //shooter
+    private boolean burstActive;
+    private int nextBurstStep;
     private long nextBurstShotTick;
 
     private final ShooterProfile shooterProfile;
-
+    //sun
     private SunProfile sunProfile;
     private int pendingSuns;
 
     public Plant(PlantSpec spec) {
         this.spec = spec;
         this.shooterProfile = createShooterProfile(spec);
+
+        this.lifetimeProfile = PlantLifetimeProfiles.from(spec);
+
         this.health = spec.getBaseHp();
         this.name = spec.getName();
     }
@@ -48,6 +59,8 @@ public class Plant extends LivingEntity {
         this.row = row;
         this.lastActionTick = currentTick;
         this.sunProfile = createSunProfile(currentTick);
+
+        resetLifetime(currentTick);
     }
     // SunProducer
     private SunProfile createSunProfile(long plantedTick) {
@@ -130,15 +143,16 @@ public class Plant extends LivingEntity {
         return ShooterProfiles.from(plantSpec);
     }
 
-    private void updateShooter(
-            long tick,
-            long intervalTicks
-    ) {
+    private void updateShooter(long tick, long intervalTicks) {
         if (shooterProfile == null) {
             return;
         }
 
-        if (remainingShotsInBurst > 0) {
+        if (!shouldHandleShooterUpdate()) {
+            return;
+        }
+
+        if (burstActive) {
             continueBurst(tick);
             return;
         }
@@ -155,17 +169,19 @@ public class Plant extends LivingEntity {
     }
 
     private boolean hasTargetInAnyShootingLane() {
-        for (int laneOffset : shooterProfile.laneOffsets()) {
-            int targetRow = row + laneOffset;
+        for (StraightShotPath path : shooterProfile.shotPaths()) {
+
+            int targetRow = row + path.laneOffset();
 
             if (!world.board().inBounds(column, targetRow)) {
                 continue;
             }
 
-            if (world.board().hasStraightTargetAhead(
+            if (world.board().hasStraightTarget(
                     targetRow,
                     getX(),
-                    shooterProfile.rangeTiles()
+                    shooterProfile.rangeTiles(),
+                    path.direction()
             )) {
                 return true;
             }
@@ -174,14 +190,64 @@ public class Plant extends LivingEntity {
         return false;
     }
 
-    private void fireOneShotInAllLanes() {
-        for (int laneOffset : shooterProfile.laneOffsets()) {
-            int targetRow = row + laneOffset;
+    private boolean shouldHandleShooterUpdate() {
+        if (!isPeaPod()) {
+            return true;
+        }
+
+        List<Plant> peaPods = getPeaPodsInOwnTile();
+
+        return !peaPods.isEmpty()
+                && peaPods.getFirst() == this;
+    }
+
+    private int getProjectileCopiesForVolley() {
+        if (!isPeaPod()) {
+            return 1;
+        }
+
+        return getPeaPodsInOwnTile().size();
+    }
+
+    private List<Plant> getPeaPodsInOwnTile() {
+        return world.board()
+                .getTile(column, row)
+                .getPlants()
+                .stream()
+                .filter(plant -> plant.getName()
+                        .equalsIgnoreCase("Pea Pod"))
+                .toList();
+    }
+
+    private boolean isPeaPod() {
+        return name.equalsIgnoreCase("Pea Pod");
+    }
+
+    private void fireBurstStep(int burstStep) {
+        int projectileCopies = getProjectileCopiesForVolley();
+
+        for (StraightShotPath path : shooterProfile.shotPaths()) {
+
+            if (burstStep >= path.shotsPerVolley()) {
+                continue;
+            }
+
+            int targetRow = row + path.laneOffset();
 
             if (!world.board().inBounds(column, targetRow)) {
                 continue;
             }
 
+            fireProjectileCopies(path, targetRow, projectileCopies);
+        }
+    }
+
+    private void fireProjectileCopies(
+            StraightShotPath path,
+            int targetRow,
+            int projectileCopies
+    ) {
+        for (int copy = 0; copy < projectileCopies; copy++) {
             world.game().register(
                     new Projectile(
                             world,
@@ -190,7 +256,8 @@ public class Plant extends LivingEntity {
                             targetRow,
                             shooterProfile.damagePerProjectile(),
                             shooterProfile.projectileType(),
-                            shooterProfile.rangeTiles()
+                            shooterProfile.rangeTiles(),
+                            path.direction()
                     )
             );
         }
@@ -199,15 +266,16 @@ public class Plant extends LivingEntity {
     private void startBurst(long tick) {
         lastActionTick = tick;
 
-        fireOneShotInAllLanes();
+        fireBurstStep(0);
 
-        remainingShotsInBurst =
-                shooterProfile.shotsPerLane() - 1;
-
-        if (remainingShotsInBurst > 0) {
-            nextBurstShotTick =
-                    tick + shooterProfile.ticksBetweenShots();
+        if (shooterProfile.burstLength() <= 1) {
+            burstActive = false;
+            return;
         }
+
+        burstActive = true;
+        nextBurstStep = 1;
+        nextBurstShotTick = tick + shooterProfile.ticksBetweenShots();
     }
 
     private void continueBurst(long tick) {
@@ -215,13 +283,52 @@ public class Plant extends LivingEntity {
             return;
         }
 
-        fireOneShotInAllLanes();
-        remainingShotsInBurst--;
+        fireBurstStep(nextBurstStep);
+        nextBurstStep++;
 
-        if (remainingShotsInBurst > 0) {
-            nextBurstShotTick =
-                    tick + shooterProfile.ticksBetweenShots();
+        if (nextBurstStep >= shooterProfile.burstLength()) {
+            burstActive = false;
+            return;
         }
+
+        nextBurstShotTick = tick + shooterProfile.ticksBetweenShots();
+    }
+
+    //Lifetime
+    public void resetLifetime(long currentTick) {
+        if (currentTick < 0) {
+            throw new IllegalArgumentException(
+                    "current tick cannot be negative"
+            );
+        }
+
+        if (lifetimeProfile == null) {
+            expirationTick = Long.MAX_VALUE;
+            return;
+        }
+
+        expirationTick =
+                currentTick
+                        + lifetimeProfile.lifespanTicks();
+    }
+
+    private boolean expireIfNeeded(long tick) {
+        if (lifetimeProfile == null) {
+            return false;
+        }
+
+        if (tick < expirationTick) {
+            return false;
+        }
+
+        expire();
+        return true;
+    }
+
+    private void expire() {
+        health = 0;
+
+        removeFromWorld("Plant " + name + " at (" + column + ", " + row + ") expired.");
     }
 
     // General
@@ -239,6 +346,22 @@ public class Plant extends LivingEntity {
         return spec;
     }
 
+    private void removeFromWorld(String message) {
+        if (world == null || removedFromWorld) {
+            return;
+        }
+
+        removedFromWorld = true;
+
+        world.board()
+                .getTile(column, row)
+                .removePlant(this);
+
+        world.game().unregister(this);
+
+        GameEvents.publish(message);
+    }
+
     public boolean hasTag(PlantTag plantTag) {
         Set<PlantTag> tags = spec.getTags();
         return tags.contains(plantTag);
@@ -247,6 +370,10 @@ public class Plant extends LivingEntity {
     @Override
     public void update(long tick) {
         if (world == null) {
+            return;
+        }
+
+        if (expireIfNeeded(tick)) {
             return;
         }
 
@@ -266,20 +393,6 @@ public class Plant extends LivingEntity {
 
     @Override
     protected void onDeath() {
-        if (world == null) {
-            return;
-        }
-
-        world.board()
-                .getTile(column, row)
-                .removePlant(this);
-
-        world.game().unregister(this);
-
-        GameEvents.publish(
-                "Plant " + name + " at ("
-                        + column + ", " + row
-                        + ") is destroyed."
-        );
+        removeFromWorld("Plant " + name + " at (" + column + ", " + row + ") is destroyed.");
     }
 }

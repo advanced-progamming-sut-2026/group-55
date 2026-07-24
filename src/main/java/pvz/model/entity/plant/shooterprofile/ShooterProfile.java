@@ -6,59 +6,48 @@ import pvz.model.entity.projectile.ProjectileType;
 
 public record ShooterProfile(
         double damagePerProjectile,
-        int shotsPerLane,
         long ticksBetweenShots,
-        List<Integer> laneOffsets,
+        List<StraightShotPath> shotPaths,
         ProjectileType projectileType,
         int rangeTiles
 ) {
     public ShooterProfile {
         if (damagePerProjectile < 0) {
-            throw new IllegalArgumentException(
-                    "projectile damage cannot be negative"
-            );
-        }
-
-        if (shotsPerLane <= 0) {
-            throw new IllegalArgumentException(
-                    "shots per lane must be positive"
-            );
+            throw new IllegalArgumentException("projectile damage cannot be negative");
         }
 
         if (ticksBetweenShots < 0) {
-            throw new IllegalArgumentException(
-                    "ticks between shots cannot be negative"
-            );
+            throw new IllegalArgumentException("ticks between shots cannot be negative");
         }
 
-        if (shotsPerLane > 1 && ticksBetweenShots == 0) {
-            throw new IllegalArgumentException(
-                    "multi-shot profiles need a positive shot gap"
-            );
+        shotPaths = List.copyOf(
+                Objects.requireNonNull(shotPaths, "shot paths cannot be null")
+        );
+
+        if (shotPaths.isEmpty()) {
+            throw new IllegalArgumentException("shooter needs at least one shot path");
         }
 
-        Objects.requireNonNull(
-                laneOffsets,
-                "lane offsets cannot be null"
+        int burstLength = shotPaths.stream()
+                .mapToInt(StraightShotPath::shotsPerVolley).max().orElseThrow();
+
+        if (burstLength > 1 && ticksBetweenShots == 0) {
+            throw new IllegalArgumentException("multi-shot profiles need a positive shot gap");
+        }
+
+        projectileType = Objects.requireNonNull(projectileType,
+                "projectile type cannot be null"
         );
 
         if (rangeTiles <= 0) {
-            throw new IllegalArgumentException(
-                    "shooter range must be positive"
-            );
+            throw new IllegalArgumentException("shooter range must be positive");
         }
+    }
 
-        if (laneOffsets.isEmpty()) {
-            throw new IllegalArgumentException(
-                    "lane offsets cannot be empty"
-            );
-        }
-
-        laneOffsets = List.copyOf(laneOffsets);
-
-        projectileType = Objects.requireNonNull(
-                projectileType,
-                "projectile type cannot be null"
-        );
+    public int burstLength() {
+        return shotPaths.stream()
+                .mapToInt(StraightShotPath::shotsPerVolley)
+                .max()
+                .orElseThrow();
     }
 }
