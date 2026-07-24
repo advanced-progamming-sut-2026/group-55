@@ -12,11 +12,11 @@ public enum SystemMessage implements Message {
     PASSWORD_CHANGED_SUCCESS("password changed successfully!"),
     LOGOUT_SUCCESS("Logged out successfully."),
 
-    MENU_ENTERED_REGISTER("entered register menu"),
-    MENU_ENTERED_MAIN("menu entered main"),
-    MENU_ENTERED_GAME("menu entered game"),
+    ENTERED_REGISTER("entered register menu"),
+    ENTERED_MAIN("entered main menu"),
+    ENTERED_GAME("entered game menu"),
     ENTERED_CHAPTER("entered chapter"),
-    ENTERED_COLLECTION("menu entered collection"),
+    ENTERED_COLLECTION("entered collection menu"),
     ENTERED_GREENHOUSE("entered greenhouse"),
     ENTERED_TRAVEL_LOG("entered travel log"),
     SHOWING_LEADERBOARD("showing leaderboard"),
@@ -84,8 +84,6 @@ public enum SystemMessage implements Message {
     COLLECTION_HEADER_YOUR_PLANTS("Your Unlocked Plants"),
     COLLECTION_HEADER_ZOMBIES("Seen Zombies"),
 
-    LOADING_DATA_FAILED("Failed to load game data!"),
-
     PLANT_SELECTION_HEADER_UNLOCKED("-- Your Unlocked Plants --"),
     PLANT_SELECTION_NO_PLANTS("No plants selected yet."),
 
@@ -105,8 +103,46 @@ public enum SystemMessage implements Message {
     PLANT_SELECTION_BOOSTED_SUCCESS("Plant boosted successfully!"),
 
     PLANT_SELECTION_EMPTY_START("You must select at least one plant to start the game!"),
-    PLANT_SELECTION_START_GAME("Starting game with selected plants");
+    PLANT_SELECTION_START_GAME("Starting game with selected plants"),
 
+
+    GREENHOUSE_NOT_ENOUGH_COINS("Not enough coins to unlock this pot."),
+    GREENHOUSE_NOT_ENOUGH_DIAMONDS("Not enough diamonds."),
+    GREENHOUSE_PLANTED_SUCCESS("Plant planted successfully."),
+    GREENHOUSE_ALREADY_READY("This plant is already ready."),
+    GREENHOUSE_INVALID_COORDINATES("invalid coordinates"),
+    GREENHOUSE_LOCKED("pot is locked"),
+    GREENHOUSE_NOT_EMPTY("pot is not empty"),
+    GREENHOUSE_EMPTY("no plant in this pot"),
+    GREENHOUSE_NOT_READY("plant is not ready yet"),
+    GREENHOUSE_NOT_GROWING("plant is not growing"),
+    GREENHOUSE_ALREADY_UNLOCKED("pot is already unlocked"),
+    GREENHOUSE_COLLECTED_SUCCESS("plant collected successfully"),
+    GREENHOUSE_GROWN_SUCCESS("plant growth accelerated"),
+    GREENHOUSE_UNLOCKED_SUCCESS("pot unlocked successfully"),
+
+    SHOP_INVALID_COUNT("Invalid count. Must be at least 1."),
+    SHOP_INVALID_ITEM_ID("Invalid item ID."),
+    SHOP_UNKNOWN_ITEM_TYPE("Unknown item type."),
+    SHOP_POTS_MAX_CAPACITY("Not enough locked pots available. Max capacity is 20."),
+    SHOP_NOT_ENOUGH_COINS("Not enough coins."),
+    SHOP_PLANT_FOOD_MAX_CAPACITY("Cannot hold more than 3 Plant Foods."),
+    SHOP_NOT_ENOUGH_DIAMONDS("Not enough diamonds."),
+    SHOP_NO_UNLOCKED_PLANTS("No unlocked plants available."),
+    SHOP_PLANT_TYPE_REQUIRED("Plant type (-t) is required for selected seed packets."),
+    SHOP_PLANT_NOT_UNLOCKED("You can only buy seeds for unlocked plants."),
+    SHOP_DAILY_OFFER_ONCE("Daily offer can only be purchased once."),
+    SHOP_DAILY_OFFER_ALREADY_BOUGHT("You have already purchased today's daily offer."),
+    SHOP_DAILY_OFFER_NO_PLANTS("No unlocked plants available for a daily offer."),
+
+    SHOP_HEADER_ITEMS("--- Shop Items ---"),
+    SHOP_HEADER_DAILY("--- Daily Offer ---"),
+    SHOP_PURCHASE_SUCCESS("Purchase successful!"),
+    SHOP_PURCHASE_FAILED("Purchase failed: "),
+    SHOP_NOT_LOGGED_IN("You must be logged in to use the shop."),
+    SHOP_INVALID_COMMAND("Invalid Shop Command."),
+
+    LOADING_DATA_FAILED("Failed to load game data!");
 
 
     private final String message;

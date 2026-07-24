@@ -1,7 +1,11 @@
 package pvz.model.account;
 
+import pvz.model.greenhouse.Greenhouse;
+import pvz.model.shop.DailyOffer;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class User {
     private String username;
@@ -19,6 +23,11 @@ public class User {
     private int gamesPlayed = 0;
     private int clearedStages = 0;
     private int maxMewPoint = 0;
+
+    private Greenhouse greenhouse;
+    private Set<String> boostedPlants;
+    private int plantFoodCount = 0;
+    private DailyOffer dailyOffer;
 
     private List<String> unlockedChapters;
     private int difficultyLevel = 3;
@@ -40,6 +49,9 @@ public class User {
 
         this.unlockedPlants.add(new PlayerPlant("peashooter"));
         this.unlockedPlants.add(new PlayerPlant("sunflower"));
+
+        this.greenhouse = new Greenhouse();
+        this.boostedPlants = new HashSet<>();
     }
 
 
@@ -73,8 +85,8 @@ public class User {
     public boolean spendCoins(int amount) {
         if (this.coins >= amount) {
             this.coins -= amount;
-            return true;}
-
+            return true;
+        }
         return false;
     }
 
@@ -84,7 +96,9 @@ public class User {
     public boolean isChapterUnlocked(String chapterName) { return unlockedChapters.contains(chapterName); }
     public void unlockChapter(String chapterName) {
         if (!this.unlockedChapters.contains(chapterName)) {
-            this.unlockedChapters.add(chapterName);}}
+            this.unlockedChapters.add(chapterName);
+        }
+    }
 
     public int getDifficultyLevel() { return difficultyLevel; }
     public void setDifficultyLevel(int difficultyLevel) { this.difficultyLevel = difficultyLevel; }
@@ -138,11 +152,56 @@ public class User {
     public void addSeenZombie(String zombieName) {
         if (!seenZombies.contains(zombieName)) seenZombies.add(zombieName);
     }
+
     public boolean spendDiamonds(int amount) {
         if (this.diamonds >= amount) {
             this.diamonds -= amount;
             return true;
         }
         return false;
+    }
+
+
+    public Greenhouse getGreenhouse() {
+        return greenhouse;
+    }
+
+    public Set<String> getBoostedPlants() {
+        return boostedPlants;
+    }
+
+    public void addBoost(String plantName) {
+        if (boostedPlants == null) boostedPlants = new HashSet<>();
+        boostedPlants.add(plantName.toLowerCase());
+    }
+
+    public void removeBoost(String plantName) {
+        if (boostedPlants != null) {
+            boostedPlants.remove(plantName.toLowerCase());
+        }
+    }
+
+    public boolean hasBoost(String plantName) {
+        return boostedPlants != null && boostedPlants.contains(plantName.toLowerCase());
+    }
+
+    public int getPlantFoodCount() {
+        return plantFoodCount;
+    }
+
+    public boolean addPlantFood(int amount) {
+        if (this.plantFoodCount + amount > 3) {
+            return false;
+        }
+        this.plantFoodCount += amount;
+        return true;
+    }
+
+    public DailyOffer getDailyOffer() {
+        return dailyOffer;
+    }
+
+    public void setDailyOffer(DailyOffer dailyOffer) {
+        this.dailyOffer = dailyOffer;
     }
 }

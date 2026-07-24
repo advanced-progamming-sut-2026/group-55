@@ -13,22 +13,18 @@ import pvz.model.utils.SystemMessage;
 import pvz.view.MenuView;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 public class PlantSelectionController extends BaseController {
 
     private final PlantData plantData;
     private final List<String> selectedPlants;
-    private final Set<String> boostedPlants;
     private int maxSlots = 8;
 
     public PlantSelectionController(AppState appState, UserManager userManager, MenuView view, PlantData plantData) {
         super(appState, userManager, view);
         this.plantData = plantData;
         this.selectedPlants = new ArrayList<>();
-        this.boostedPlants = new HashSet<>();
     }
 
     @Override
@@ -42,7 +38,7 @@ public class PlantSelectionController extends BaseController {
 
         switch (cmd.getAction()) {
             case SHOW_ALL_PLANTS -> handleShowAllPlants(currentUser);
-            case SHOW_AVAILABLE_PLANTS -> handleShowAvailablePlants();
+            case SHOW_AVAILABLE_PLANTS -> handleShowAvailablePlants(currentUser);
             case ADD_PLANT -> handleAddPlant(cmd, currentUser);
             case REMOVE_PLANT -> handleRemovePlant(cmd);
             case BOOST_PLANT -> handleBoostPlant(cmd, currentUser);
@@ -56,13 +52,13 @@ public class PlantSelectionController extends BaseController {
         user.getUnlockedPlants().forEach(p -> view.showSuccess(p.getPlantName()));
     }
 
-    private void handleShowAvailablePlants() {
+    private void handleShowAvailablePlants(User user) {
         view.showSuccess("--- Selected Plants (" + selectedPlants.size() + "/" + maxSlots + ") ---");
         if (selectedPlants.isEmpty()) {
             view.showSuccess(SystemMessage.PLANT_SELECTION_NO_PLANTS.getMessage());
         } else {
             selectedPlants.forEach(p -> {
-                String boostStatus = boostedPlants.contains(p) ? " [BOOSTED]" : "";
+                String boostStatus = user.hasBoost(p) ? " [BOOSTED]" : "";
                 view.showSuccess("- " + p + boostStatus);
             });
         }
@@ -97,7 +93,6 @@ public class PlantSelectionController extends BaseController {
             view.showError(SystemMessage.PLANT_SELECTION_NOT_IN_SELECTION.getMessage());
         } else {
             selectedPlants.remove(target);
-            boostedPlants.remove(target);
             view.showSuccess(SystemMessage.PLANT_SELECTION_REMOVED.getMessage());
         }
     }
@@ -108,12 +103,12 @@ public class PlantSelectionController extends BaseController {
 
         if (playerPlant == null) {
             view.showError(SystemMessage.PLANT_SELECTION_NOT_OWNED.getMessage());
-        } else if (boostedPlants.contains(target)) {
+        } else if (user.hasBoost(target)) {
             view.showError(SystemMessage.PLANT_SELECTION_ALREADY_BOOSTED.getMessage());
         } else if (!user.spendDiamonds(2)) {
             view.showError(SystemMessage.PLANT_SELECTION_NOT_ENOUGH_DIAMONDS.getMessage());
         } else {
-            boostedPlants.add(target);
+            user.addBoost(target);
             userManager.save();
             view.showSuccess(SystemMessage.PLANT_SELECTION_BOOSTED_SUCCESS.getMessage());
         }

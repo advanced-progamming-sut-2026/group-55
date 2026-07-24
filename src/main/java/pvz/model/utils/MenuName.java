@@ -5,6 +5,7 @@ public enum MenuName {
     LOGIN,
     MAIN,
     GAME,
+    SHOP,
     SETTINGS,
     NETWORK,
     NEWS,

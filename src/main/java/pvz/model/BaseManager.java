@@ -1,7 +1,7 @@
 package pvz.model;
 
 import pvz.model.utils.SaveManager;
-import java.io.File; // این ایمپورت برای شناختن File الزامی است
+import java.io.File;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
@@ -10,16 +10,15 @@ import java.util.stream.Collectors;
 
 public abstract class BaseManager<T> {
     protected final String filePath;
-    protected final File file; // یک فیلد برای نگهداری آبجکت File اضافه شد
+    protected final File file;
     protected final List<T> items;
     private final Type listType;
 
     public BaseManager(String filePath, Type listType) {
         this.filePath = filePath;
         this.listType = listType;
-        this.file = new File(filePath); // آبجکت File را اینجا می‌سازیم
+        this.file = new File(filePath);
 
-        // حالا آبجکت File را پاس می‌دیم، نه String را
         this.items = SaveManager.load(this.file, listType);
     }
 
@@ -49,7 +48,6 @@ public abstract class BaseManager<T> {
     }
 
     public boolean save() {
-        // اینجا هم آبجکت File را پاس می‌دیم
         return SaveManager.save(this.file, items);
     }
 }

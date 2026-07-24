@@ -4,16 +4,21 @@ import pvz.model.command.Command;
 import pvz.model.command.NewsCommand;
 
 public class NewsMenuParser {
-    public Command parse(String input) {
-        String trimmedInput = input.trim();
 
-        if (trimmedInput.equalsIgnoreCase("menu news show-unread")) {
+    public Command parse(String input) {
+        if (input == null || input.isBlank())
+            return new Command.EmptyCommand();
+
+        String trimmed = input.trim();
+
+        if (trimmed.equals("menu news show-unread")) {
             return new NewsCommand(NewsCommand.Action.SHOW_UNREAD);
         }
-        else if (trimmedInput.equalsIgnoreCase("menu news show-all")) {
+
+        if (trimmed.equals("menu news show-all")) {
             return new NewsCommand(NewsCommand.Action.SHOW_ALL);
         }
 
-        return new Command.EmptyCommand();
+        return new Command.RawTextCommand(trimmed);
     }
 }
