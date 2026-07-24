@@ -5,6 +5,7 @@ import pvz.model.account.User;
 public class AppState {
     private MenuName currentMenu = MenuName.REGISTER;
     private User currentUser;
+    private String selectedChapter;
     private boolean running = true;
 
     public MenuName getCurrentMenu() {
@@ -29,5 +30,13 @@ public class AppState {
 
     public void setRunning(boolean running) {
         this.running = running;
+    }
+
+    public String getSelectedChapter() {
+        return selectedChapter;
+    }
+
+    public void setSelectedChapter(String selectedChapter) {
+        this.selectedChapter = selectedChapter;
     }
 }

@@ -44,6 +44,7 @@ public class PlantSelectionMenuParser {
         return switch (input) {
             case "show all plants" -> new PlantSelectionCommand(PlantSelectionCommand.Action.SHOW_ALL_PLANTS);
             case "show available plants" -> new PlantSelectionCommand(PlantSelectionCommand.Action.SHOW_AVAILABLE_PLANTS);
+            case "show selected plants" -> new PlantSelectionCommand(PlantSelectionCommand.Action.SHOW_SELECTED_PLANTS);
             case "start game" -> new PlantSelectionCommand(PlantSelectionCommand.Action.START_GAME);
             default -> null;
         };

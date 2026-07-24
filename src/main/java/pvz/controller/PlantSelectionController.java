@@ -12,7 +12,12 @@ import pvz.model.utils.Message;
 import pvz.model.utils.SystemMessage;
 import pvz.view.MenuView;
 
+import pvz.model.session.GameRuntime;
+import pvz.model.session.GameSessionConfig;
+import pvz.model.utils.MenuName;
+
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -20,13 +25,21 @@ import java.util.Set;
 public class PlantSelectionController extends BaseController {
 
     private final PlantData plantData;
+    private final GameRuntime gameRuntime;
     private final List<String> selectedPlants;
     private final Set<String> boostedPlants;
     private int maxSlots = 8;
 
-    public PlantSelectionController(AppState appState, UserManager userManager, MenuView view, PlantData plantData) {
+    public PlantSelectionController(
+            AppState appState,
+            UserManager userManager,
+            MenuView view,
+            PlantData plantData,
+            GameRuntime gameRuntime
+    ) {
         super(appState, userManager, view);
         this.plantData = plantData;
+        this.gameRuntime = gameRuntime;
         this.selectedPlants = new ArrayList<>();
         this.boostedPlants = new HashSet<>();
     }
@@ -41,8 +54,9 @@ public class PlantSelectionController extends BaseController {
         User currentUser = appState.getCurrentUser();
 
         switch (cmd.getAction()) {
-            case SHOW_ALL_PLANTS -> handleShowAllPlants(currentUser);
-            case SHOW_AVAILABLE_PLANTS -> handleShowAvailablePlants();
+            case SHOW_ALL_PLANTS -> handleShowAllPlants();
+            case SHOW_AVAILABLE_PLANTS -> handleShowAvailablePlants(currentUser);
+            case SHOW_SELECTED_PLANTS -> handleShowSelectedPlants();
             case ADD_PLANT -> handleAddPlant(cmd, currentUser);
             case REMOVE_PLANT -> handleRemovePlant(cmd);
             case BOOST_PLANT -> handleBoostPlant(cmd, currentUser);
@@ -51,12 +65,30 @@ public class PlantSelectionController extends BaseController {
         return null;
     }
 
-    private void handleShowAllPlants(User user) {
-        view.showSuccess(SystemMessage.PLANT_SELECTION_HEADER_UNLOCKED.getMessage());
-        user.getUnlockedPlants().forEach(p -> view.showSuccess(p.getPlantName()));
+    private void handleShowAllPlants() {
+        view.showSuccess(SystemMessage.PLANT_SELECTION_HEADER_ALL.getMessage());
+        plantData.byId().values().stream()
+                .sorted(Comparator.comparingInt(PlantSpec::getId))
+                .forEach(spec -> view.showSuccess(spec.getId() + ". " + spec.getName()));
     }
 
-    private void handleShowAvailablePlants() {
+    private void handleShowAvailablePlants(User user) {
+        List<PlantSpec> availablePlants = plantData.byId().values().stream()
+                .filter(spec -> user.getOwnedPlant(spec.getName()) != null)
+                .filter(spec -> !selectedPlants.contains(spec.getName().toLowerCase()))
+                .sorted(Comparator.comparingInt(PlantSpec::getId))
+                .toList();
+
+        view.showSuccess(SystemMessage.PLANT_SELECTION_HEADER_AVAILABLE.getMessage());
+        if (availablePlants.isEmpty()) {
+            view.showSuccess(SystemMessage.PLANT_SELECTION_NO_AVAILABLE.getMessage());
+            return;
+        }
+
+        availablePlants.forEach(spec -> view.showSuccess("- " + spec.getName()));
+    }
+
+    private void handleShowSelectedPlants() {
         view.showSuccess("--- Selected Plants (" + selectedPlants.size() + "/" + maxSlots + ") ---");
         if (selectedPlants.isEmpty()) {
             view.showSuccess(SystemMessage.PLANT_SELECTION_NO_PLANTS.getMessage());
@@ -121,9 +153,31 @@ public class PlantSelectionController extends BaseController {
 
     private void handleStartGame() {
         if (selectedPlants.isEmpty()) {
-            view.showError(SystemMessage.PLANT_SELECTION_EMPTY_START.getMessage());
-        } else {
-            view.showSuccess(SystemMessage.PLANT_SELECTION_START_GAME.getMessage());
+            view.showError(
+                    SystemMessage.PLANT_SELECTION_EMPTY_START.getMessage()
+            );
+            return;
         }
+
+        String selectedChapter = appState.getSelectedChapter();
+
+        if (selectedChapter == null || selectedChapter.isBlank()) {
+            view.showError("No chapter selected!");
+            return;
+        }
+
+        GameSessionConfig config = new GameSessionConfig.Builder(
+                selectedChapter,
+                List.copyOf(selectedPlants)
+        )
+                .boostedPlants(Set.copyOf(boostedPlants))
+                .build();
+
+        gameRuntime.start(config);
+        appState.setCurrentMenu(MenuName.PLAYING);
+
+        view.showSuccess(
+                SystemMessage.PLANT_SELECTION_START_GAME.getMessage()
+        );
     }
 }

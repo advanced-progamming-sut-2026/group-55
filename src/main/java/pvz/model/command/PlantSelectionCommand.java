@@ -5,6 +5,7 @@ public class PlantSelectionCommand implements Command {
     public enum Action {
         SHOW_ALL_PLANTS,
         SHOW_AVAILABLE_PLANTS,
+        SHOW_SELECTED_PLANTS,
         ADD_PLANT,
         REMOVE_PLANT,
         BOOST_PLANT,

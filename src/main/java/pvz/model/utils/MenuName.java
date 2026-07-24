@@ -11,6 +11,7 @@ public enum MenuName {
     PROFILE,
     COLLECTION,
     PLANT_SELECTION,
+    PLAYING,
     GREENHOUSE,
     TRAVEL_LOG,
     LEADERBOARD,

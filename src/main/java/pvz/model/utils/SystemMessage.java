@@ -86,7 +86,9 @@ public enum SystemMessage implements Message {
 
     LOADING_DATA_FAILED("Failed to load game data!"),
 
-    PLANT_SELECTION_HEADER_UNLOCKED("-- Your Unlocked Plants --"),
+    PLANT_SELECTION_HEADER_ALL("-- All Plants --"),
+    PLANT_SELECTION_HEADER_AVAILABLE("-- Available Plants --"),
+    PLANT_SELECTION_NO_AVAILABLE("No plants are currently available for selection."),
     PLANT_SELECTION_NO_PLANTS("No plants selected yet."),
 
     PLANT_SELECTION_INVALID_NAME("Invalid plant name."),

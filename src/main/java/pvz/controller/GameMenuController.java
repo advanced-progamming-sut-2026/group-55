@@ -28,16 +28,25 @@ public class GameMenuController extends BaseController {
             case ENTER_CHAPTER -> {
                 String chapterName = gameCmd.getStringArg().toLowerCase();
 
-                if (isValidChapterName(chapterName)) {
-                    if (currentUser.isChapterUnlocked(chapterName)) {
-                        view.showSuccess(SystemMessage.ENTERED_CHAPTER.getMessage() + " " + chapterName);
-                        appState.setCurrentMenu(MenuName.CHAPTER);
-                    } else {
-                        view.showError(SystemMessage.CHAPTER_LOCKED.getMessage());}
-                    }else {
+                if (!isValidChapterName(chapterName)) {
                     view.showError(SystemMessage.INVALID_COMMAND.getMessage());
-                    }
+                    return null;
                 }
+
+                if (!currentUser.isChapterUnlocked(chapterName)) {
+                    view.showError(SystemMessage.CHAPTER_LOCKED.getMessage());
+                    return null;
+                }
+
+                appState.setSelectedChapter(chapterName);
+                appState.setCurrentMenu(MenuName.PLANT_SELECTION);
+
+                view.showSuccess(
+                        SystemMessage.ENTERED_CHAPTER.getMessage()
+                                + " "
+                                + chapterName
+                );
+            }
 
             case ENTER_COLLECTION -> {
                 appState.setCurrentMenu(MenuName.COLLECTION);

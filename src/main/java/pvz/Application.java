@@ -15,11 +15,15 @@ import java.io.IOException;
 import java.util.Scanner;
 import pvz.view.ConsoleView;
 import pvz.view.MenuView;
+import pvz.model.entity.plant.PlantFactory;
+import pvz.model.session.GameRuntime;
+import pvz.model.session.GameSessionFactory;
 
 public class Application {
 
     private final AppState appState = new AppState();
     private PlantData plantData;
+    private GameRuntime gameRuntime;
 
     private final UserManager userManager = new UserManager("save.json");
 
@@ -57,6 +61,12 @@ public class Application {
         try (Scanner scanner = new Scanner(System.in)) {
             while (appState.isRunning() && scanner.hasNextLine()) {
                 String input = scanner.nextLine().trim();
+
+                if (appState.getCurrentMenu() == MenuName.PLAYING) {
+                    handlePlayingInput(input);
+                    continue;
+                }
+
                 Command command = parseCommand(input);
                 handleCommand(command);
             }
@@ -80,13 +90,54 @@ public class Application {
     private boolean loadGameData() {
         try {
             this.plantData = PlantCsvLoader.load("assets/Data/plants.csv");
-            this.collectionController = new CollectionController(appState, userManager, view, plantData);
-            this.plantSelectionController = new PlantSelectionController(appState, userManager, view, plantData);
+            PlantFactory plantFactory = new PlantFactory(plantData.byName());
+            GameSessionFactory sessionFactory = new GameSessionFactory(plantFactory);
+            this.gameRuntime = new GameRuntime(sessionFactory);
+            this.collectionController =
+                    new CollectionController(
+                            appState,
+                            userManager,
+                            view,
+                            plantData
+                    );
+            this.plantSelectionController =
+                    new PlantSelectionController(
+                            appState,
+                            userManager,
+                            view,
+                            plantData,
+                            gameRuntime
+                    );
             return true;
         } catch (IOException e) {
             view.showError(SystemMessage.LOADING_DATA_FAILED.getMessage());
             return false;
         }
+    }
+
+    private void handlePlayingInput(String input) {
+        if (input.equals("menu exit")) {
+            gameRuntime.abort();
+            finishGameSession();
+            return;
+        }
+
+        String result = gameRuntime.handle(input);
+        view.showMessage(result);
+
+        if (gameRuntime.isFinished()) {
+            finishGameSession();
+        }
+    }
+
+    private void finishGameSession() {
+        view.showMessage(
+                "Game ended with status: " + gameRuntime.status()
+        );
+
+        gameRuntime.clear();
+        appState.setSelectedChapter(null);
+        appState.setCurrentMenu(MenuName.GAME);
     }
 
     private Command parseCommand(String input) {
