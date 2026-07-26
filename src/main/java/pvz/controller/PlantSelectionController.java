@@ -129,7 +129,6 @@ public class PlantSelectionController extends BaseController {
             view.showError(SystemMessage.PLANT_SELECTION_NOT_IN_SELECTION.getMessage());
         } else {
             selectedPlants.remove(target);
-            boostedPlants.remove(target);
             view.showSuccess(SystemMessage.PLANT_SELECTION_REMOVED.getMessage());
         }
     }
@@ -166,6 +165,17 @@ public class PlantSelectionController extends BaseController {
             return;
         }
 
+        List<String> unselectedBoostedPlants =
+                findBoostedButNotSelectedPlants();
+
+        if (!unselectedBoostedPlants.isEmpty()) {
+            view.showError(
+                    "Cannot start game. These boosted plants are not selected: "
+                            + String.join(", ", unselectedBoostedPlants)
+            );
+            return;
+        }
+
         GameSessionConfig config = new GameSessionConfig.Builder(
                 selectedChapter,
                 List.copyOf(selectedPlants)
@@ -179,5 +189,17 @@ public class PlantSelectionController extends BaseController {
         view.showSuccess(
                 SystemMessage.PLANT_SELECTION_START_GAME.getMessage()
         );
+    }
+
+    private List<String> findBoostedButNotSelectedPlants() {
+        return boostedPlants.stream()
+                .filter(plant -> !selectedPlants.contains(plant))
+                .sorted()
+                .toList();
+    }
+
+    public void resetSelection() {
+        selectedPlants.clear();
+        boostedPlants.clear();
     }
 }
