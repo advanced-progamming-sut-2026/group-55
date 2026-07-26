@@ -5,7 +5,7 @@ import java.util.Objects;
 
 import pvz.model.core.Board;
 import pvz.model.core.Game;
-import pvz.model.core.SunBank;
+import pvz.model.core.BattleResources;
 import pvz.model.core.World;
 import pvz.model.entity.collectible.sun.SkySunSpawner;
 import pvz.model.entity.plant.PlantFactory;
@@ -29,9 +29,9 @@ public final class GameSessionFactory {
 
         addInitialTombstones(board, config);
 
-        SunBank sunBank = new SunBank(config.startingSun());
+        BattleResources resources = new BattleResources(config.startingSun());
 
-        World world = new World(game, board, sunBank);
+        World world = new World(game, board, resources);
 
         game.register(board);
 

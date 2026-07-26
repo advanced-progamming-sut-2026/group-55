@@ -57,6 +57,12 @@ public final class GameController {
         if ((matcher = GameCommand.COLLECT_SUN.getMatcher(input)) != null) {
             return handleCollectSun(matcher);
         }
+        if ((GameCommand.REMOVE_COOLDOWN.getMatcher(input)) != null) {
+            return handleRemoveCooldown();
+        }
+        if (GameCommand.ADD_PLANT_FOOD.getMatcher(input) != null) {
+            return handleAddPlantFood();
+        }
         if ((matcher = GameCommand.SPAWN_ZOMBIE.getMatcher(input)) != null) {
             return handleSpawnZombie(matcher);
         }
@@ -199,6 +205,27 @@ public final class GameController {
                 + " sun";
     }
 
+    private String handleRemoveCooldown() {
+        if (session.resources().isCooldownCheatEnabled()) {
+            return "plant cooldowns are already removed!";
+        }
+
+        session.resources().enableCooldownCheat();
+        return "all plant cooldowns have been removed!";
+    }
+
+    private String handleAddPlantFood() {
+        if (!session.resources().tryAddPlantFood()) {
+            return "plant food storage is full! you already have "
+                    + session.resources().getPlantFoodCount()
+                    + " plant foods.";
+        }
+
+        return "plant food added! you now have "
+                + session.resources().getPlantFoodCount()
+                + " plant food(s).";
+    }
+
     private String handleSpawnZombie(Matcher matcher) {
         String type = matcher.group("type").toLowerCase(Locale.ROOT);
         int x = Integer.parseInt(matcher.group("x"));
@@ -229,6 +256,8 @@ public final class GameController {
                 .append(game.getCurrentTick())
                 .append(" | sun: ")
                 .append(world.sunBank().getBalance())
+                .append(" | plant food: ")
+                .append(session.resources().getPlantFoodCount())
                 .append('\n');
 
         for (int y = 1; y <= board.getRows(); y++) {

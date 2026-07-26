@@ -10,6 +10,8 @@ public enum GameCommand {
     PLUCK("^pluck\\s+plant\\s+-l\\s+\\((?<x>\\d+)\\s*,\\s*(?<y>\\d+)\\)$"),
     SHOW_SUN("^show\\s+sun\\s+amount$"),
     COLLECT_SUN("^collect\\s+sun\\s+-l\\s+\\((?<x>\\d+)\\s*,\\s*(?<y>\\d+)\\)$"),
+    ADD_PLANT_FOOD("^cheat\\s+add-plant-food$"),
+    REMOVE_COOLDOWN("^cheat\\s+remove-cooldown$"),
     SPAWN_ZOMBIE("^cheat\\s+spawn-zombie\\s+-t\\s+(?<type>\\S+)\\s+-l\\s+\\(?(?<x>\\d+)\\s*,\\s*(?<y>\\d+)\\)?$");
 
     private final Pattern pattern;
