@@ -78,7 +78,7 @@ public class GameMenuController extends BaseController {
 
             case GEM_WALLET -> {
                 if (currentUser != null) {
-                    view.showSuccess("gems: " + currentUser.getDiamonds());
+                    view.showSuccess("diamonds: " + currentUser.getDiamonds());
                 } else {
                     view.showError(SystemMessage.USER_NOT_LOGGED_IN.getMessage());
                 }

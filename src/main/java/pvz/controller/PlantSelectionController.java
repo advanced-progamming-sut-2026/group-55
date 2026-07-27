@@ -56,11 +56,11 @@ public class PlantSelectionController extends BaseController {
         switch (cmd.getAction()) {
             case SHOW_ALL_PLANTS -> handleShowAllPlants();
             case SHOW_AVAILABLE_PLANTS -> handleShowAvailablePlants(currentUser);
-            case SHOW_SELECTED_PLANTS -> handleShowSelectedPlants();
+            case SHOW_SELECTED_PLANTS -> handleShowSelectedPlants(currentUser);
             case ADD_PLANT -> handleAddPlant(cmd, currentUser);
             case REMOVE_PLANT -> handleRemovePlant(cmd);
             case BOOST_PLANT -> handleBoostPlant(cmd, currentUser);
-            case START_GAME -> handleStartGame();
+            case START_GAME -> handleStartGame(currentUser);
         }
         return null;
     }
@@ -88,13 +88,14 @@ public class PlantSelectionController extends BaseController {
         availablePlants.forEach(spec -> view.showSuccess("- " + spec.getName()));
     }
 
-    private void handleShowSelectedPlants() {
+    private void handleShowSelectedPlants(User user) {
         view.showSuccess("--- Selected Plants (" + selectedPlants.size() + "/" + maxSlots + ") ---");
         if (selectedPlants.isEmpty()) {
             view.showSuccess(SystemMessage.PLANT_SELECTION_NO_PLANTS.getMessage());
         } else {
             selectedPlants.forEach(p -> {
-                String boostStatus = boostedPlants.contains(p) ? " [BOOSTED]" : "";
+                boolean isBoosted = boostedPlants.contains(p) || user.hasStoredBoost(p);
+                String boostStatus = isBoosted ? " [BOOSTED]" : "";
                 view.showSuccess("- " + p + boostStatus);
             });
         }
@@ -140,22 +141,24 @@ public class PlantSelectionController extends BaseController {
 
         if (playerPlant == null) {
             view.showError(SystemMessage.PLANT_SELECTION_NOT_OWNED.getMessage());
-        } else if (boostedPlants.contains(target)) {
+        } else if (user.hasStoredBoost(target) || boostedPlants.contains(target)) {
             view.showError(SystemMessage.PLANT_SELECTION_ALREADY_BOOSTED.getMessage());
         } else if (!user.spendDiamonds(2)) {
             view.showError(SystemMessage.PLANT_SELECTION_NOT_ENOUGH_DIAMONDS.getMessage());
         } else {
             boostedPlants.add(target);
-            userManager.save();
-            view.showSuccess(SystemMessage.PLANT_SELECTION_BOOSTED_SUCCESS.getMessage());
+            if (userManager.save()) {
+                view.showSuccess(SystemMessage.PLANT_SELECTION_BOOSTED_SUCCESS.getMessage());
+            } else {
+                boostedPlants.remove(target);
+                view.showError("Critical Error: Failed to save boost state.");
+            }
         }
     }
 
-    private void handleStartGame() {
+    private void handleStartGame(User currentUser) {
         if (selectedPlants.isEmpty()) {
-            view.showError(
-                    SystemMessage.PLANT_SELECTION_EMPTY_START.getMessage()
-            );
+            view.showError(SystemMessage.PLANT_SELECTION_EMPTY_START.getMessage());
             return;
         }
 
@@ -166,18 +169,26 @@ public class PlantSelectionController extends BaseController {
             return;
         }
 
+        Set<String> activeBoosts = new HashSet<>(boostedPlants);
+
+        for (String plant : selectedPlants) {
+            if (currentUser.hasStoredBoost(plant)) {
+                activeBoosts.add(plant);
+                currentUser.removeStoredBoost(plant);
+            }
+        }
+
         GameSessionConfig config = new GameSessionConfig.Builder(
                 selectedChapter,
                 List.copyOf(selectedPlants)
-        )
-                .boostedPlants(Set.copyOf(boostedPlants))
-                .build();
+        ).boostedPlants(Set.copyOf(activeBoosts)).build();
 
-        gameRuntime.start(config);
-        appState.setCurrentMenu(MenuName.PLAYING);
-
-        view.showSuccess(
-                SystemMessage.PLANT_SELECTION_START_GAME.getMessage()
-        );
+        if (userManager.save()) {
+            gameRuntime.start(config);
+            appState.setCurrentMenu(MenuName.PLAYING);
+            view.showSuccess(SystemMessage.PLANT_SELECTION_START_GAME.getMessage());
+        } else {
+            view.showError("Critical Error: Failed to save game state. Cannot start game.");
+        }
     }
 }

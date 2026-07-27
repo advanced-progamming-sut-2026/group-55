@@ -36,6 +36,8 @@ public class Application {
     private final NewsMenuParser newsMenuParser = new NewsMenuParser();
     private final CollectionMenuParser collectionParser = new CollectionMenuParser();
     private final PlantSelectionMenuParser plantSelectionParser = new PlantSelectionMenuParser();
+    private final GreenhouseParser greenhouseParser = new GreenhouseParser();
+    private final ShopParser shopParser = new ShopParser();
     private final AuthService authService = new AuthService(userManager);
     private final MenuView view = new ConsoleView();
 
@@ -46,13 +48,13 @@ public class Application {
     private final SettingsController settingsController = new SettingsController(appState, userManager, view);
     private final ProfileController profileController = new ProfileController(appState, userManager, authService, view);
     private final NewsController newsController = new NewsController(appState, userManager, view);
-    private final GreenhouseController greenhouseController = new GreenhouseController(appState, userManager, view);
     private final TravelLogController travelLogController = new TravelLogController(appState, userManager, view);
     private final LeaderboardController leaderboardController = new LeaderboardController(appState, userManager, view);
     private final ChapterController chapterController = new ChapterController(appState, userManager, view);
-
+    private GreenhouseController greenhouseController;
     private CollectionController collectionController;
     private PlantSelectionController plantSelectionController;
+    private ShopController shopController;
 
     public void run() {
         initSession();
@@ -108,6 +110,20 @@ public class Application {
                             plantData,
                             gameRuntime
                     );
+            this.shopController =
+                    new ShopController(
+                            appState,
+                            userManager,
+                            view
+                    );
+            this.greenhouseController =
+                    new GreenhouseController(
+                            appState,
+                            userManager,
+                            view,
+                            plantData
+                    );
+
             return true;
         } catch (IOException e) {
             view.showError(SystemMessage.LOADING_DATA_FAILED.getMessage());
@@ -165,6 +181,8 @@ public class Application {
             case NEWS -> newsMenuParser.parse(input);
             case COLLECTION -> collectionParser.parse(input);
             case PLANT_SELECTION -> plantSelectionParser.parse(input);
+            case GREENHOUSE -> greenhouseParser.parse(input);
+            case SHOP -> shopParser.parse(input);
             default -> null;
         };
     }
@@ -201,16 +219,20 @@ public class Application {
             case TRAVEL_LOG -> travelLogController.handle(command);
             case LEADERBOARD -> leaderboardController.handle(command);
             case CHAPTER -> chapterController.handle(command);
+            case SHOP -> shopController.handle(command);
         }
     }
+
 
     private boolean isValidMenuTransition(MenuName currentMenu, String targetMenuName) {
         String target = targetMenuName.trim().toLowerCase();
         return switch (currentMenu) {
             case REGISTER -> target.equals("login");
             case MAIN -> target.equals("game") || target.equals("settings") ||
-                         target.equals("news") || target.equals("profile");
+                    target.equals("news") || target.equals("profile");
             case GAME -> target.equals("collection");
+            case GREENHOUSE -> target.equals("shop");
+            case SHOP -> target.equals("greenhouse");
             default -> false;
         };
     }

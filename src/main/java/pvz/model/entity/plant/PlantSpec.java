@@ -62,4 +62,7 @@ public class PlantSpec {
     public String getName() { return name; }
     public PlantCategory getCategory() { return category; }
     public Set<PlantTag> getTags() { return tags; }
+    public boolean hasPlantFoodEffect() {
+        return plantFoodEffect != null && !plantFoodEffect.isBlank() && !plantFoodEffect.strip().toLowerCase().startsWith("none");
+    }
 }

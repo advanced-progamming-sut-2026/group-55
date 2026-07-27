@@ -12,11 +12,11 @@ public enum SystemMessage implements Message {
     PASSWORD_CHANGED_SUCCESS("password changed successfully!"),
     LOGOUT_SUCCESS("Logged out successfully."),
 
-    MENU_ENTERED_REGISTER("entered register menu"),
-    MENU_ENTERED_MAIN("menu entered main"),
-    MENU_ENTERED_GAME("menu entered game"),
-    ENTERED_CHAPTER("entered chapter"),
-    ENTERED_COLLECTION("menu entered collection"),
+    ENTERED_REGISTER("entered register menu"),
+    ENTERED_MAIN("entered main menu"),
+    ENTERED_GAME("entered game menu"),
+    ENTERED_CHAPTER("entered chapter menu"),
+    ENTERED_COLLECTION("entered collection menu"),
     ENTERED_GREENHOUSE("entered greenhouse"),
     ENTERED_TRAVEL_LOG("entered travel log"),
     SHOWING_LEADERBOARD("showing leaderboard"),
@@ -107,7 +107,34 @@ public enum SystemMessage implements Message {
     PLANT_SELECTION_BOOSTED_SUCCESS("Plant boosted successfully!"),
 
     PLANT_SELECTION_EMPTY_START("You must select at least one plant to start the game!"),
-    PLANT_SELECTION_START_GAME("Starting game with selected plants");
+    PLANT_SELECTION_START_GAME("Starting game with selected plants"),
+
+    SHOP_INVALID_QUANTITY_OVERFLOW("Invalid quantity resulting in overflow."),
+    SHOP_PLANT_FOOD_MAX_CAPACITY("Max plant food capacity reached."),
+    SHOP_NO_UNLOCKED_PLANTS("No unlocked plants found."),
+    SHOP_PLANT_TYPE_REQUIRED("Plant type required."),
+    SHOP_INVALID_COUNT("Invalid quantity."),
+    SHOP_INVALID_ITEM_ID("Invalid item ID."),
+    SHOP_NOT_ENOUGH_COINS("Not enough coins."),
+    SHOP_NOT_ENOUGH_DIAMONDS("Not enough diamonds."),
+    SHOP_POTS_MAX_CAPACITY("Max pots capacity reached."),
+    SHOP_UNKNOWN_ITEM_TYPE("Unknown item type."),
+    SHOP_DAILY_OFFER_ONCE("You can only buy the daily offer once."),
+    SHOP_DAILY_OFFER_ALREADY_BOUGHT("Daily offer already purchased."),
+    SHOP_DAILY_OFFER_NO_PLANTS("No plants available for daily offer."),
+    SHOP_PLANT_NOT_UNLOCKED("Plant not unlocked."),
+
+    GREENHOUSE_PLANTED_SUCCESS("Planting successful!"),
+    GREENHOUSE_COLLECTED_SUCCESS("Collection successful!"),
+    GREENHOUSE_GROWN_SUCCESS("Plant forced to grow successfully!"),
+    GREENHOUSE_INVALID_COORDINATES("Invalid coordinates."),
+    GREENHOUSE_LOCKED("Pot is locked."),
+    GREENHOUSE_NOT_EMPTY("Pot is not empty."),
+    GREENHOUSE_EMPTY("Pot is empty."),
+    GREENHOUSE_NOT_READY("Plant is not ready yet."),
+    GREENHOUSE_NOT_GROWING("No plant is growing in this pot."),
+    GREENHOUSE_ALREADY_READY("Plant is already ready."),
+    GREENHOUSE_NOT_ENOUGH_DIAMONDS("Not enough diamonds.");
 
 
 

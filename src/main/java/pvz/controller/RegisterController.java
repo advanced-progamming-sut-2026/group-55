@@ -55,11 +55,13 @@ public class RegisterController extends BaseController {
 
 
             userManager.add(pendingUser);
-            userManager.save();
-
-            this.pendingUser = null;
-            appState.setCurrentMenu(MenuName.LOGIN);
-            view.showSuccess(SystemMessage.SUCCESS_CREATION.getMessage());
+            if (userManager.save()) {
+                this.pendingUser = null;
+                appState.setCurrentMenu(MenuName.LOGIN);
+                view.showSuccess(SystemMessage.SUCCESS_CREATION.getMessage());
+            } else {
+                view.showError("Critical Error: Failed to save user data. Please try again.");
+            }
         } catch (Exception e) {
             view.showError(e.getMessage());
         }

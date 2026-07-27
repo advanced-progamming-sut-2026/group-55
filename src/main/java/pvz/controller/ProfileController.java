@@ -48,8 +48,11 @@ public class ProfileController extends BaseController {
             view.showError(SystemMessage.PROFILE_USERNAME_EXISTS.getMessage());
         } else {
             user.setUsername(newUsername);
-            userManager.save();
-            view.showSuccess(SystemMessage.PROFILE_USERNAME_CHANGED.getMessage());
+            if (userManager.save()) {
+                view.showSuccess(SystemMessage.PROFILE_USERNAME_CHANGED.getMessage());
+            } else {
+                view.showError("Critical Error: Failed to save changes.");
+            }
         }
     }
 
@@ -61,8 +64,11 @@ public class ProfileController extends BaseController {
             view.showError(SystemMessage.PROFILE_INVALID_NICKNAME.getMessage());
         } else {
             user.setNickname(newNickname);
-            userManager.save();
-            view.showSuccess(SystemMessage.PROFILE_NICKNAME_CHANGED.getMessage());
+            if (userManager.save()) {
+                view.showSuccess(SystemMessage.PROFILE_NICKNAME_CHANGED.getMessage());
+            } else {
+                view.showError("Critical Error: Failed to save changes.");
+            }
         }
     }
 
@@ -74,8 +80,11 @@ public class ProfileController extends BaseController {
             view.showError(SystemMessage.PROFILE_INVALID_EMAIL.getMessage());
         } else {
             user.setEmail(newEmail);
-            userManager.save();
-            view.showSuccess(SystemMessage.PROFILE_EMAIL_CHANGED.getMessage());
+            if (userManager.save()) {
+                view.showSuccess(SystemMessage.PROFILE_EMAIL_CHANGED.getMessage());
+            } else {
+                view.showError("Critical Error: Failed to save changes.");
+            }
         }
     }
 
@@ -96,8 +105,11 @@ public class ProfileController extends BaseController {
                 view.showError(passErr.getMessage());
             } else {
                 user.setPassword(hashedNew);
-                userManager.save();
-                view.showSuccess(SystemMessage.PROFILE_PASSWORD_CHANGED.getMessage());
+                if (userManager.save()) {
+                    view.showSuccess(SystemMessage.PROFILE_PASSWORD_CHANGED.getMessage());
+                } else {
+                    view.showError("Critical Error: Failed to save changes.");
+                }
             }
         }
     }
