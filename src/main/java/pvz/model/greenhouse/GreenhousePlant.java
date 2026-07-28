@@ -32,6 +32,29 @@ public class GreenhousePlant {
         return (int) Math.ceil((double) remaining / HOUR_IN_MILLIS);
     }
 
+    public String getExactRemainingTime() {
+        long remaining = readyAt - System.currentTimeMillis();
+        if (remaining <= 0) {
+            return "Ready";
+        }
+
+        long totalSeconds = remaining / 1000;
+        long hours = totalSeconds / 3600;
+        long minutes = (totalSeconds % 3600) / 60;
+        long seconds = totalSeconds % 60;
+
+        StringBuilder timeString = new StringBuilder();
+        if (hours > 0) {
+            timeString.append(hours).append("h ");
+        }
+        if (minutes > 0 || hours > 0) {
+            timeString.append(minutes).append("m ");
+        }
+        timeString.append(seconds).append("s");
+
+        return timeString.toString().trim();
+    }
+
     public void forceReady() {
         this.readyAt = System.currentTimeMillis();
     }

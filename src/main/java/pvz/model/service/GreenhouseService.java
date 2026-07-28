@@ -94,7 +94,10 @@ public class GreenhouseService {
                     return spec != null && spec.hasPlantFoodEffect();
                 }).toList();
 
-        if (validPlants.isEmpty()) throw new Exception(SystemMessage.PLANT_SELECTION_NO_PLANTS.getMessage());
+        if (validPlants.isEmpty()) {
+            pot.setPlant(new GreenhousePlant("marigold", true, MARIGOLD_GROW_TIME));
+            return;
+        }
 
         PlayerPlant p = validPlants.get(random.nextInt(validPlants.size()));
         pot.setPlant(new GreenhousePlant(p.getPlantName(), false, NORMAL_PLANT_GROW_TIME));

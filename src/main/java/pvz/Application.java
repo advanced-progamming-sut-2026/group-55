@@ -228,9 +228,12 @@ public class Application {
         String target = targetMenuName.trim().toLowerCase();
         return switch (currentMenu) {
             case REGISTER -> target.equals("login");
+
             case MAIN -> target.equals("game") || target.equals("settings") ||
                     target.equals("news") || target.equals("profile");
-            case GAME -> target.equals("collection");
+
+            case GAME -> target.equals("collection") || target.equals("leaderboard");
+
             case GREENHOUSE -> target.equals("shop");
             case SHOP -> target.equals("greenhouse");
             default -> false;

@@ -75,7 +75,7 @@ public abstract class BaseController implements Controller {
                         appState.setCurrentMenu(MenuName.REGISTER);
                         view.showSuccess(SystemMessage.LOGOUT_SUCCESS.getMessage());
                     } else {
-                        view.showError("Critical Error: Failed to logout properly.");
+                        view.showError("Failed to logout properly.");
                     }
                 }
             } else {

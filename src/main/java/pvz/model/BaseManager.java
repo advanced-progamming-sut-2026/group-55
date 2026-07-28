@@ -45,4 +45,10 @@ public abstract class BaseManager<T> {
     public boolean save() {
         return SaveManager.save(this.file, items);
     }
+
+    public void reload() {
+        List<T> loadedItems = SaveManager.load(this.file, this.listType);
+        this.items.clear();
+        this.items.addAll(loadedItems);
+    }
 }

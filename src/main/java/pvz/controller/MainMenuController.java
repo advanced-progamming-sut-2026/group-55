@@ -22,7 +22,7 @@ public class MainMenuController extends BaseController {
                     appState.setCurrentMenu(MenuName.REGISTER);
                     view.showSuccess(SystemMessage.LOGOUT_SUCCESS.getMessage());
                 } else {
-                    view.showError("Critical Error: Failed to save logout state.");
+                    view.showError("Failed to save logout state.");
                 }
             }
             return null;

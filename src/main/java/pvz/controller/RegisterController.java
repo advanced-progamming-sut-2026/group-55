@@ -60,7 +60,7 @@ public class RegisterController extends BaseController {
                 appState.setCurrentMenu(MenuName.LOGIN);
                 view.showSuccess(SystemMessage.SUCCESS_CREATION.getMessage());
             } else {
-                view.showError("Critical Error: Failed to save user data. Please try again.");
+                view.showError("Failed to save user data. Please try again.");
             }
         } catch (Exception e) {
             view.showError(e.getMessage());

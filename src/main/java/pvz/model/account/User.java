@@ -2,17 +2,20 @@ package pvz.model.account;
 
 import pvz.model.greenhouse.Greenhouse;
 import pvz.model.shop.DailyOffer;
+
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 public class User {
+
     private String username;
     private String passwordHash;
     private String nickname;
     private String email;
     private String gender;
+
     private int securityQuestionNumber;
     private String securityAnswer;
     private boolean stayLoggedIn;
@@ -26,7 +29,9 @@ public class User {
 
     private Greenhouse greenhouse;
     private Set<String> storedBoosts;
+
     private int plantFoodCount = 0;
+
     private DailyOffer dailyOffer;
 
     private List<String> unlockedChapters;
@@ -36,12 +41,20 @@ public class User {
     private List<PlayerPlant> unlockedPlants;
     private List<String> seenZombies;
 
-    public User(String username, String passwordHash, String nickname, String email, String gender) {
+
+
+    public User(String username,
+                String passwordHash,
+                String nickname,
+                String email,
+                String gender) {
+
         this.username = username;
         this.passwordHash = passwordHash;
         this.nickname = nickname;
         this.email = email;
         this.gender = gender;
+
         this.stayLoggedIn = false;
 
         this.unlockedChapters = new ArrayList<>();
@@ -52,166 +65,261 @@ public class User {
         this.unlockedPlants.add(new PlayerPlant("sunflower"));
 
         this.greenhouse = new Greenhouse();
+
         this.storedBoosts = new HashSet<>();
+
         this.newsList = new ArrayList<>();
+
         this.seenZombies = new ArrayList<>();
     }
 
-    public String getUsername() { return username; }
-    public void setUsername(String username) { this.username = username; }
-    public String getPassword() { return passwordHash; }
-    public void setPassword(String passwordHash) { this.passwordHash = passwordHash; }
-    public String getNickname() { return nickname; }
-    public void setNickname(String nickname) { this.nickname = nickname; }
-    public String getEmail() { return email; }
-    public void setEmail(String email) { this.email = email; }
-    public void setGender(String gender) { this.gender = gender; }
-    public String getGender() { return gender; }
-    public int getSecurityQuestionNumber() { return securityQuestionNumber; }
-    public void setSecurityQuestionNumber(int n) { this.securityQuestionNumber = n; }
-    public String getSecurityAnswer() { return securityAnswer; }
-    public void setSecurityAnswer(String a) { this.securityAnswer = a; }
-    public boolean isStayLoggedIn() { return stayLoggedIn; }
-    public void setStayLoggedIn(boolean stayLoggedIn) { this.stayLoggedIn = stayLoggedIn; }
+    public String getUsername() {
+        return username;
+    }
 
-    public int getCoins() { return coins; }
-    public void addCoins(int amount) { this.coins += amount; }
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public String getPassword() {
+        return passwordHash;
+    }
+
+    public void setPassword(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
+
+    public String getNickname() {
+        return nickname;
+    }
+
+    public void setNickname(String nickname) {
+        this.nickname = nickname;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public int getSecurityQuestionNumber() {
+        return securityQuestionNumber;
+    }
+
+    public void setSecurityQuestionNumber(int number) {
+        this.securityQuestionNumber = number;
+    }
+
+    public String getSecurityAnswer() {
+        return securityAnswer;
+    }
+
+    public void setSecurityAnswer(String answer) {
+        this.securityAnswer = answer;
+    }
+
+    public boolean isStayLoggedIn() {
+        return stayLoggedIn;
+    }
+
+    public void setStayLoggedIn(boolean stayLoggedIn) {
+        this.stayLoggedIn = stayLoggedIn;
+    }
+
+    public int getCoins() {
+        return coins;
+    }
+
+    public void addCoins(int amount) {
+
+        long result = (long) coins + amount;
+
+        coins = result > Integer.MAX_VALUE
+                ? Integer.MAX_VALUE
+                : (int) result;
+    }
 
     public boolean spendCoins(int amount) {
-        if (amount < 0) return false;
-        if (this.coins >= amount) {
-            this.coins -= amount;
+
+        if(amount < 0)
+            return false;
+
+        if(coins >= amount){
+
+            coins -= amount;
             return true;
         }
         return false;
     }
 
-    public int getDiamonds() { return diamonds; }
-    public void addDiamonds(int amount) { this.diamonds += amount; }
+    public int getDiamonds() {
+        return diamonds;
+    }
 
-    public boolean spendDiamonds(int amount) {
-        if (amount < 0) return false;
-        if (this.diamonds >= amount) {
-            this.diamonds -= amount;
+    public void addDiamonds(int amount){
+
+        long result = (long) diamonds + amount;
+
+        diamonds = result > Integer.MAX_VALUE
+                ? Integer.MAX_VALUE
+                : (int) result;
+    }
+
+    public boolean spendDiamonds(int amount){
+
+        if(amount < 0)
+            return false;
+
+        if(diamonds >= amount){
+
+            diamonds -= amount;
             return true;
         }
         return false;
     }
 
-    public boolean isChapterUnlocked(String chapterName) {
-        if (this.unlockedChapters == null) {
-            this.unlockedChapters = new ArrayList<>();
-            this.unlockedChapters.add("ancient-egypt");
-        }
-        return this.unlockedChapters.contains(chapterName);
+    public int getGamesPlayed() {
+        return gamesPlayed;
     }
 
-
-    public int getDifficultyLevel() { return difficultyLevel; }
-    public void setDifficultyLevel(int difficultyLevel) { this.difficultyLevel = difficultyLevel; }
-
-    public int getGamesPlayed() { return gamesPlayed; }
-    public void setGamesPlayed(int gamesPlayed) { this.gamesPlayed = gamesPlayed; }
-
-    public int getClearedStages() { return clearedStages; }
-    public void setClearedStages(int clearedStages) { this.clearedStages = clearedStages; }
-
-    public int getMaxMewPoint() { return maxMewPoint; }
-    public void setMaxMewPoint(int maxMewPoint) { this.maxMewPoint = maxMewPoint; }
-
-    public void addNews(String message) {
-        if (this.newsList == null) this.newsList = new ArrayList<>();
-        this.newsList.add(new NewsItem(message));
+    public int getClearedStages() {
+        return clearedStages;
     }
 
-    public List<NewsItem> getUnreadNews() {
-        if (this.newsList == null) return new ArrayList<>();
-        return newsList.stream().filter(n -> !n.isRead()).toList();
+    public int getMaxMewPoint() {
+        return maxMewPoint;
     }
 
-    public List<NewsItem> getAllNews() {
-        if (this.newsList == null) return new ArrayList<>();
-        return newsList;
-    }
+    public Greenhouse getGreenhouse(){
 
-    public void markAllAsRead() {
-        if (this.newsList == null) return;
-        for (NewsItem news : newsList) news.setRead(true);
-    }
+        if(greenhouse == null)
+            greenhouse = new Greenhouse();
 
-    public boolean hasUnreadNews() {
-        if (this.newsList == null) return false;
-        return newsList.stream().anyMatch(n -> !n.isRead());
-    }
-
-    public List<PlayerPlant> getUnlockedPlants() {
-        if (this.unlockedPlants == null) {
-            this.unlockedPlants = new ArrayList<>();
-            this.unlockedPlants.add(new PlayerPlant("peashooter"));
-            this.unlockedPlants.add(new PlayerPlant("sunflower"));
-        }
-        return unlockedPlants;
-    }
-
-    public List<String> getSeenZombies() {
-        if (this.seenZombies == null) this.seenZombies = new ArrayList<>();
-        return seenZombies;
-    }
-
-    public void addPlant(PlayerPlant plant) {
-        getUnlockedPlants().add(plant);
-    }
-
-    public PlayerPlant getOwnedPlant(String plantName) {
-        for (PlayerPlant plant : getUnlockedPlants()) {
-            if (plant.getPlantName().equalsIgnoreCase(plantName)) return plant;
-        }
-        return null;
-    }
-
-    public void addSeenZombie(String zombieName) {
-        if (!getSeenZombies().contains(zombieName)) getSeenZombies().add(zombieName);
-    }
-
-    public Greenhouse getGreenhouse() {
-        if (this.greenhouse == null) this.greenhouse = new Greenhouse();
         return greenhouse;
     }
 
-    public Set<String> getStoredBoosts() {
-        if (this.storedBoosts == null) this.storedBoosts = new HashSet<>();
+    public List<PlayerPlant> getUnlockedPlants(){
+
+        if(unlockedPlants == null){
+
+            unlockedPlants = new ArrayList<>();
+
+            unlockedPlants.add(new PlayerPlant("peashooter"));
+            unlockedPlants.add(new PlayerPlant("sunflower"));
+        }
+
+        return unlockedPlants;
+    }
+
+    public void addPlant(PlayerPlant plant){
+
+        getUnlockedPlants().add(plant);
+    }
+
+    public PlayerPlant getOwnedPlant(String name){
+
+        for(PlayerPlant plant : getUnlockedPlants()){
+
+            if(plant.getPlantName().equalsIgnoreCase(name))
+                return plant;
+        }
+
+        return null;
+    }
+
+    public Set<String> getStoredBoosts(){
+
+        if(storedBoosts == null)
+            storedBoosts = new HashSet<>();
+
         return storedBoosts;
     }
 
-    public void addStoredBoost(String plantName) {
+    public void addStoredBoost(String plantName){
+
         getStoredBoosts().add(plantName.toLowerCase());
     }
+    public boolean hasStoredBoost(String plantName){
 
-    public void removeStoredBoost(String plantName) {
-        getStoredBoosts().remove(plantName.toLowerCase());
-    }
-
-    public boolean hasStoredBoost(String plantName) {
         return getStoredBoosts().contains(plantName.toLowerCase());
     }
 
-    public int getPlantFoodCount() {
+
+    public void removeStoredBoost(String plantName){
+
+        getStoredBoosts().remove(plantName.toLowerCase());
+    }
+
+    public int getPlantFoodCount(){
+
         return plantFoodCount;
     }
 
-    public boolean addPlantFood(int amount) {
-        if (this.plantFoodCount + amount > 3) {
+    public boolean addPlantFood(int amount){
+
+        if(plantFoodCount + amount > 3)
             return false;
-        }
-        this.plantFoodCount += amount;
+
+        plantFoodCount += amount;
+
         return true;
     }
 
-    public DailyOffer getDailyOffer() {
+    public DailyOffer getDailyOffer(){
+
         return dailyOffer;
     }
 
-    public void setDailyOffer(DailyOffer dailyOffer) {
+    public void setDailyOffer(DailyOffer dailyOffer){
+
         this.dailyOffer = dailyOffer;
+    }
+
+    public boolean isChapterUnlocked(String chapter){
+
+        if(unlockedChapters == null){
+
+            unlockedChapters = new ArrayList<>();
+            unlockedChapters.add("ancient-egypt");
+        }
+
+        return unlockedChapters.contains(chapter);
+    }
+
+    public void setDifficultyLevel(int level){
+
+        this.difficultyLevel = level;
+    }
+
+    public List<NewsItem> getUnreadNews(){
+
+        if(newsList == null)
+            return new ArrayList<>();
+
+        return newsList.stream()
+                .filter(news -> !news.isRead())
+                .toList();
+    }
+
+
+    public List<NewsItem> getAllNews(){
+
+        if(newsList == null)
+            return new ArrayList<>();
+
+        return newsList;
+    }
+
+
+    public void markAllAsRead(){
+
+        if(newsList == null)
+            return;
+
+        for(NewsItem news : newsList)
+            news.setRead(true);
     }
 }

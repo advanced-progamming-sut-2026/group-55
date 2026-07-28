@@ -58,7 +58,7 @@ public class ShopController extends BaseController {
 
             if (result.newlyCreated()) {
                 if (!userManager.save()) {
-                    view.showError("Critical error: Failed to save the new daily offer.");
+                    view.showError("Failed to save the new daily offer.");
                 }
             }
         } catch (Exception e) {
@@ -75,10 +75,13 @@ public class ShopController extends BaseController {
 
             shopService.buy(user, cmd.getItemId(), cmd.getCount(), cmd.getPlantType());
 
+
             if (userManager.save()) {
                 view.showSuccess("Purchase successful!");
             } else {
-                view.showError("Critical error: Failed to save game data. State might be out of sync.");
+                userManager.reload();
+                appState.setCurrentUser(userManager.find(u -> u.getUsername().equals(user.getUsername())));
+                view.showError("Failed to save game data. Purchase reverted.");
             }
         } catch (Exception e) {
             view.showError(e.getMessage());

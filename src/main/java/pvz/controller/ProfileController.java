@@ -51,7 +51,7 @@ public class ProfileController extends BaseController {
             if (userManager.save()) {
                 view.showSuccess(SystemMessage.PROFILE_USERNAME_CHANGED.getMessage());
             } else {
-                view.showError("Critical Error: Failed to save changes.");
+                view.showError("Failed to save changes.");
             }
         }
     }
@@ -67,7 +67,7 @@ public class ProfileController extends BaseController {
             if (userManager.save()) {
                 view.showSuccess(SystemMessage.PROFILE_NICKNAME_CHANGED.getMessage());
             } else {
-                view.showError("Critical Error: Failed to save changes.");
+                view.showError("Failed to save changes.");
             }
         }
     }
@@ -83,7 +83,7 @@ public class ProfileController extends BaseController {
             if (userManager.save()) {
                 view.showSuccess(SystemMessage.PROFILE_EMAIL_CHANGED.getMessage());
             } else {
-                view.showError("Critical Error: Failed to save changes.");
+                view.showError("Failed to save changes.");
             }
         }
     }
@@ -108,7 +108,7 @@ public class ProfileController extends BaseController {
                 if (userManager.save()) {
                     view.showSuccess(SystemMessage.PROFILE_PASSWORD_CHANGED.getMessage());
                 } else {
-                    view.showError("Critical Error: Failed to save changes.");
+                    view.showError("Failed to save changes.");
                 }
             }
         }

@@ -41,8 +41,12 @@ public class GreenhouseController extends BaseController {
             case PLANT -> {
                 try {
                     greenhouseService.plant(currentUser, cmd.getX(), cmd.getY());
-                    userManager.save();
-                    view.showSuccess(SystemMessage.GREENHOUSE_PLANTED_SUCCESS.getMessage());
+                    if (userManager.save()) {
+                        view.showSuccess(SystemMessage.GREENHOUSE_PLANTED_SUCCESS.getMessage());
+                    } else {
+                        rollback(currentUser);
+                        view.showError("Critical Error: Failed to save data. Action reverted.");
+                    }
                 } catch (Exception e) {
                     view.showError(e.getMessage());
                 }
@@ -51,8 +55,12 @@ public class GreenhouseController extends BaseController {
             case COLLECT -> {
                 try {
                     greenhouseService.collect(currentUser, cmd.getX(), cmd.getY());
-                    userManager.save();
-                    view.showSuccess(SystemMessage.GREENHOUSE_COLLECTED_SUCCESS.getMessage());
+                    if (userManager.save()) {
+                        view.showSuccess(SystemMessage.GREENHOUSE_COLLECTED_SUCCESS.getMessage());
+                    } else {
+                        rollback(currentUser);
+                        view.showError("Critical Error: Failed to save data. Action reverted.");
+                    }
                 } catch (Exception e) {
                     view.showError(e.getMessage());
                 }
@@ -61,14 +69,23 @@ public class GreenhouseController extends BaseController {
             case GROW -> {
                 try {
                     greenhouseService.forceGrow(currentUser, cmd.getX(), cmd.getY());
-                    userManager.save();
-                    view.showSuccess(SystemMessage.GREENHOUSE_GROWN_SUCCESS.getMessage());
+                    if (userManager.save()) {
+                        view.showSuccess(SystemMessage.GREENHOUSE_GROWN_SUCCESS.getMessage());
+                    } else {
+                        rollback(currentUser);
+                        view.showError("Critical Error: Failed to save data. Action reverted.");
+                    }
                 } catch (Exception e) {
                     view.showError(e.getMessage());
                 }
             }
         }
         return null;
+    }
+
+    private void rollback(User currentUser) {
+        userManager.reload();
+        appState.setCurrentUser(userManager.find(u -> u.getUsername().equals(currentUser.getUsername())));
     }
 
     private void handleShow(User user) {
@@ -87,11 +104,11 @@ public class GreenhouseController extends BaseController {
                     case LOCKED -> potStatus += "LOCKED";
                     case EMPTY -> potStatus += "EMPTY";
                     case READY -> potStatus += pot.getPlant().getPlantName() + "[READY]";
-                    case GROWING -> potStatus += String.format("%s[%dh]",
+                    case GROWING -> potStatus += String.format("%s[%s]",
                             pot.getPlant().getPlantName(),
-                            pot.getPlant().getRemainingHours());
+                            pot.getPlant().getExactRemainingTime());
                 }
-                rowStr.append(String.format("%-25s", potStatus));
+                rowStr.append(String.format("%-32s", potStatus));
             }
             view.showSuccess(rowStr.toString());
         }

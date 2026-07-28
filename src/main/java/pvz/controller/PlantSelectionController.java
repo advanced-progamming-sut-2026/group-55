@@ -151,7 +151,7 @@ public class PlantSelectionController extends BaseController {
                 view.showSuccess(SystemMessage.PLANT_SELECTION_BOOSTED_SUCCESS.getMessage());
             } else {
                 boostedPlants.remove(target);
-                view.showError("Critical Error: Failed to save boost state.");
+                view.showError("Failed to save boost state.");
             }
         }
     }
@@ -188,7 +188,7 @@ public class PlantSelectionController extends BaseController {
             appState.setCurrentMenu(MenuName.PLAYING);
             view.showSuccess(SystemMessage.PLANT_SELECTION_START_GAME.getMessage());
         } else {
-            view.showError("Critical Error: Failed to save game state. Cannot start game.");
+            view.showError("Failed to save game state. Cannot start game.");
         }
     }
 }

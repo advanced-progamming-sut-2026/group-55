@@ -110,17 +110,32 @@ public class ShopService {
             throw new Exception(SystemMessage.SHOP_PLANT_NOT_UNLOCKED.getMessage());
         }
 
+        long addedSeeds = (long) count * 10L;
+        long finalSeeds = (long) targetPlant.getSeedPackets() + addedSeeds;
+
+        if (finalSeeds > Integer.MAX_VALUE) {
+            throw new Exception("Invalid quantity resulting in overflow.");
+        }
+
         if (!user.spendDiamonds(totalDiamond)) {
             throw new Exception(SystemMessage.SHOP_NOT_ENOUGH_DIAMONDS.getMessage());
         }
-
-        targetPlant.addSeedPackets(Math.multiplyExact(count, 10));    }
+        targetPlant.addSeedPackets((int) addedSeeds);
+    }
 
     private void buyDiamondExchange(User user, int count, int totalDiamond) throws Exception {
+        long addedCoins = (long) count * 500L;
+        long finalCoins = (long) user.getCoins() + addedCoins;
+
+        if (finalCoins > Integer.MAX_VALUE) {
+            throw new Exception("Invalid quantity resulting in overflow.");
+        }
+
         if (!user.spendDiamonds(totalDiamond)) {
             throw new Exception(SystemMessage.SHOP_NOT_ENOUGH_DIAMONDS.getMessage());
         }
-        user.addCoins(Math.multiplyExact(count, 500));    }
+        user.addCoins((int) addedCoins);
+    }
 
     private void buyDailyOffer(User user, int count) throws Exception {
         if (count > 1) {
