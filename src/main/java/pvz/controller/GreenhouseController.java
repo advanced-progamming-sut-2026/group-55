@@ -45,7 +45,7 @@ public class GreenhouseController extends BaseController {
                         view.showSuccess(SystemMessage.GREENHOUSE_PLANTED_SUCCESS.getMessage());
                     } else {
                         rollback(currentUser);
-                        view.showError("Critical Error: Failed to save data. Action reverted.");
+                        view.showError("Failed to save data. Action reverted.");
                     }
                 } catch (Exception e) {
                     view.showError(e.getMessage());
@@ -59,7 +59,7 @@ public class GreenhouseController extends BaseController {
                         view.showSuccess(SystemMessage.GREENHOUSE_COLLECTED_SUCCESS.getMessage());
                     } else {
                         rollback(currentUser);
-                        view.showError("Critical Error: Failed to save data. Action reverted.");
+                        view.showError("Failed to save data. Action reverted.");
                     }
                 } catch (Exception e) {
                     view.showError(e.getMessage());
@@ -73,7 +73,7 @@ public class GreenhouseController extends BaseController {
                         view.showSuccess(SystemMessage.GREENHOUSE_GROWN_SUCCESS.getMessage());
                     } else {
                         rollback(currentUser);
-                        view.showError("Critical Error: Failed to save data. Action reverted.");
+                        view.showError("Failed to save data. Action reverted.");
                     }
                 } catch (Exception e) {
                     view.showError(e.getMessage());
