@@ -10,7 +10,7 @@ public abstract class LivingEntity extends Entity {
     }
 
     public final void takeDamage(double damage) {
-        if (damage <= 0 || deathHandled) {
+        if (damage <= 0 || deathHandled || !canTakeDamage()) {
             return;
         }
 
@@ -24,6 +24,10 @@ public abstract class LivingEntity extends Entity {
 
     public final boolean isDead() {
         return health <= 0;
+    }
+
+    protected boolean canTakeDamage() {
+        return true;
     }
 
     protected abstract void onDeath();

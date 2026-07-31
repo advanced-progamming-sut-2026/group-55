@@ -1,4 +1,4 @@
-package pvz.model.entity.plant;
+package pvz.model.entity.plant.lifetime;
 
 public record PlantLifetimeProfile(
         long lifespanTicks

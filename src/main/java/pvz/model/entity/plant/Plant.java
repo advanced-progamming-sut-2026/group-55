@@ -1,31 +1,36 @@
 package pvz.model.entity.plant;
 
-import java.util.List;
-import java.util.Locale;
-import java.util.Set;
+import java.util.Objects;
 
 import pvz.model.core.Game;
 import pvz.model.core.GameEvents;
 import pvz.model.core.World;
 import pvz.model.entity.LivingEntity;
-import pvz.model.entity.collectible.sun.Sun;
-import pvz.model.entity.collectible.sun.SunValue;
-import pvz.model.entity.plant.shooterprofile.ShooterProfile;
-import pvz.model.entity.plant.shooterprofile.ShooterProfiles;
-import pvz.model.entity.plant.shooterprofile.StraightShotPath;
-import pvz.model.entity.plant.sunprofile.FixedSunProfile;
-import pvz.model.entity.plant.sunprofile.SunProfile;
-import pvz.model.entity.plant.sunprofile.SunShroomProfile;
-import pvz.model.entity.projectile.Projectile;
+import pvz.model.entity.plant.behavior.PlantBehavior;
+import pvz.model.entity.plant.lifetime.PlantLifetimeProfile;
+import pvz.model.entity.plant.lifetime.PlantLifetimeProfiles;
+import pvz.model.entity.plant.plantfood.PlantFoodEffect;
+import pvz.model.entity.plant.plantfood.PlantFoodEffects;
+import pvz.model.entity.plant.lifecycle.PlantLifecycle;
+import pvz.model.entity.plant.lifecycle.PlantThreat;
+import pvz.model.entity.plant.lifecycle.PlantRemovalResult;
+import pvz.model.entity.plant.behavior.PlantBehaviorFactory;
+import pvz.model.entity.plant.behavior.PlantPlacementContext;
 
 public class Plant extends LivingEntity {
-
     private final PlantSpec spec;
+
+    private final PlantFoodEffect plantFoodEffect;
+    private final PlantLifecycle lifecycle = new PlantLifecycle();
 
     private World world;
     private int column;
     private int row;
+
     private long lastActionTick;
+    private final long actionIntervalTicks;
+
+    private final PlantBehavior behavior;
 
     //lifetime
     private final PlantLifetimeProfile lifetimeProfile;
@@ -33,269 +38,127 @@ public class Plant extends LivingEntity {
     private long expirationTick = Long.MAX_VALUE;
     private boolean removedFromWorld;
 
-    //shooter
-    private boolean burstActive;
-    private int nextBurstStep;
-    private long nextBurstShotTick;
-
-    private final ShooterProfile shooterProfile;
-    //sun
-    private SunProfile sunProfile;
-    private int pendingSuns;
-
     public Plant(PlantSpec spec) {
-        this.spec = spec;
-        this.shooterProfile = createShooterProfile(spec);
+        this.spec = Objects.requireNonNull(spec, "plant spec cannot be null");
 
-        this.lifetimeProfile = PlantLifetimeProfiles.from(spec);
+        this.plantFoodEffect = PlantFoodEffects.from(spec);
 
         this.health = spec.getBaseHp();
         this.name = spec.getName();
+
+        this.actionIntervalTicks = (long) (spec.getActionInterval() * Game.TICKS_PER_SECOND);
+
+        this.lifetimeProfile = PlantLifetimeProfiles.from(spec);
+
+        this.behavior = PlantBehaviorFactory.create(this, spec);
     }
 
-    public void place(World world, int column, int row, long currentTick) {
-        this.world = world;
-        this.column = column;
-        this.row = row;
-        this.lastActionTick = currentTick;
-        this.sunProfile = createSunProfile(currentTick);
+    public void place(
+            World world,
+            int column,
+            int row,
+            long currentTick
+    ) {
+        if (this.world != null) {
+            throw new IllegalStateException(name + " is already placed");
+        }
 
-        resetLifetime(currentTick);
+        PlantPlacementContext placementContext =
+                new PlantPlacementContext(
+                        this,
+                        world,
+                        column,
+                        row,
+                        currentTick
+                );
+
+        this.world = placementContext.world();
+        this.column = placementContext.column();
+        this.row = placementContext.row();
+        this.lastActionTick = placementContext.placedTick();
+
+        behavior.onPlaced(placementContext);
+
+        resetLifetime(placementContext.placedTick());
     }
-    // SunProducer
-    private SunProfile createSunProfile(long plantedTick) {
-        return switch (name.toLowerCase(Locale.ROOT)) {
-            case "sunflower" ->
-                    new FixedSunProfile(SunValue.NORMALSUN.getValue(), 1,
-                            SunValue.FNSUN.getValue());
-
-            case "twin sunflower" ->
-                    new FixedSunProfile(SunValue.NORMALSUN.getValue(), 2,
-                            SunValue.FTSUN.getValue());
-
-            case "primal sunflower" ->
-                    new FixedSunProfile(SunValue.BIGSUN.getValue(), 1,
-                            SunValue.FBSUN.getValue());
-
-            case "sun-shroom" ->
-                    new SunShroomProfile(plantedTick);
-
-            default -> null;
-        };
-    }
-
+    // sun
     public boolean hasPendingSuns() {
-        return pendingSuns > 0;
+        return behavior.hasPendingSuns();
     }
 
     public void onProducedSunRemoved() {
-        if (pendingSuns > 0) {
-            pendingSuns--;
-        }
+        behavior.onProducedSunRemoved();
     }
 
-    private void updateSunProducer(long tick, long intervalTicks) {
-        if (sunProfile == null) {
-            return;
-        }
-
-        if (pendingSuns > 0) {
-            return;
-        }
-
-        if (tick - lastActionTick < intervalTicks) {
-            return;
-        }
-
-        lastActionTick = tick;
-
-        List<Integer> drops = sunProfile.getCycleDrops(tick);
-
-        for (int value : drops) {
-            Sun sun = Sun.fromPlant(
-                    world,
-                    this,
-                    getX(),
-                    getY(),
-                    value
-            );
-
-            world.addCollectible(sun);
-            world.game().register(sun);
-            pendingSuns++;
-        }
-
-        GameEvents.publish(
-                "plant " + name + " produced "
-                        + drops.size() + " sun(value: " + drops.getLast() + ") at ("
-                        + column + ", " + row + ")"
-        );
+    //plantfood
+    public boolean supportsPlantFood() {
+        return plantFoodEffect != null;
     }
 
-    //Shooters
-    private ShooterProfile createShooterProfile(
-            PlantSpec plantSpec
-    ) {
-        if (plantSpec.getCategory() != PlantCategory.SHOOTER) {
-            return null;
+    public boolean canBeAffectedBy(PlantThreat threat) {
+        Objects.requireNonNull(threat, "plant threat cannot be null");
+
+        if (removedFromWorld) {
+            return false;
         }
 
-        return ShooterProfiles.from(plantSpec);
-    }
-
-    private void updateShooter(long tick, long intervalTicks) {
-        if (shooterProfile == null) {
-            return;
-        }
-
-        if (!shouldHandleShooterUpdate()) {
-            return;
-        }
-
-        if (burstActive) {
-            continueBurst(tick);
-            return;
-        }
-
-        if (tick - lastActionTick < intervalTicks) {
-            return;
-        }
-
-        if (!hasTargetInAnyShootingLane()) {
-            return;
-        }
-
-        startBurst(tick);
-    }
-
-    private boolean hasTargetInAnyShootingLane() {
-        for (StraightShotPath path : shooterProfile.shotPaths()) {
-
-            int targetRow = row + path.laneOffset();
-
-            if (!world.board().inBounds(column, targetRow)) {
-                continue;
-            }
-
-            if (world.board().hasStraightTarget(
-                    targetRow,
-                    getX(),
-                    shooterProfile.rangeTiles(),
-                    path.direction()
-            )) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private boolean shouldHandleShooterUpdate() {
-        if (!isPeaPod()) {
+        if (world == null) {
             return true;
         }
 
-        List<Plant> peaPods = getPeaPodsInOwnTile();
-
-        return !peaPods.isEmpty()
-                && peaPods.getFirst() == this;
+        return lifecycle.allows(threat, world.game().getCurrentTick());
     }
 
-    private int getProjectileCopiesForVolley() {
-        if (!isPeaPod()) {
-            return 1;
-        }
-
-        return getPeaPodsInOwnTile().size();
+    public void applyBehaviorPlantFood(long currentTick, long durationTicks) {
+        behavior.applyPlantFood(currentTick, durationTicks);
     }
 
-    private List<Plant> getPeaPodsInOwnTile() {
-        return world.board()
-                .getTile(column, row)
-                .getPlants()
-                .stream()
-                .filter(plant -> plant.getName()
-                        .equalsIgnoreCase("Pea Pod"))
-                .toList();
+    public boolean isPlantFoodActive(long currentTick) {
+        return lifecycle.isPlantFoodActive(currentTick);
     }
 
-    private boolean isPeaPod() {
-        return name.equalsIgnoreCase("Pea Pod");
-    }
-
-    private void fireBurstStep(int burstStep) {
-        int projectileCopies = getProjectileCopiesForVolley();
-
-        for (StraightShotPath path : shooterProfile.shotPaths()) {
-
-            if (burstStep >= path.shotsPerVolley()) {
-                continue;
-            }
-
-            int targetRow = row + path.laneOffset();
-
-            if (!world.board().inBounds(column, targetRow)) {
-                continue;
-            }
-
-            fireProjectileCopies(path, targetRow, projectileCopies);
-        }
-    }
-
-    private void fireProjectileCopies(
-            StraightShotPath path,
-            int targetRow,
-            int projectileCopies
-    ) {
-        for (int copy = 0; copy < projectileCopies; copy++) {
-            world.game().register(
-                    new Projectile(
-                            world,
-                            name + " projectile",
-                            column,
-                            targetRow,
-                            shooterProfile.damagePerProjectile(),
-                            shooterProfile.projectileType(),
-                            shooterProfile.rangeTiles(),
-                            path.direction()
-                    )
+    public boolean tryApplyPlantFood(long currentTick) {
+        if (!supportsPlantFood()) {
+            throw new IllegalStateException(
+                    name + " does not have a plant food effect"
             );
         }
+
+        if (world == null) {
+            throw new IllegalStateException(
+                    name + " must be placed before applying plant food"
+            );
+        }
+
+        long durationTicks = PlantFoodEffects.durationTicks(spec);
+
+        boolean activated = lifecycle.tryActivatePlantFood(currentTick, durationTicks);
+
+        if (!activated) {
+            return false;
+        }
+
+        prepareForPlantFood(currentTick, durationTicks);
+
+        plantFoodEffect.apply(this, currentTick, durationTicks);
+
+        return true;
     }
 
-    private void startBurst(long tick) {
-        lastActionTick = tick;
+    private void prepareForPlantFood(long currentTick, long durationTicks) {
+        long effectEndTick = currentTick + durationTicks;
 
-        fireBurstStep(0);
+        health = spec.getBaseHp();
 
-        if (shooterProfile.burstLength() <= 1) {
-            burstActive = false;
-            return;
-        }
+        behavior.onPlantFoodStarted(currentTick, durationTicks);
 
-        burstActive = true;
-        nextBurstStep = 1;
-        nextBurstShotTick = tick + shooterProfile.ticksBetweenShots();
-    }
+        lastActionTick = effectEndTick;
 
-    private void continueBurst(long tick) {
-        if (tick < nextBurstShotTick) {
-            return;
-        }
-
-        fireBurstStep(nextBurstStep);
-        nextBurstStep++;
-
-        if (nextBurstStep >= shooterProfile.burstLength()) {
-            burstActive = false;
-            return;
-        }
-
-        nextBurstShotTick = tick + shooterProfile.ticksBetweenShots();
+        resetLifetime(effectEndTick);
     }
 
     //Lifetime
-    public void resetLifetime(long currentTick) {
+    private void resetLifetime(long currentTick) {
         if (currentTick < 0) {
             throw new IllegalArgumentException(
                     "current tick cannot be negative"
@@ -307,9 +170,7 @@ public class Plant extends LivingEntity {
             return;
         }
 
-        expirationTick =
-                currentTick
-                        + lifetimeProfile.lifespanTicks();
+        expirationTick = currentTick + lifetimeProfile.lifespanTicks();
     }
 
     private boolean expireIfNeeded(long tick) {
@@ -321,17 +182,21 @@ public class Plant extends LivingEntity {
             return false;
         }
 
-        expire();
+        tryRemove(
+                PlantThreat.EXPIRATION,
+                "Plant "
+                        + name
+                        + " at ("
+                        + column
+                        + ", "
+                        + row
+                        + ") expired."
+        );
+
         return true;
     }
 
-    private void expire() {
-        health = 0;
-
-        removeFromWorld("Plant " + name + " at (" + column + ", " + row + ") expired.");
-    }
-
-    // General
+    // getters
     @Override
     public double getX() {
         return tileCenter(column);
@@ -346,30 +211,79 @@ public class Plant extends LivingEntity {
         return spec;
     }
 
-    private void removeFromWorld(String message) {
+    public boolean hasTag(PlantTag tag) {
+        if (spec.getTags().contains(tag)) {
+            return true;
+        }
+        return false;
+    }
+    // remove damage death
+    public boolean isRemovedFromWorld() {
+        return removedFromWorld;
+    }
+
+    public PlantRemovalResult tryRemove(PlantThreat threat) {
+        return tryRemove(threat, null);
+    }
+
+    private PlantRemovalResult tryRemove(PlantThreat threat, String eventMessage) {
+        Objects.requireNonNull(threat, "plant threat cannot be null");
+
         if (world == null || removedFromWorld) {
-            return;
+            return PlantRemovalResult.ALREADY_REMOVED;
         }
 
+        if (!canBeAffectedBy(threat)) {
+            return PlantRemovalResult.BLOCKED_BY_PLANT_FOOD;
+        }
+
+        if (threat.setsHealthToZeroOnRemoval()) {
+            health = 0;
+        }
+
+        finishRemoval(eventMessage);
+
+        return PlantRemovalResult.REMOVED;
+    }
+
+    private void finishRemoval(String eventMessage) {
         removedFromWorld = true;
 
-        world.board()
-                .getTile(column, row)
-                .removePlant(this);
+        world.board().detachPlant(column, row, this);
 
         world.game().unregister(this);
 
-        GameEvents.publish(message);
-    }
-
-    public boolean hasTag(PlantTag plantTag) {
-        Set<PlantTag> tags = spec.getTags();
-        return tags.contains(plantTag);
+        if (eventMessage != null && !eventMessage.isBlank()) {
+            GameEvents.publish(eventMessage);
+        }
     }
 
     @Override
+    protected boolean canTakeDamage() {
+        return canBeAffectedBy(PlantThreat.DAMAGE);
+    }
+
+    @Override
+    protected void onDeath() {
+        tryRemove(
+                PlantThreat.DAMAGE,
+                "Plant "
+                        + name
+                        + " at ("
+                        + column
+                        + ", "
+                        + row
+                        + ") is destroyed."
+        );
+    }
+    //update
+    @Override
     public void update(long tick) {
         if (world == null) {
+            return;
+        }
+
+        if (lifecycle.isPlantFoodActive(tick)) {
             return;
         }
 
@@ -377,22 +291,25 @@ public class Plant extends LivingEntity {
             return;
         }
 
-        long intervalTicks =
-                (long) (spec.getActionInterval() * Game.TICKS_PER_SECOND);
-
-        if (intervalTicks <= 0) {
+        if (behavior.hasOngoingAction()) {
+            behavior.updateOngoingAction(tick);
             return;
         }
 
-        if (spec.getCategory() == PlantCategory.SUN_PRODUCER) {
-            updateSunProducer(tick, intervalTicks);
-        } else if (spec.getCategory() == PlantCategory.SHOOTER) {
-            updateShooter(tick, intervalTicks);
+        if (actionIntervalTicks <= 0) {
+            return;
         }
-    }
 
-    @Override
-    protected void onDeath() {
-        removeFromWorld("Plant " + name + " at (" + column + ", " + row + ") is destroyed.");
+        if (tick - lastActionTick < actionIntervalTicks) {
+            return;
+        }
+
+        if (!behavior.canStartAction(tick)) {
+            return;
+        }
+
+        lastActionTick = tick;
+
+        behavior.startAction(tick);
     }
 }

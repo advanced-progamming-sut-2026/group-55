@@ -15,6 +15,7 @@ import pvz.view.MenuView;
 import pvz.model.session.GameRuntime;
 import pvz.model.session.GameSessionConfig;
 import pvz.model.utils.MenuName;
+import pvz.model.entity.plant.plantfood.PlantFoodEffects;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -135,10 +136,19 @@ public class PlantSelectionController extends BaseController {
 
     private void handleBoostPlant(PlantSelectionCommand cmd, User user) {
         String target = cmd.getTargetName().toLowerCase();
+
+        PlantSpec spec = plantData.byName().get(target);
         PlayerPlant playerPlant = user.getOwnedPlant(target);
 
-        if (playerPlant == null) {
+        if (spec == null) {
+            view.showError(SystemMessage.PLANT_SELECTION_INVALID_NAME.getMessage());
+        } else if (playerPlant == null) {
             view.showError(SystemMessage.PLANT_SELECTION_NOT_OWNED.getMessage());
+        } else if (!PlantFoodEffects.supports(spec)) {
+            view.showError("Plant food effect for "
+                            + spec.getName()
+                            + " is not implemented yet!"
+            );
         } else if (boostedPlants.contains(target)) {
             view.showError(SystemMessage.PLANT_SELECTION_ALREADY_BOOSTED.getMessage());
         } else if (!user.spendDiamonds(2)) {

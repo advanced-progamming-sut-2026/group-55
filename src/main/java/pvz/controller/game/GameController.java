@@ -18,6 +18,8 @@ import pvz.model.entity.plant.Plant;
 import pvz.model.entity.zombie.BasicZombie;
 import pvz.model.entity.zombie.Zombie;
 import pvz.model.session.GameSession;
+import pvz.model.entity.plant.lifecycle.PlantRemovalResult;
+import pvz.model.entity.plant.lifecycle.PlantThreat;
 
 public final class GameController {
     private final GameSession session;
@@ -63,6 +65,9 @@ public final class GameController {
         if (GameCommand.ADD_PLANT_FOOD.getMatcher(input) != null) {
             return handleAddPlantFood();
         }
+        if ((matcher = GameCommand.FEED_PLANT.getMatcher(input)) != null) {
+            return handleFeedPlant(matcher);
+        }
         if ((matcher = GameCommand.SPAWN_ZOMBIE.getMatcher(input)) != null) {
             return handleSpawnZombie(matcher);
         }
@@ -81,6 +86,14 @@ public final class GameController {
         }
         if (!session.isPlantSelected(type)) {
             return type + " was not selected for this level!";
+        }
+
+        boolean boosted = session.isPlantBoosted(type);
+
+        if (boosted && !plant.supportsPlantFood()) {
+            return "plant food effect for "
+                    + plant.getName()
+                    + " is not implemented yet!";
         }
 
         long rechargeTicks = (long) Math.ceil(
@@ -113,6 +126,16 @@ public final class GameController {
         session.recordPlanting(type);
         plant.place(world, x, y, game.getCurrentTick());
         game.register(plant);
+
+        if (boosted) {
+            boolean activated = plant.tryApplyPlantFood(game.getCurrentTick());
+
+            if (activated) {
+                result += "\nBoost activated for "
+                        + plant.getName()
+                        + ": plant food effect applied automatically.";
+            }
+        }
 
         return result;
     }
@@ -147,19 +170,35 @@ public final class GameController {
             return "location (" + x + ", " + y + ") is out of bounds!";
         }
 
-        Plant plucked = board.removeTopPlant(x, y);
-        if (plucked == null) {
+        Plant plant = board.getTopPlant(x, y);
+
+        if (plant == null) {
             return "there is no plant in tile (" + x + ", " + y + ")!";
         }
 
-        game.unregister(plucked);
-        return "plucked "
-                + plucked.getName()
-                + " at ("
-                + x
-                + ", "
-                + y
-                + ") successfully!";
+        PlantRemovalResult removalResult = plant.tryRemove(PlantThreat.PLUCK);
+
+        return switch (removalResult) {
+
+            case REMOVED ->
+                    "plucked "
+                            + plant.getName()
+                            + " at ("
+                            + x
+                            + ", "
+                            + y
+                            + ") successfully!";
+
+            case BLOCKED_BY_PLANT_FOOD ->
+                    plant.getName() + " cannot be plucked while plant food is active!";
+
+            case ALREADY_REMOVED ->
+                    "the plant at ("
+                            + x
+                            + ", "
+                            + y
+                            + ") has already been removed!";
+        };
     }
 
     private String handleCollectSun(Matcher matcher) {
@@ -224,6 +263,67 @@ public final class GameController {
         return "plant food added! you now have "
                 + session.resources().getPlantFoodCount()
                 + " plant food(s).";
+    }
+
+    private String handleFeedPlant(Matcher matcher) {
+        int x = Integer.parseInt(matcher.group("x"));
+
+        int y = Integer.parseInt(matcher.group("y"));
+
+        if (!board.inBounds(x, y)) {
+            return "location ("
+                    + x
+                    + ", "
+                    + y
+                    + ") is out of bounds!";
+        }
+
+        List<Plant> plants = board.getTile(x, y).getPlants();
+
+        if (plants.isEmpty()) {
+            return "there is no plant at ("
+                    + x
+                    + ", "
+                    + y
+                    + ")!";
+        }
+
+        Plant plant = plants.getLast();
+
+        if (!plant.supportsPlantFood()) {
+            return "plant food effect for "
+                    + plant.getName()
+                    + " is not implemented yet!";
+        }
+
+        long currentTick = game.getCurrentTick();
+
+        if (plant.isPlantFoodActive(currentTick)) {
+            return plant.getName() + " is already using plant food!";
+        }
+
+        if (!session.resources().tryConsumePlantFood()) {
+            return "you don't have any plant food!";
+        }
+
+        boolean activated = plant.tryApplyPlantFood(currentTick);
+
+        if (!activated) {
+            session.resources().tryAddPlantFood();
+
+            return plant.getName() + " is already using plant food!";
+        }
+
+        return "plant food applied to "
+                + plant.getName()
+                + " at ("
+                + x
+                + ", "
+                + y
+                + ")! "
+                + session.resources()
+                .getPlantFoodCount()
+                + " plant food(s) left.";
     }
 
     private String handleSpawnZombie(Matcher matcher) {
