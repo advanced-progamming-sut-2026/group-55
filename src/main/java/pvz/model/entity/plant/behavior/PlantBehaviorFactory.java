@@ -4,7 +4,7 @@ import java.util.Objects;
 
 import pvz.model.entity.plant.Plant;
 import pvz.model.entity.plant.PlantSpec;
-import pvz.model.entity.plant.shooter.ShooterBehavior;
+import pvz.model.entity.plant.shooter.ShooterBehaviorFactory;
 import pvz.model.entity.plant.sun.SunProducerBehavior;
 
 public final class PlantBehaviorFactory {
@@ -19,7 +19,11 @@ public final class PlantBehaviorFactory {
 
         return switch (spec.getCategory()) {
 
-            case SHOOTER -> new ShooterBehavior(owner, spec);
+            case SHOOTER ->
+                    ShooterBehaviorFactory.create(
+                            owner,
+                            spec
+                    );
 
             case SUN_PRODUCER -> new SunProducerBehavior(owner, spec);
 

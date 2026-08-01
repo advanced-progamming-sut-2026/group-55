@@ -223,13 +223,17 @@ public class Projectile extends Entity {
         boolean tileIsFirst = isBlockingTileFirst(blockingTileColumn, zombie, previousX);
 
         if (tileIsFirst) {
-            world.board().damageTerrain(blockingTileColumn, row, damage);
+            world.board().damageTerrain(
+                    blockingTileColumn,
+                    row,
+                    type.damageAgainstTerrain(damage)
+            );
             world.game().unregister(this);
             return;
         }
 
         if (zombie != null) {
-            zombie.takeDamage(damage);
+            type.hitZombie(zombie, damage, tick);
             world.game().unregister(this);
             return;
         }

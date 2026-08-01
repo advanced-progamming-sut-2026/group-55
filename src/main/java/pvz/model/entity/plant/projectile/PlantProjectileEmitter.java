@@ -4,6 +4,8 @@ import java.util.Objects;
 
 import pvz.model.core.HorizontalDirection;
 import pvz.model.core.World;
+import pvz.model.entity.plant.shooter.ShotVector;
+import pvz.model.entity.projectile.DirectionalProjectile;
 import pvz.model.entity.projectile.Projectile;
 import pvz.model.entity.projectile.ProjectileType;
 
@@ -58,6 +60,29 @@ public final class PlantProjectileEmitter {
                         projectileType,
                         rangeTiles,
                         direction
+                )
+        );
+    }
+
+    public void emitDirectional(
+            int startRow,
+            double damage,
+            ProjectileType projectileType,
+            int rangeTiles,
+            ShotVector vector
+    ) {
+        ensurePlaced();
+
+        world.game().register(
+                new DirectionalProjectile(
+                        world,
+                        projectileName,
+                        column,
+                        startRow,
+                        damage,
+                        projectileType,
+                        rangeTiles,
+                        vector
                 )
         );
     }

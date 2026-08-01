@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 
-import pvz.model.core.HorizontalDirection;
 import pvz.model.entity.plant.PlantCategory;
 import pvz.model.entity.plant.PlantSpec;
 import pvz.model.entity.projectile.ProjectileType;
@@ -45,13 +44,22 @@ public final class ShooterProfiles {
                     ProjectileType.NORMAL
             );
 
+            case "snow pea" -> singleLaneProfile(
+                    parseSimpleDamage(spec.getDamage()),
+                    1,
+                    0,
+                    ProjectileType.ICE
+            );
+
+            case "rotobaga" -> createRotobagaProfile(spec);
+
             case "threepeater" -> new ShooterProfile(
                     20,
                     0,
                     List.of(
-                            new StraightShotPath(-1, HorizontalDirection.RIGHT, 1),
-                            new StraightShotPath(0, HorizontalDirection.RIGHT, 1),
-                            new StraightShotPath(1, HorizontalDirection.RIGHT, 1)
+                            new ShotPath(-1, ShotVector.RIGHT, 1),
+                            new ShotPath(0, ShotVector.RIGHT, 1),
+                            new ShotPath(1, ShotVector.RIGHT, 1)
                     ),
                     ProjectileType.NORMAL,
                     FULL_BOARD_RANGE
@@ -83,8 +91,8 @@ public final class ShooterProfiles {
                     20,
                     RAPID_SHOT_GAP_TICKS,
                     List.of(
-                            new StraightShotPath(0, HorizontalDirection.RIGHT, 1),
-                            new StraightShotPath(0, HorizontalDirection.LEFT, 2)
+                            new ShotPath(0, ShotVector.RIGHT, 1),
+                            new ShotPath(0, ShotVector.LEFT, 2)
                     ),
                     ProjectileType.NORMAL,
                     FULL_BOARD_RANGE
@@ -96,8 +104,84 @@ public final class ShooterProfiles {
                     ProjectileType.NORMAL
             );
 
+            case "starfruit" -> createStarfruitProfile(spec);
+
+            case "goo peashooter" -> singleLaneProfile(
+                    parseSimpleDamage(spec.getDamage()),
+                    1,
+                    0,
+                    ProjectileType.POISON
+            );
+
             default -> createFallbackProfile(spec);
         };
+    }
+
+    private static ShooterProfile createRotobagaProfile(
+            PlantSpec spec
+    ) {
+        DamageBurst damageBurst = parseDamageBurst(
+                spec.getDamage()
+        );
+
+        return new ShooterProfile(
+                damageBurst.damagePerProjectile(),
+                RAPID_SHOT_GAP_TICKS,
+                List.of(
+                        new ShotPath(
+                                0,
+                                ShotVector.UP_RIGHT,
+                                damageBurst.shotsPerDirection()
+                        ),
+                        new ShotPath(
+                                0,
+                                ShotVector.DOWN_RIGHT,
+                                damageBurst.shotsPerDirection()
+                        ),
+                        new ShotPath(
+                                0,
+                                ShotVector.UP_LEFT,
+                                damageBurst.shotsPerDirection()
+                        ),
+                        new ShotPath(
+                                0,
+                                ShotVector.DOWN_LEFT,
+                                damageBurst.shotsPerDirection()
+                        )
+                ),
+                ProjectileType.NORMAL,
+                FULL_BOARD_RANGE
+        );
+    }
+
+    private static ShooterProfile createStarfruitProfile(
+            PlantSpec spec
+    ) {
+        double damage = parseSimpleDamage(
+                spec.getDamage()
+        );
+
+        return new ShooterProfile(
+                damage,
+                0,
+                List.of(
+                        new ShotPath(0, ShotVector.LEFT, 1),
+                        new ShotPath(0, ShotVector.UP, 1),
+                        new ShotPath(0, ShotVector.DOWN, 1),
+                        new ShotPath(
+                                0,
+                                ShotVector.SHALLOW_UP_RIGHT,
+                                1
+                        ),
+                        new ShotPath(
+                                0,
+                                ShotVector.SHALLOW_DOWN_RIGHT,
+                                1
+                        )
+                ),
+                ProjectileType.NORMAL,
+                FULL_BOARD_RANGE
+        );
     }
 
     private static ShooterProfile singleLaneProfile(
@@ -125,7 +209,11 @@ public final class ShooterProfiles {
                 damage,
                 ticksBetweenShots,
                 List.of(
-                        new StraightShotPath(0, HorizontalDirection.RIGHT, shotsPerLane)
+                        new ShotPath(
+                                0,
+                                ShotVector.RIGHT,
+                                shotsPerLane
+                        )
                 ),
                 projectileType,
                 rangeTiles
@@ -149,5 +237,47 @@ public final class ShooterProfiles {
         } catch (NumberFormatException exception) {
             return DEFAULT_SHOT_DAMAGE;
         }
+    }
+
+    private static DamageBurst parseDamageBurst(
+            String damageText
+    ) {
+        String[] parts = damageText
+                .strip()
+                .toLowerCase(Locale.ROOT)
+                .split("x");
+
+        if (parts.length != 2) {
+            throw new IllegalArgumentException(
+                    "expected repeated damage in the form damagexshots: "
+                            + damageText
+            );
+        }
+
+        try {
+            double damage = Double.parseDouble(parts[0]);
+            int shots = Integer.parseInt(parts[1]);
+
+            if (damage < 0 || shots <= 0) {
+                throw new IllegalArgumentException(
+                        "repeated damage values must be positive: "
+                                + damageText
+                );
+            }
+
+            return new DamageBurst(damage, shots);
+        } catch (NumberFormatException exception) {
+            throw new IllegalArgumentException(
+                    "invalid repeated damage value: "
+                            + damageText,
+                    exception
+            );
+        }
+    }
+
+    private record DamageBurst(
+            double damagePerProjectile,
+            int shotsPerDirection
+    ) {
     }
 }

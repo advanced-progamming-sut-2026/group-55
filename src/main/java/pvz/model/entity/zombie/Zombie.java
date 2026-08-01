@@ -8,6 +8,8 @@ import pvz.model.entity.LivingEntity;
 import pvz.model.entity.plant.Plant;
 
 public abstract class Zombie extends LivingEntity {
+    private static final double CHILLED_SPEED_MULTIPLIER = 0.5;
+
     protected double x;
     protected double y;
 
@@ -15,6 +17,16 @@ public abstract class Zombie extends LivingEntity {
     private final double damagePerSecond;
     private World world;
     private boolean reachedHouse;
+
+    private Plant biteTarget;
+    private long nextBiteTick = Long.MAX_VALUE;
+
+    private long chilledUntilTick;
+
+    private int poisonStacks;
+    private double poisonDamagePerStack;
+    private long poisonUntilTick;
+    private long nextPoisonDamageTick = Long.MAX_VALUE;
 
     protected Zombie(String name, double health, double tilesPerSecond, double damagePerSecond) {
         this.name = name;
@@ -47,23 +59,210 @@ public abstract class Zombie extends LivingEntity {
 
     @Override
     public void update(long tick) {
-        if (reachedHouse) {
+        updatePoison(tick);
+
+        if (reachedHouse || isDead()) {
             return;
         }
+
         Plant target = frontPlant();
+
         if (target != null) {
-            if (tick % Game.TICKS_PER_SECOND == 0) {
-                bite(target);
-            }
+            updateBiting(target, tick);
             return;
         }
-        x -= tilesPerSecond / Game.TICKS_PER_SECOND;
+
+        biteTarget = null;
+        nextBiteTick = Long.MAX_VALUE;
+
+        double speedMultiplier =
+                isChilled(tick)
+                        ? CHILLED_SPEED_MULTIPLIER
+                        : 1;
+
+        x -= tilesPerSecond
+                * speedMultiplier
+                / Game.TICKS_PER_SECOND;
+
         if (x <= 0) {
             x = 0;
             reachedHouse = true;
             GameEvents.publish("a zombie reached the end of lane " + getTileY()
                     + "! (lawn mower is not implemented yet)");
         }
+    }
+
+    public void takeProjectileDamage(double damage) {
+        takeDamage(damage);
+    }
+
+    public void takeDirectDamage(double damage) {
+        takeDamage(damage);
+    }
+
+    public void applyChill(
+            long currentTick,
+            long durationTicks
+    ) {
+        if (currentTick < 0) {
+            throw new IllegalArgumentException(
+                    "current tick cannot be negative"
+            );
+        }
+
+        if (durationTicks <= 0) {
+            throw new IllegalArgumentException(
+                    "chill duration must be positive"
+            );
+        }
+
+        chilledUntilTick = Math.max(
+                chilledUntilTick,
+                currentTick + durationTicks
+        );
+
+        if (biteTarget != null) {
+            nextBiteTick = Math.max(
+                    nextBiteTick,
+                    currentTick
+                            + chilledAttackIntervalTicks()
+            );
+        }
+    }
+
+    public void removeChill(long currentTick) {
+        if (currentTick < 0) {
+            throw new IllegalArgumentException(
+                    "current tick cannot be negative"
+            );
+        }
+
+        chilledUntilTick = 0;
+
+        if (biteTarget != null) {
+            nextBiteTick = Math.min(
+                    nextBiteTick,
+                    currentTick + Game.TICKS_PER_SECOND
+            );
+        }
+    }
+
+    public void applyPoison(
+            long currentTick,
+            long durationTicks,
+            double damagePerStack,
+            int maximumStacks
+    ) {
+        if (currentTick < 0) {
+            throw new IllegalArgumentException(
+                    "current tick cannot be negative"
+            );
+        }
+
+        if (durationTicks <= 0) {
+            throw new IllegalArgumentException(
+                    "poison duration must be positive"
+            );
+        }
+
+        if (damagePerStack < 0) {
+            throw new IllegalArgumentException(
+                    "poison damage cannot be negative"
+            );
+        }
+
+        if (maximumStacks <= 0) {
+            throw new IllegalArgumentException(
+                    "maximum poison stacks must be positive"
+            );
+        }
+
+        if (currentTick > poisonUntilTick) {
+            clearPoison();
+        }
+
+        poisonStacks = Math.min(
+                maximumStacks,
+                poisonStacks + 1
+        );
+
+        poisonDamagePerStack = Math.max(
+                poisonDamagePerStack,
+                damagePerStack
+        );
+
+        poisonUntilTick = currentTick + durationTicks;
+
+        if (nextPoisonDamageTick == Long.MAX_VALUE) {
+            nextPoisonDamageTick =
+                    currentTick + Game.TICKS_PER_SECOND;
+        }
+    }
+
+    public boolean isChilled(long currentTick) {
+        return currentTick < chilledUntilTick;
+    }
+
+    private void updateBiting(
+            Plant target,
+            long currentTick
+    ) {
+        if (target != biteTarget) {
+            biteTarget = target;
+            nextBiteTick = currentTick
+                    + attackIntervalTicks(currentTick);
+        }
+
+        if (currentTick < nextBiteTick) {
+            return;
+        }
+
+        bite(target);
+
+        nextBiteTick = currentTick
+                + attackIntervalTicks(currentTick);
+    }
+
+    private long attackIntervalTicks(long currentTick) {
+        if (isChilled(currentTick)) {
+            return chilledAttackIntervalTicks();
+        }
+
+        return Game.TICKS_PER_SECOND;
+    }
+
+    private long chilledAttackIntervalTicks() {
+        return 2L * Game.TICKS_PER_SECOND;
+    }
+
+    private void updatePoison(long currentTick) {
+        if (poisonStacks == 0) {
+            return;
+        }
+
+        while (currentTick >= nextPoisonDamageTick
+                && nextPoisonDamageTick <= poisonUntilTick
+                && !isDead()) {
+
+            takeDirectDamage(
+                    poisonStacks
+                            * poisonDamagePerStack
+            );
+
+            nextPoisonDamageTick +=
+                    Game.TICKS_PER_SECOND;
+        }
+
+        if (currentTick >= poisonUntilTick) {
+            clearPoison();
+        }
+    }
+
+    private void clearPoison() {
+        poisonStacks = 0;
+        poisonDamagePerStack = 0;
+        poisonUntilTick = 0;
+        nextPoisonDamageTick = Long.MAX_VALUE;
     }
 
     private Plant frontPlant() {

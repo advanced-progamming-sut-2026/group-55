@@ -3,7 +3,9 @@ package pvz.model.core;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import pvz.model.entity.plant.Plant;
+import pvz.model.entity.plant.shooter.ShotVector;
 import pvz.model.entity.zombie.Zombie;
 
 public final class Board implements Updatable {
@@ -323,6 +325,92 @@ public final class Board implements Updatable {
         );
     }
 
+    public boolean hasDirectionalTarget(
+            int startColumn,
+            int startRow,
+            int rangeTiles,
+            ShotVector vector
+    ) {
+        requireInBounds(startColumn, startRow);
+
+        if (rangeTiles <= 0) {
+            throw new IllegalArgumentException(
+                    "range must be positive"
+            );
+        }
+
+        Objects.requireNonNull(
+                vector,
+                "shot vector cannot be null"
+        );
+
+        for (Zombie zombie : zombies) {
+            if (isTileOnDirectionalPath(
+                    startColumn,
+                    startRow,
+                    zombie.getTileX(),
+                    zombie.getTileY(),
+                    rangeTiles,
+                    vector
+            )) {
+                return true;
+            }
+        }
+
+        for (int column = 1; column <= columns; column++) {
+            for (int row = 1; row <= rows; row++) {
+                if (!getTile(column, row)
+                        .blocksStraightProjectiles()) {
+                    continue;
+                }
+
+                if (isTileOnDirectionalPath(
+                        startColumn,
+                        startRow,
+                        column,
+                        row,
+                        rangeTiles,
+                        vector
+                )) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private boolean isTileOnDirectionalPath(
+            int startColumn,
+            int startRow,
+            int targetColumn,
+            int targetRow,
+            int rangeTiles,
+            ShotVector vector
+    ) {
+        int columnDifference =
+                targetColumn - startColumn;
+
+        int rowDifference =
+                targetRow - startRow;
+
+        if (!vector.reachesTile(
+                columnDifference,
+                rowDifference
+        )) {
+            return false;
+        }
+
+        if (rangeTiles == Integer.MAX_VALUE) {
+            return true;
+        }
+
+        return Math.hypot(
+                columnDifference,
+                rowDifference
+        ) <= rangeTiles;
+    }
+
 
     //Zombie:
     public void addZombie(Zombie zombie) {
@@ -338,8 +426,29 @@ public final class Board implements Updatable {
     }
 
     public boolean hasZombieAhead(int row, double fromX) {
+        return hasZombieAhead(
+                row,
+                fromX,
+                Set.of()
+        );
+    }
+
+    public boolean hasZombieAhead(
+            int row,
+            double fromX,
+            Set<Zombie> ignoredZombies
+    ) {
+        Objects.requireNonNull(
+                ignoredZombies,
+                "ignored zombies cannot be null"
+        );
+
         return zombies.stream()
-                .anyMatch(zombie -> zombie.getTileY() == row && zombie.getX() >= fromX);
+                .anyMatch(zombie ->
+                        !ignoredZombies.contains(zombie)
+                                && zombie.getTileY() == row
+                                && zombie.getX() >= fromX
+                );
     }
 
     public Zombie findHitZombie(
@@ -347,17 +456,37 @@ public final class Board implements Updatable {
             double fromX,
             double toX
     ) {
+        return findHitZombie(
+                row,
+                fromX,
+                toX,
+                Set.of()
+        );
+    }
+
+    public Zombie findHitZombie(
+            int row,
+            double fromX,
+            double toX,
+            Set<Zombie> ignoredZombies
+    ) {
         if (row < 1 || row > rows) {
             throw new IndexOutOfBoundsException(
                     "row " + row + " is out of bounds"
             );
         }
 
+        Objects.requireNonNull(
+                ignoredZombies,
+                "ignored zombies cannot be null"
+        );
+
         if (toX > fromX) {
             return findRightMovingProjectileHit(
                     row,
                     fromX,
-                    toX
+                    toX,
+                    ignoredZombies
             );
         }
 
@@ -365,7 +494,8 @@ public final class Board implements Updatable {
             return findLeftMovingProjectileHit(
                     row,
                     fromX,
-                    toX
+                    toX,
+                    ignoredZombies
             );
         }
 
@@ -375,12 +505,16 @@ public final class Board implements Updatable {
     private Zombie findRightMovingProjectileHit(
             int row,
             double fromX,
-            double toX
+            double toX,
+            Set<Zombie> ignoredZombies
     ) {
         Zombie nearest = null;
 
         for (Zombie zombie : zombies) {
-            if (zombie.getTileY() != row || zombie.getX() <= fromX || zombie.getX() > toX) {
+            if (ignoredZombies.contains(zombie)
+                    || zombie.getTileY() != row
+                    || zombie.getX() <= fromX
+                    || zombie.getX() > toX) {
                 continue;
             }
 
@@ -395,12 +529,16 @@ public final class Board implements Updatable {
     private Zombie findLeftMovingProjectileHit(
             int row,
             double fromX,
-            double toX
+            double toX,
+            Set<Zombie> ignoredZombies
     ) {
         Zombie nearest = null;
 
         for (Zombie zombie : zombies) {
-            if (zombie.getTileY() != row || zombie.getX() >= fromX || zombie.getX() < toX) {
+            if (ignoredZombies.contains(zombie)
+                    || zombie.getTileY() != row
+                    || zombie.getX() >= fromX
+                    || zombie.getX() < toX) {
                 continue;
             }
 
@@ -410,6 +548,22 @@ public final class Board implements Updatable {
         }
 
         return nearest;
+    }
+
+    public Zombie findZombieInTile(
+            int column,
+            int row
+    ) {
+        requireInBounds(column, row);
+
+        for (Zombie zombie : zombies) {
+            if (zombie.getTileX() == column
+                    && zombie.getTileY() == row) {
+                return zombie;
+            }
+        }
+
+        return null;
     }
 
     private boolean hasZombieInDirection(

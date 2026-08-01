@@ -1,7 +1,7 @@
 package pvz.model.entity.plant.shooter;
 
-import java.util.Objects;
 import java.util.List;
+import java.util.Objects;
 
 import pvz.model.entity.plant.Plant;
 import pvz.model.entity.plant.PlantSpec;
@@ -15,7 +15,6 @@ public final class ShooterBehavior
         implements PlantFoodCapability {
 
     private static final double PLANT_FOOD_PROJECTILE_SPACING_TILES = 1.0 / 5.0;
-
     private static final String PEA_POD_NAME = "Pea Pod";
 
     private final PlantSpec spec;
@@ -137,10 +136,12 @@ public final class ShooterBehavior
             return true;
         }
 
-        List<Plant> plants = world().board().getTile(column(), row()).getPlants();
+        List<Plant> plants = world()
+                .board()
+                .getTile(column(), row())
+                .getPlants();
 
         for (int index = plants.size() - 1; index >= 0; index--) {
-
             Plant plant = plants.get(index);
 
             if (plant.getName().equalsIgnoreCase(PEA_POD_NAME)) {
@@ -152,19 +153,14 @@ public final class ShooterBehavior
     }
 
     private boolean hasTargetInAnyShootingLane() {
-        for (StraightShotPath path : profile.shotPaths()) {
+        for (ShotPath path : profile.shotPaths()) {
             int targetRow = row() + path.laneOffset();
 
             if (!world().board().inBounds(column(), targetRow)) {
                 continue;
             }
 
-            if (world().board().hasStraightTarget(
-                    targetRow,
-                    owner().getX(),
-                    profile.rangeTiles(),
-                    path.direction()
-            )) {
+            if (hasTargetOnPath(path, targetRow)) {
                 return true;
             }
         }
@@ -172,8 +168,29 @@ public final class ShooterBehavior
         return false;
     }
 
+    private boolean hasTargetOnPath(
+            ShotPath path,
+            int targetRow
+    ) {
+        if (path.vector().isHorizontal()) {
+            return world().board().hasStraightTarget(
+                    targetRow,
+                    owner().getX(),
+                    profile.rangeTiles(),
+                    path.vector().horizontalDirection()
+            );
+        }
+
+        return world().board().hasDirectionalTarget(
+                column(),
+                targetRow,
+                profile.rangeTiles(),
+                path.vector()
+        );
+    }
+
     private void fireBurstStep(int burstStep) {
-        for (StraightShotPath path : profile.shotPaths()) {
+        for (ShotPath path : profile.shotPaths()) {
             if (burstStep >= path.shotsPerVolley()) {
                 continue;
             }
@@ -184,15 +201,33 @@ public final class ShooterBehavior
                 continue;
             }
 
+            fireProjectile(path, targetRow);
+        }
+    }
+
+    private void fireProjectile(
+            ShotPath path,
+            int targetRow
+    ) {
+        if (path.vector().isHorizontal()) {
             projectileEmitter.emit(
                     targetRow,
                     0,
                     profile.damagePerProjectile(),
                     profile.projectileType(),
                     profile.rangeTiles(),
-                    path.direction()
+                    path.vector().horizontalDirection()
             );
+            return;
         }
+
+        projectileEmitter.emitDirectional(
+                targetRow,
+                profile.damagePerProjectile(),
+                profile.projectileType(),
+                profile.rangeTiles(),
+                path.vector()
+        );
     }
 
     private void continueBurst(long currentTick) {

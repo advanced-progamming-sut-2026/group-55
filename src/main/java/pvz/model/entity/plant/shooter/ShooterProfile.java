@@ -7,7 +7,7 @@ import pvz.model.entity.projectile.ProjectileType;
 public record ShooterProfile(
         double damagePerProjectile,
         long ticksBetweenShots,
-        List<StraightShotPath> shotPaths,
+        List<ShotPath> shotPaths,
         ProjectileType projectileType,
         int rangeTiles
 ) {
@@ -29,7 +29,9 @@ public record ShooterProfile(
         }
 
         int burstLength = shotPaths.stream()
-                .mapToInt(StraightShotPath::shotsPerVolley).max().orElseThrow();
+                .mapToInt(ShotPath::shotsPerVolley)
+                .max()
+                .orElseThrow();
 
         if (burstLength > 1 && ticksBetweenShots == 0) {
             throw new IllegalArgumentException("multi-shot profiles need a positive shot gap");
@@ -46,7 +48,7 @@ public record ShooterProfile(
 
     public int burstLength() {
         return shotPaths.stream()
-                .mapToInt(StraightShotPath::shotsPerVolley)
+                .mapToInt(ShotPath::shotsPerVolley)
                 .max()
                 .orElseThrow();
     }
