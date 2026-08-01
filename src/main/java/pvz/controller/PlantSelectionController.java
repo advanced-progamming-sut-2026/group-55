@@ -15,7 +15,7 @@ import pvz.view.MenuView;
 import pvz.model.session.GameRuntime;
 import pvz.model.session.GameSessionConfig;
 import pvz.model.utils.MenuName;
-import pvz.model.entity.plant.plantfood.PlantFoodEffects;
+import pvz.model.entity.plant.plantfood.PlantFoodSupport;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -144,7 +144,7 @@ public class PlantSelectionController extends BaseController {
             view.showError(SystemMessage.PLANT_SELECTION_INVALID_NAME.getMessage());
         } else if (playerPlant == null) {
             view.showError(SystemMessage.PLANT_SELECTION_NOT_OWNED.getMessage());
-        } else if (!PlantFoodEffects.supports(spec)) {
+        } else if (!PlantFoodSupport.isImplemented(spec)) {
             view.showError("Plant food effect for "
                             + spec.getName()
                             + " is not implemented yet!"

@@ -9,9 +9,13 @@ import pvz.model.entity.plant.Plant;
 import pvz.model.entity.plant.PlantSpec;
 import pvz.model.entity.plant.behavior.AbstractPlantBehavior;
 import pvz.model.entity.plant.plantfood.PlantFoodVolley;
+import pvz.model.entity.plant.behavior.capability.PlantFoodCapability;
+import pvz.model.entity.plant.behavior.capability.SunProductionCapability;
 
 public final class SunProducerBehavior
-        extends AbstractPlantBehavior {
+        extends AbstractPlantBehavior
+        implements PlantFoodCapability,
+        SunProductionCapability {
 
     private final PlantSpec spec;
 
@@ -22,6 +26,11 @@ public final class SunProducerBehavior
         super(owner);
 
         this.spec = Objects.requireNonNull(spec, "plant spec cannot be null");
+    }
+
+    @Override
+    public boolean supportsPlantFood() {
+        return SunProfiles.hasProfileFor(spec);
     }
 
     @Override

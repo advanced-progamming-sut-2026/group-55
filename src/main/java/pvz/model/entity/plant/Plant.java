@@ -7,20 +7,20 @@ import pvz.model.core.GameEvents;
 import pvz.model.core.World;
 import pvz.model.entity.LivingEntity;
 import pvz.model.entity.plant.behavior.PlantBehavior;
-import pvz.model.entity.plant.lifetime.PlantLifetimeProfile;
-import pvz.model.entity.plant.lifetime.PlantLifetimeProfiles;
-import pvz.model.entity.plant.plantfood.PlantFoodEffect;
-import pvz.model.entity.plant.plantfood.PlantFoodEffects;
+import pvz.model.entity.plant.lifetime.PlantLifetimeController;
+import pvz.model.entity.plant.plantfood.PlantFoodController;
 import pvz.model.entity.plant.lifecycle.PlantLifecycle;
 import pvz.model.entity.plant.lifecycle.PlantThreat;
 import pvz.model.entity.plant.lifecycle.PlantRemovalResult;
 import pvz.model.entity.plant.behavior.PlantBehaviorFactory;
 import pvz.model.entity.plant.behavior.PlantPlacementContext;
+import pvz.model.entity.plant.behavior.capability.PlantFoodCapability;
+import pvz.model.entity.plant.behavior.capability.SunProductionCapability;
 
 public class Plant extends LivingEntity {
     private final PlantSpec spec;
 
-    private final PlantFoodEffect plantFoodEffect;
+    private final PlantFoodController plantFoodController;
     private final PlantLifecycle lifecycle = new PlantLifecycle();
 
     private World world;
@@ -32,25 +32,36 @@ public class Plant extends LivingEntity {
 
     private final PlantBehavior behavior;
 
-    //lifetime
-    private final PlantLifetimeProfile lifetimeProfile;
+    private final SunProductionCapability sunProductionCapability;
 
-    private long expirationTick = Long.MAX_VALUE;
+    private final PlantLifetimeController lifetimeController;
+
     private boolean removedFromWorld;
 
     public Plant(PlantSpec spec) {
         this.spec = Objects.requireNonNull(spec, "plant spec cannot be null");
-
-        this.plantFoodEffect = PlantFoodEffects.from(spec);
 
         this.health = spec.getBaseHp();
         this.name = spec.getName();
 
         this.actionIntervalTicks = (long) (spec.getActionInterval() * Game.TICKS_PER_SECOND);
 
-        this.lifetimeProfile = PlantLifetimeProfiles.from(spec);
+        this.lifetimeController = PlantLifetimeController.from(spec);
 
         this.behavior = PlantBehaviorFactory.create(this, spec);
+
+        PlantFoodCapability plantFoodCapability = resolvePlantFoodCapability(behavior);
+
+        this.sunProductionCapability = resolveSunProductionCapability(behavior);
+
+        this.plantFoodController =
+                new PlantFoodController(
+                        name,
+                        lifecycle,
+                        plantFoodCapability,
+                        () -> world != null && !removedFromWorld,
+                        this::prepareForPlantFood
+                );
     }
 
     public void place(
@@ -79,20 +90,50 @@ public class Plant extends LivingEntity {
 
         behavior.onPlaced(placementContext);
 
-        resetLifetime(placementContext.placedTick());
+        lifetimeController.resetAt(placementContext.placedTick());
     }
     // sun
     public boolean hasPendingSuns() {
-        return behavior.hasPendingSuns();
+        return (sunProductionCapability != null) &&
+                (sunProductionCapability.hasPendingSuns());
     }
 
     public void onProducedSunRemoved() {
-        behavior.onProducedSunRemoved();
+        if (sunProductionCapability == null) {
+            throw new IllegalStateException(
+                    name + " does not have a sun production capability"
+            );
+        }
+
+        sunProductionCapability.onProducedSunRemoved();
+    }
+
+    private static SunProductionCapability
+    resolveSunProductionCapability(PlantBehavior behavior) {
+        if (behavior instanceof SunProductionCapability capability) {
+            return capability;
+        }
+
+        return null;
     }
 
     //plantfood
+    private static PlantFoodCapability
+    resolvePlantFoodCapability(PlantBehavior behavior) {
+        if (!(behavior
+                instanceof PlantFoodCapability capability)) {
+            return null;
+        }
+
+        if (!capability.supportsPlantFood()) {
+            return null;
+        }
+
+        return capability;
+    }
+
     public boolean supportsPlantFood() {
-        return plantFoodEffect != null;
+        return plantFoodController.supportsPlantFood();
     }
 
     public boolean canBeAffectedBy(PlantThreat threat) {
@@ -109,40 +150,12 @@ public class Plant extends LivingEntity {
         return lifecycle.allows(threat, world.game().getCurrentTick());
     }
 
-    public void applyBehaviorPlantFood(long currentTick, long durationTicks) {
-        behavior.applyPlantFood(currentTick, durationTicks);
-    }
-
     public boolean isPlantFoodActive(long currentTick) {
-        return lifecycle.isPlantFoodActive(currentTick);
+        return plantFoodController.isActive(currentTick);
     }
 
     public boolean tryApplyPlantFood(long currentTick) {
-        if (!supportsPlantFood()) {
-            throw new IllegalStateException(
-                    name + " does not have a plant food effect"
-            );
-        }
-
-        if (world == null) {
-            throw new IllegalStateException(
-                    name + " must be placed before applying plant food"
-            );
-        }
-
-        long durationTicks = PlantFoodEffects.durationTicks(spec);
-
-        boolean activated = lifecycle.tryActivatePlantFood(currentTick, durationTicks);
-
-        if (!activated) {
-            return false;
-        }
-
-        prepareForPlantFood(currentTick, durationTicks);
-
-        plantFoodEffect.apply(this, currentTick, durationTicks);
-
-        return true;
+        return plantFoodController.tryActivate(currentTick);
     }
 
     private void prepareForPlantFood(long currentTick, long durationTicks) {
@@ -150,35 +163,14 @@ public class Plant extends LivingEntity {
 
         health = spec.getBaseHp();
 
-        behavior.onPlantFoodStarted(currentTick, durationTicks);
-
         lastActionTick = effectEndTick;
 
-        resetLifetime(effectEndTick);
+        lifetimeController.resetAt(effectEndTick);
     }
 
     //Lifetime
-    private void resetLifetime(long currentTick) {
-        if (currentTick < 0) {
-            throw new IllegalArgumentException(
-                    "current tick cannot be negative"
-            );
-        }
-
-        if (lifetimeProfile == null) {
-            expirationTick = Long.MAX_VALUE;
-            return;
-        }
-
-        expirationTick = currentTick + lifetimeProfile.lifespanTicks();
-    }
-
-    private boolean expireIfNeeded(long tick) {
-        if (lifetimeProfile == null) {
-            return false;
-        }
-
-        if (tick < expirationTick) {
+    private boolean removeIfExpired(long tick) {
+        if (!lifetimeController.isExpired(tick)) {
             return false;
         }
 
@@ -283,11 +275,11 @@ public class Plant extends LivingEntity {
             return;
         }
 
-        if (lifecycle.isPlantFoodActive(tick)) {
+        if (isPlantFoodActive(tick)) {
             return;
         }
 
-        if (expireIfNeeded(tick)) {
+        if (removeIfExpired(tick)) {
             return;
         }
 

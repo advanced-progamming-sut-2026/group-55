@@ -1,21 +1,27 @@
 package pvz.model.entity.plant.shooter;
 
 import java.util.Objects;
+import java.util.List;
 
 import pvz.model.entity.plant.Plant;
 import pvz.model.entity.plant.PlantSpec;
 import pvz.model.entity.plant.behavior.AbstractPlantBehavior;
+import pvz.model.entity.plant.behavior.capability.PlantFoodCapability;
 import pvz.model.entity.plant.plantfood.PlantFoodVolley;
 import pvz.model.entity.plant.projectile.PlantProjectileEmitter;
 
 public final class ShooterBehavior
-        extends AbstractPlantBehavior {
+        extends AbstractPlantBehavior
+        implements PlantFoodCapability {
 
     private static final double PLANT_FOOD_PROJECTILE_SPACING_TILES = 1.0 / 5.0;
+
+    private static final String PEA_POD_NAME = "Pea Pod";
 
     private final PlantSpec spec;
     private final ShooterProfile profile;
     private final PlantProjectileEmitter projectileEmitter;
+    private final ShooterPlantFoodProfile plantFoodProfile;
 
     private boolean burstActive;
     private int nextBurstStep;
@@ -28,7 +34,25 @@ public final class ShooterBehavior
 
         this.profile = ShooterProfiles.from(spec);
 
+        this.plantFoodProfile = ShooterPlantFoodProfiles.from(spec);
+
         this.projectileEmitter = new PlantProjectileEmitter(spec.getName());
+    }
+
+    @Override
+    public boolean supportsPlantFood() {
+        return plantFoodProfile != null;
+    }
+
+    @Override
+    public long requestedDurationTicks() {
+        if (plantFoodProfile == null) {
+            throw new IllegalStateException(
+                    spec.getName() + " does not have a shooter plant food profile"
+            );
+        }
+
+        return plantFoodProfile.durationTicks();
     }
 
     @Override
@@ -82,12 +106,14 @@ public final class ShooterBehavior
     public void applyPlantFood(long currentTick, long durationTicks) {
         ensurePlaced();
 
-        ShooterPlantFoodProfile plantFoodProfile = ShooterPlantFoodProfiles.from(spec);
-
         if (plantFoodProfile == null) {
             throw new IllegalStateException(
                     spec.getName() + " does not have a shooter plant food profile"
             );
+        }
+
+        if (!shouldEmitPlantFoodProjectiles()) {
+            return;
         }
 
         int totalSteps = plantFoodProfile.stepCount(durationTicks);
@@ -104,6 +130,25 @@ public final class ShooterBehavior
                         totalSteps
                 )
         );
+    }
+
+    private boolean shouldEmitPlantFoodProjectiles() {
+        if (!spec.getName().equalsIgnoreCase(PEA_POD_NAME)) {
+            return true;
+        }
+
+        List<Plant> plants = world().board().getTile(column(), row()).getPlants();
+
+        for (int index = plants.size() - 1; index >= 0; index--) {
+
+            Plant plant = plants.get(index);
+
+            if (plant.getName().equalsIgnoreCase(PEA_POD_NAME)) {
+                return plant == owner();
+            }
+        }
+
+        return false;
     }
 
     private boolean hasTargetInAnyShootingLane() {

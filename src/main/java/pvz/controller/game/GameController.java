@@ -288,35 +288,45 @@ public final class GameController {
                     + ")!";
         }
 
-        Plant plant = plants.getLast();
+        List<Plant> supportedPlants = plants.stream()
+                .filter(Plant::supportsPlantFood)
+                .toList();
 
-        if (!plant.supportsPlantFood()) {
-            return "plant food effect for "
-                    + plant.getName()
-                    + " is not implemented yet!";
+        if (supportedPlants.isEmpty()) {
+            return "none of the plants at ("
+                    + x
+                    + ", "
+                    + y
+                    + ") has an implemented plant food effect!";
         }
 
         long currentTick = game.getCurrentTick();
 
-        if (plant.isPlantFoodActive(currentTick)) {
-            return plant.getName() + " is already using plant food!";
+        for (Plant plant : supportedPlants) {
+            if (plant.isPlantFoodActive(currentTick)) {
+                return plant.getName() + " is already using plant food!";
+            }
         }
 
         if (!session.resources().tryConsumePlantFood()) {
             return "you don't have any plant food!";
         }
 
-        boolean activated = plant.tryApplyPlantFood(currentTick);
+        for (Plant plant : supportedPlants) {
+            boolean activated = plant.tryApplyPlantFood(currentTick);
 
-        if (!activated) {
-            session.resources().tryAddPlantFood();
-
-            return plant.getName() + " is already using plant food!";
+            if (!activated) {
+                throw new IllegalStateException(
+                        "plant food activation changed "
+                                + "after validation for "
+                                + plant.getName()
+                );
+            }
         }
 
         return "plant food applied to "
-                + plant.getName()
-                + " at ("
+                + supportedPlants.size()
+                + " compatible plant(s) at ("
                 + x
                 + ", "
                 + y

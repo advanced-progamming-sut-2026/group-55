@@ -17,26 +17,4 @@ public interface PlantBehavior {
     void startAction(
             long currentTick
     );
-
-    default void onPlantFoodStarted(
-            long currentTick,
-            long durationTicks
-    ) {
-    }
-
-    default void applyPlantFood(
-            long currentTick,
-            long durationTicks
-    ) {
-        throw new IllegalStateException(//TODO: in baiad eslah beshe shaiad giahi kolla plantfood handle nemikard
-                "plant behavior does not support plant food"
-        );
-    }
-
-    default boolean hasPendingSuns() {
-        return false;
-    }
-
-    default void onProducedSunRemoved() {
-    }
 }
