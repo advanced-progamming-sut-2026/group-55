@@ -1,4 +1,4 @@
-package pvz.model.entity.plant.shooterprofile;
+package pvz.model.entity.plant.shooter;
 
 import java.util.List;
 import java.util.Locale;
@@ -31,14 +31,7 @@ public final class ShooterProfiles {
         }
 
         return switch (spec.getName().toLowerCase(Locale.ROOT)) {
-            case "peashooter" -> singleLaneProfile(
-                    20,
-                    1,
-                    0,
-                    ProjectileType.NORMAL
-            );
-
-            case "pea pod" -> singleLaneProfile(
+            case "peashooter" , "pea pod" -> singleLaneProfile(
                     20,
                     1,
                     0,

@@ -15,6 +15,7 @@ import pvz.view.MenuView;
 import pvz.model.session.GameRuntime;
 import pvz.model.session.GameSessionConfig;
 import pvz.model.utils.MenuName;
+import pvz.model.entity.plant.plantfood.PlantFoodSupport;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -129,17 +130,25 @@ public class PlantSelectionController extends BaseController {
             view.showError(SystemMessage.PLANT_SELECTION_NOT_IN_SELECTION.getMessage());
         } else {
             selectedPlants.remove(target);
-            boostedPlants.remove(target);
             view.showSuccess(SystemMessage.PLANT_SELECTION_REMOVED.getMessage());
         }
     }
 
     private void handleBoostPlant(PlantSelectionCommand cmd, User user) {
         String target = cmd.getTargetName().toLowerCase();
+
+        PlantSpec spec = plantData.byName().get(target);
         PlayerPlant playerPlant = user.getOwnedPlant(target);
 
-        if (playerPlant == null) {
+        if (spec == null) {
+            view.showError(SystemMessage.PLANT_SELECTION_INVALID_NAME.getMessage());
+        } else if (playerPlant == null) {
             view.showError(SystemMessage.PLANT_SELECTION_NOT_OWNED.getMessage());
+        } else if (!PlantFoodSupport.isImplemented(spec)) {
+            view.showError("Plant food effect for "
+                            + spec.getName()
+                            + " is not implemented yet!"
+            );
         } else if (boostedPlants.contains(target)) {
             view.showError(SystemMessage.PLANT_SELECTION_ALREADY_BOOSTED.getMessage());
         } else if (!user.spendDiamonds(2)) {
@@ -166,6 +175,17 @@ public class PlantSelectionController extends BaseController {
             return;
         }
 
+        List<String> unselectedBoostedPlants =
+                findBoostedButNotSelectedPlants();
+
+        if (!unselectedBoostedPlants.isEmpty()) {
+            view.showError(
+                    "Cannot start game. These boosted plants are not selected: "
+                            + String.join(", ", unselectedBoostedPlants)
+            );
+            return;
+        }
+
         GameSessionConfig config = new GameSessionConfig.Builder(
                 selectedChapter,
                 List.copyOf(selectedPlants)
@@ -179,5 +199,17 @@ public class PlantSelectionController extends BaseController {
         view.showSuccess(
                 SystemMessage.PLANT_SELECTION_START_GAME.getMessage()
         );
+    }
+
+    private List<String> findBoostedButNotSelectedPlants() {
+        return boostedPlants.stream()
+                .filter(plant -> !selectedPlants.contains(plant))
+                .sorted()
+                .toList();
+    }
+
+    public void resetSelection() {
+        selectedPlants.clear();
+        boostedPlants.clear();
     }
 }

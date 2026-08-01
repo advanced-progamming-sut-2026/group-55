@@ -1,4 +1,4 @@
-package pvz.model.entity.plant.shooterprofile;
+package pvz.model.entity.plant.shooter;
 
 import java.util.Objects;
 import pvz.model.core.HorizontalDirection;

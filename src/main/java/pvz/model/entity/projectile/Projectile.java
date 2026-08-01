@@ -50,16 +50,40 @@ public class Projectile extends Entity {
             int rangeTiles,
             HorizontalDirection direction
     ) {
+        this(
+                world,
+                name,
+                startColumn,
+                startRow,
+                0,
+                damage,
+                type,
+                rangeTiles,
+                direction
+        );
+    }
+
+    public Projectile(
+            World world,
+            String name,
+            int startColumn,
+            int startRow,
+            double spawnOffsetX,
+            double damage,
+            ProjectileType type,
+            int rangeTiles,
+            HorizontalDirection direction
+    ) {
         if (rangeTiles <= 0) {
-            throw new IllegalArgumentException(
-                    "projectile range must be positive"
-            );
+            throw new IllegalArgumentException("projectile range must be positive");
         }
 
         if (damage < 0) {
-            throw new IllegalArgumentException(
-                    "projectile damage cannot be negative"
-            );
+            throw new IllegalArgumentException("projectile damage cannot be negative");
+        }
+
+        if (!Double.isFinite(spawnOffsetX)) {
+            throw new IllegalArgumentException("projectile spawn offset must be finite");
         }
 
         this.world = Objects.requireNonNull(
@@ -82,13 +106,22 @@ public class Projectile extends Entity {
                 "projectile direction cannot be null"
         );
 
-        this.x = tileCenter(startColumn);
+        this.x = calculateStartX(startColumn, spawnOffsetX);
         this.y = tileCenter(startRow);
         this.damage = damage;
 
         this.terminalX = calculateTerminalX(
                 startColumn,
                 rangeTiles
+        );
+    }
+
+    private double calculateStartX(int startColumn, double spawnOffsetX) {
+        double startX = tileCenter(startColumn) + spawnOffsetX;
+
+        return Math.max(
+                0,
+                Math.min(world.board().getCols(), startX)
         );
     }
 

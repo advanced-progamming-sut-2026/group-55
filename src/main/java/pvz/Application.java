@@ -136,8 +136,13 @@ public class Application {
         );
 
         gameRuntime.clear();
-        appState.setSelectedChapter(null);
+        clearStagePreparation();
         appState.setCurrentMenu(MenuName.GAME);
+    }
+
+    private void clearStagePreparation(){
+        plantSelectionController.resetSelection();
+        appState.setSelectedChapter(null);
     }
 
     private Command parseCommand(String input) {
@@ -187,6 +192,8 @@ public class Application {
     }
 
     private void dispatchToController(Command command) {
+        User userBeforeCommand = appState.getCurrentUser();
+
         switch (appState.getCurrentMenu()) {
             case REGISTER -> registerController.handle(command);
             case LOGIN -> loginController.handle(command);
@@ -201,6 +208,10 @@ public class Application {
             case TRAVEL_LOG -> travelLogController.handle(command);
             case LEADERBOARD -> leaderboardController.handle(command);
             case CHAPTER -> chapterController.handle(command);
+        }
+
+        if (userBeforeCommand != null && appState.getCurrentUser() == null) {
+            clearStagePreparation();
         }
     }
 

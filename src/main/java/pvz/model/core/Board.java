@@ -225,15 +225,20 @@ public final class Board implements Updatable {
         return "planted " + plant.getName() + " at (" + x + ", " + y + ") successfully!";
     }
 
-    public Plant removeTopPlant(int x, int y) {
-        Tile tile = getTile(x, y);
-        List<Plant> plants = tile.getPlants();
+    public Plant getTopPlant(int x, int y) {
+        List<Plant> plants = getTile(x, y).getPlants();
+
         if (plants.isEmpty()) {
             return null;
         }
-        Plant lastPlant = plants.getLast();
-        tile.removePlant(lastPlant);
-        return lastPlant;
+
+        return plants.getLast();
+    }
+
+    public boolean detachPlant(int x, int y, Plant plant) {
+        Objects.requireNonNull(plant, "plant cannot be null");
+
+        return getTile(x, y).removePlant(plant);
     }
 
     private boolean hasAdjacentFirePlant(int centerX, int centerY) {

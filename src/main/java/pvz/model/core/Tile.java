@@ -92,7 +92,7 @@ public final class Tile {
         plants.add(Objects.requireNonNull(plant, "plant cannot be null"));
     }
 
-    public boolean removePlant(Plant plant) {
+    boolean removePlant(Plant plant) {
         return plants.remove(plant);
     }
 

@@ -10,6 +10,7 @@ import pvz.model.core.Game;
 import pvz.model.core.World;
 import pvz.model.entity.plant.Plant;
 import pvz.model.entity.plant.PlantFactory;
+import pvz.model.core.BattleResources;
 
 public final class GameSession {
     private final GameSessionConfig config;
@@ -63,18 +64,28 @@ public final class GameSession {
             throw new IllegalArgumentException("recharge ticks cannot be negative");
         }
 
+        if (resources().isCooldownCheatEnabled()) {
+            return 0;
+        }
+
         Long lastTick = lastPlantedTicks.get(normalizePlantName(plantName));
+
         if (lastTick == null) {
             return 0;
         }
 
         long elapsedTicks = game.getCurrentTick() - lastTick;
+
         return Math.max(0, rechargeTicks - elapsedTicks);
     }
 
     public void recordPlanting(String plantName) {
         requireRunning();
         lastPlantedTicks.put(normalizePlantName(plantName), game.getCurrentTick());
+    }
+
+    public BattleResources resources() {
+        return world.resources();
     }
 
     public void markWon() {

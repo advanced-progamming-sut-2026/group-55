@@ -19,14 +19,14 @@ public final class World {
 
     private final Game game;
     private final Board board;
-    private final SunBank sunBank;
+    private final BattleResources resources;
 
     private final List<Collectible> collectibles = new ArrayList<>();
 
-    public World(Game game, Board board, SunBank sunBank) {
+    public World(Game game, Board board, BattleResources resources) {
         this.game = Objects.requireNonNull(game);
         this.board = Objects.requireNonNull(board);
-        this.sunBank = Objects.requireNonNull(sunBank);
+        this.resources = Objects.requireNonNull(resources);
     }
 
     public Game game() {
@@ -37,8 +37,12 @@ public final class World {
         return board;
     }
 
+    public BattleResources resources() {
+        return resources;
+    }
+
     public SunBank sunBank() {
-        return sunBank;
+        return resources.sunBank();
     }
 
     public void addCollectible(Collectible collectible) {
@@ -72,7 +76,7 @@ public final class World {
             return SunCollectionOutcome.EXPLODED;
         }
 
-        sunBank.add(sun.getValue());
+        resources.sunBank().add(sun.getValue());
         sun.remove();
         return SunCollectionOutcome.COLLECTED;
     }
