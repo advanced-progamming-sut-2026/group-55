@@ -5,7 +5,7 @@ import java.util.Locale;
 import java.util.Map;
 
 import pvz.model.core.Game;
-import pvz.model.core.HorizontalDirection;
+import pvz.model.core.board.HorizontalDirection;
 import pvz.model.entity.plant.PlantCategory;
 import pvz.model.entity.plant.PlantSpec;
 import pvz.model.entity.plant.PlantTag;

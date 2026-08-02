@@ -2,7 +2,7 @@ package pvz.model.entity.plant.shooter;
 
 import java.util.Objects;
 
-import pvz.model.core.HorizontalDirection;
+import pvz.model.core.board.HorizontalDirection;
 import pvz.model.entity.plant.attack.ShotVector;
 
 public record PlantFoodShotPath(

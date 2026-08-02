@@ -3,7 +3,7 @@ package pvz.model.session;
 import java.awt.Point;
 import java.util.Objects;
 
-import pvz.model.core.Board;
+import pvz.model.core.board.Board;
 import pvz.model.core.Game;
 import pvz.model.core.BattleResources;
 import pvz.model.core.World;

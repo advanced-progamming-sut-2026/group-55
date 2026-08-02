@@ -1,4 +1,4 @@
-package pvz.model.core;
+package pvz.model.core.board;
 
 public enum TileType {
     NORMAL(true, 0, false),

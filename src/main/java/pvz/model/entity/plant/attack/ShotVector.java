@@ -1,6 +1,6 @@
 package pvz.model.entity.plant.attack;
 
-import pvz.model.core.HorizontalDirection;
+import pvz.model.core.board.HorizontalDirection;
 
 public record ShotVector(
         int columnStep,

@@ -5,7 +5,7 @@ import java.util.Objects;
 import java.util.Set;
 
 import pvz.model.core.Game;
-import pvz.model.core.HorizontalDirection;
+import pvz.model.core.board.HorizontalDirection;
 import pvz.model.core.World;
 import pvz.model.entity.Entity;
 import pvz.model.entity.zombie.Zombie;

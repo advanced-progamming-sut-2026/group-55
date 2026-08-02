@@ -5,11 +5,11 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.regex.Matcher;
 
-import pvz.model.core.Board;
+import pvz.model.core.board.Board;
 import pvz.model.core.Game;
 import pvz.model.core.GameEvents;
-import pvz.model.core.Tile;
-import pvz.model.core.TileType;
+import pvz.model.core.board.Tile;
+import pvz.model.core.board.TileType;
 import pvz.model.core.World;
 import pvz.model.entity.collectible.Collectible;
 import pvz.model.entity.collectible.sun.Sun;

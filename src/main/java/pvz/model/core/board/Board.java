@@ -1,10 +1,12 @@
-package pvz.model.core;
+package pvz.model.core.board;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import pvz.model.entity.plant.Plant;
+import pvz.model.core.Game;
+import pvz.model.core.Updatable;
 import pvz.model.entity.plant.attack.ShotVector;
 import pvz.model.entity.zombie.Zombie;
 
@@ -17,6 +19,8 @@ public final class Board implements Updatable {
     private final int columns;
     private final Tile[][] tiles;
     private final List<Zombie> zombies = new ArrayList<>();
+    private final ProjectileResolver projectileResolver;
+    private final AreaDamageResolver areaDamageResolver;
 
     public Board() {
         this(DEFAULT_COLUMNS, DEFAULT_ROWS);
@@ -28,6 +32,8 @@ public final class Board implements Updatable {
         }
         this.rows = rows;
         this.columns = columns;
+        this.projectileResolver = new ProjectileResolver(this);
+        this.areaDamageResolver = new AreaDamageResolver(this);
         tiles = new Tile[columns][rows];
         for (int x = 0; x < columns; x++) {
             for (int y = 0; y < rows; y++) {
@@ -55,29 +61,7 @@ public final class Board implements Updatable {
             double fromX,
             double toX
     ) {
-        if (row < 1 || row > rows) {
-            throw new IndexOutOfBoundsException(
-                    "row " + row + " is out of bounds"
-            );
-        }
-
-        if (toX > fromX) {
-            return findRightBlockingTile(
-                    row,
-                    fromX,
-                    toX
-            );
-        }
-
-        if (toX < fromX) {
-            return findLeftBlockingTile(
-                    row,
-                    fromX,
-                    toX
-            );
-        }
-
-        return null;
+        return projectileResolver.findHitBlockingTile(row, fromX, toX);
     }
 
     private Integer findRightBlockingTile(
@@ -456,12 +440,7 @@ public final class Board implements Updatable {
             double fromX,
             double toX
     ) {
-        return findHitZombie(
-                row,
-                fromX,
-                toX,
-                Set.of()
-        );
+        return projectileResolver.findHitZombie(row, fromX, toX, Set.of());
     }
 
     public Zombie findHitZombie(
@@ -470,36 +449,7 @@ public final class Board implements Updatable {
             double toX,
             Set<Zombie> ignoredZombies
     ) {
-        if (row < 1 || row > rows) {
-            throw new IndexOutOfBoundsException(
-                    "row " + row + " is out of bounds"
-            );
-        }
-
-        Objects.requireNonNull(
-                ignoredZombies,
-                "ignored zombies cannot be null"
-        );
-
-        if (toX > fromX) {
-            return findRightMovingProjectileHit(
-                    row,
-                    fromX,
-                    toX,
-                    ignoredZombies
-            );
-        }
-
-        if (toX < fromX) {
-            return findLeftMovingProjectileHit(
-                    row,
-                    fromX,
-                    toX,
-                    ignoredZombies
-            );
-        }
-
-        return null;
+        return projectileResolver.findHitZombie(row, fromX, toX, ignoredZombies);
     }
 
     private Zombie findRightMovingProjectileHit(
@@ -617,11 +567,11 @@ public final class Board implements Updatable {
         }
     }
 
-    private int xToColumnMovingLeft(double x) {
+    int xToColumnMovingLeft(double x) {
         return (int) Math.ceil(x);
     }
 
-    private int xToColumn(double x) {
+    int xToColumn(double x) {
         return (int) Math.floor(x) + 1;
     }
 

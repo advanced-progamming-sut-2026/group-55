@@ -5,7 +5,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
-import pvz.model.core.Board;
+import pvz.model.core.board.Board;
 import pvz.model.core.Game;
 import pvz.model.core.World;
 import pvz.model.entity.plant.Plant;

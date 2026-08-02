@@ -1,9 +1,12 @@
 package pvz.model.core;
 
+import pvz.model.core.board.Board;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import pvz.model.core.board.Tile;
 import pvz.model.entity.collectible.Collectible;
 import pvz.model.entity.collectible.sun.Sun;
 import pvz.model.entity.collectible.sun.SunCollectionOutcome;

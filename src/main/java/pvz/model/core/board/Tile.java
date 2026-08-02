@@ -1,8 +1,10 @@
-package pvz.model.core;
+package pvz.model.core.board;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+
+import pvz.model.core.GameEvents;
 import pvz.model.entity.plant.Plant;
 import pvz.model.entity.plant.PlantTag;
 
