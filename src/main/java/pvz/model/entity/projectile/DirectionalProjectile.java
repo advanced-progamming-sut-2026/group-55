@@ -1,11 +1,13 @@
 package pvz.model.entity.projectile;
 
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 
 import pvz.model.core.Game;
 import pvz.model.core.World;
 import pvz.model.entity.Entity;
-import pvz.model.entity.plant.shooter.ShotVector;
+import pvz.model.entity.plant.attack.ShotVector;
 import pvz.model.entity.zombie.Zombie;
 
 public final class DirectionalProjectile extends Entity {
@@ -15,6 +17,10 @@ public final class DirectionalProjectile extends Entity {
     private final double damage;
     private final ProjectileType type;
     private final ShotVector vector;
+    private final ProjectileHitLimit hitLimit;
+    private final boolean piercesBlockingTerrain;
+    private final Set<Zombie> hitZombies = new HashSet<>();
+    private final Set<Long> hitTerrainTiles = new HashSet<>();
 
     private double remainingDistance;
     private double x;
@@ -30,6 +36,58 @@ public final class DirectionalProjectile extends Entity {
             int rangeTiles,
             ShotVector vector
     ) {
+        this(
+                world,
+                name,
+                startColumn,
+                startRow,
+                0,
+                damage,
+                type,
+                rangeTiles,
+                vector
+        );
+    }
+
+    public DirectionalProjectile(
+            World world,
+            String name,
+            int startColumn,
+            int startRow,
+            double spawnOffset,
+            double damage,
+            ProjectileType type,
+            int rangeTiles,
+            ShotVector vector
+    ) {
+        this(
+                world,
+                name,
+                startColumn,
+                startRow,
+                spawnOffset,
+                damage,
+                type,
+                rangeTiles,
+                vector,
+                ProjectileHitLimit.singleHit(),
+                false
+        );
+    }
+
+    public DirectionalProjectile(
+            World world,
+            String name,
+            int startColumn,
+            int startRow,
+            double spawnOffset,
+            double damage,
+            ProjectileType type,
+            int rangeTiles,
+            ShotVector vector,
+            ProjectileHitLimit hitLimit,
+            boolean piercesBlockingTerrain
+    ) {
         if (damage < 0) {
             throw new IllegalArgumentException(
                     "projectile damage cannot be negative"
@@ -39,6 +97,12 @@ public final class DirectionalProjectile extends Entity {
         if (rangeTiles <= 0) {
             throw new IllegalArgumentException(
                     "projectile range must be positive"
+            );
+        }
+
+        if (!Double.isFinite(spawnOffset) || spawnOffset < 0) {
+            throw new IllegalArgumentException(
+                    "projectile spawn offset must be finite and non-negative"
             );
         }
 
@@ -62,14 +126,23 @@ public final class DirectionalProjectile extends Entity {
                 "shot vector cannot be null"
         );
 
-        this.x = tileCenter(startColumn);
-        this.y = tileCenter(startRow);
+        this.hitLimit = Objects.requireNonNull(
+                hitLimit,
+                "projectile hit limit cannot be null"
+        );
+
+        this.piercesBlockingTerrain = piercesBlockingTerrain;
+
+        this.x = tileCenter(startColumn)
+                + spawnOffset * vector.unitColumnStep();
+        this.y = tileCenter(startRow)
+                + spawnOffset * vector.unitRowStep();
         this.damage = damage;
 
         this.remainingDistance =
                 rangeTiles == Integer.MAX_VALUE
                         ? Double.POSITIVE_INFINITY
-                        : rangeTiles;
+                        : Math.max(0, rangeTiles - spawnOffset);
     }
 
     @Override
@@ -114,28 +187,46 @@ public final class DirectionalProjectile extends Entity {
                 .getTile(column, row)
                 .blocksStraightProjectiles()) {
 
-            world.board().damageTerrain(
-                    column,
-                    row,
-                    type.damageAgainstTerrain(damage)
-            );
+            long terrainKey = terrainKey(column, row);
 
-            world.game().unregister(this);
-            return;
+            if (hitTerrainTiles.add(terrainKey)) {
+                world.board().damageTerrain(
+                        column,
+                        row,
+                        type.damageAgainstTerrain(damage)
+                );
+            }
+
+            if (!piercesBlockingTerrain) {
+                world.game().unregister(this);
+                return;
+            }
         }
 
-        Zombie zombie = world.board()
-                .findZombieInTile(column, row);
+        for (Zombie zombie : world.board().getZombies()) {
+            if (hitZombies.contains(zombie)
+                    || zombie.getTileX() != column
+                    || zombie.getTileY() != row) {
+                continue;
+            }
 
-        if (zombie != null) {
             type.hitZombie(zombie, damage, tick);
-            world.game().unregister(this);
-            return;
+            hitZombies.add(zombie);
+
+            if (hitLimit.isReachedBy(hitZombies.size())) {
+                world.game().unregister(this);
+                return;
+            }
         }
 
         if (remainingDistance <= 0) {
             world.game().unregister(this);
         }
+    }
+
+    private static long terrainKey(int column, int row) {
+        return ((long) column << Integer.SIZE)
+                ^ Integer.toUnsignedLong(row);
     }
 
     private boolean isInsideBoard(

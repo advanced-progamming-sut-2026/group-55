@@ -6,74 +6,105 @@ import java.util.Objects;
 import pvz.model.entity.projectile.ProjectileType;
 
 public record ShooterPlantFoodProfile(
-        int durationTicks,
-        long ticksBetweenSteps,
-        double damagePerProjectile,
-        List<PlantFoodShotPath> shotPaths,
-        ProjectileType projectileType,
-        int rangeTiles
+        List<ShooterPlantFoodPhase> phases,
+        boolean targetsMatchingPlantsOnBoard
 ) {
     public ShooterPlantFoodProfile {
-        if (durationTicks <= 0) {
-            throw new IllegalArgumentException(
-                    "plant food duration must be positive"
-            );
-        }
-
-        if (ticksBetweenSteps <= 0) {
-            throw new IllegalArgumentException(
-                    "ticks between plant food steps must be positive"
-            );
-        }
-
-        if (damagePerProjectile < 0) {
-            throw new IllegalArgumentException(
-                    "projectile damage cannot be negative"
-            );
-        }
-
-        shotPaths = List.copyOf(
+        phases = List.copyOf(
                 Objects.requireNonNull(
-                        shotPaths,
-                        "plant food shot paths cannot be null"
+                        phases,
+                        "shooter plant food phases cannot be null"
                 )
         );
 
-        if (shotPaths.isEmpty()) {
+        if (phases.isEmpty()) {
             throw new IllegalArgumentException(
-                    "shooter plant food needs at least one shot path"
+                    "shooter plant food needs at least one phase"
             );
         }
+    }
 
-        projectileType = Objects.requireNonNull(
-                projectileType,
-                "projectile type cannot be null"
+    public ShooterPlantFoodProfile(
+            List<ShooterPlantFoodPhase> phases
+    ) {
+        this(phases, false);
+    }
+
+    public ShooterPlantFoodProfile(
+            int durationTicks,
+            long ticksBetweenSteps,
+            double damagePerProjectile,
+            List<PlantFoodShotPath> shotPaths,
+            ProjectileType projectileType,
+            int rangeTiles
+    ) {
+        this(
+                List.of(
+                        new ShooterPlantFoodPhase(
+                                0,
+                                durationTicks,
+                                ticksBetweenSteps,
+                                damagePerProjectile,
+                                shotPaths,
+                                projectileType,
+                                rangeTiles
+                        )
+                ),
+                false
         );
+    }
 
-        if (rangeTiles <= 0) {
-            throw new IllegalArgumentException(
-                    "shooter plant food range must be positive"
-            );
-        }
+    public int durationTicks() {
+        return phases.stream()
+                .mapToInt(ShooterPlantFoodPhase::endTickOffset)
+                .max()
+                .orElseThrow();
+    }
+
+    public long ticksBetweenSteps() {
+        return primaryPhase().ticksBetweenSteps();
+    }
+
+    public double damagePerProjectile() {
+        return primaryPhase().damagePerProjectile();
+    }
+
+    public List<PlantFoodShotPath> shotPaths() {
+        return primaryPhase().shotPaths();
+    }
+
+    public ProjectileType projectileType() {
+        return primaryPhase().projectileType();
+    }
+
+    public int rangeTiles() {
+        return primaryPhase().rangeTiles();
     }
 
     public int stepCount() {
-        return stepCount(durationTicks);
+        return primaryPhase().stepCount();
     }
 
     public int stepCount(long effectiveDurationTicks) {
-        if (effectiveDurationTicks <= 0) {
-            throw new IllegalArgumentException(
-                    "effective plant food duration must be positive"
+        if (phases.size() == 1) {
+            return primaryPhase().stepCount(
+                    effectiveDurationTicks
             );
         }
 
-        long steps = (effectiveDurationTicks + ticksBetweenSteps - 1) / ticksBetweenSteps;
+        if (effectiveDurationTicks < durationTicks()) {
+            throw new IllegalArgumentException(
+                    "effective plant food duration is shorter than its phases"
+            );
+        }
 
-        return Math.toIntExact(steps);// long -> int
+        return primaryPhase().stepCount();
     }
 
-    public int shotsAtStep(PlantFoodShotPath path, int stepIndex) {
+    public int shotsAtStep(
+            PlantFoodShotPath path,
+            int stepIndex
+    ) {
         return shotsAtStep(
                 path,
                 stepIndex,
@@ -81,28 +112,19 @@ public record ShooterPlantFoodProfile(
         );
     }
 
-    public int shotsAtStep(PlantFoodShotPath path, int stepIndex, int totalSteps) {
-        Objects.requireNonNull(
+    public int shotsAtStep(
+            PlantFoodShotPath path,
+            int stepIndex,
+            int totalSteps
+    ) {
+        return primaryPhase().shotsAtStep(
                 path,
-                "plant food shot path cannot be null"
+                stepIndex,
+                totalSteps
         );
+    }
 
-        if (totalSteps <= 0) {
-            throw new IllegalArgumentException(
-                    "total plant food steps must be positive"
-            );
-        }
-
-        if (stepIndex < 0 || stepIndex >= totalSteps) {
-            throw new IllegalArgumentException(
-                    "plant food step index is out of range"
-            );
-        }
-
-        int shotsBefore = (int) ((long) stepIndex * path.totalShots() / totalSteps);
-
-        int shotsAfter = (int) ((long) (stepIndex + 1) * path.totalShots() / totalSteps);
-
-        return shotsAfter - shotsBefore;
+    private ShooterPlantFoodPhase primaryPhase() {
+        return phases.getFirst();
     }
 }

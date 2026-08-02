@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import pvz.model.entity.plant.Plant;
-import pvz.model.entity.plant.shooter.ShotVector;
+import pvz.model.entity.plant.attack.ShotVector;
 import pvz.model.entity.zombie.Zombie;
 
 public final class Board implements Updatable {

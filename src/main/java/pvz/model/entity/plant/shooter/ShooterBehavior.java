@@ -5,12 +5,15 @@ import java.util.Objects;
 
 import pvz.model.entity.plant.Plant;
 import pvz.model.entity.plant.PlantSpec;
+import pvz.model.entity.plant.attack.ProjectileAttackController;
+import pvz.model.entity.plant.attack.ShotPath;
+import pvz.model.entity.plant.attack.ShotVector;
 import pvz.model.entity.plant.behavior.AbstractPlantBehavior;
 import pvz.model.entity.plant.behavior.capability.PlantFoodCapability;
 import pvz.model.entity.plant.plantfood.PlantFoodVolley;
 import pvz.model.entity.plant.projectile.PlantProjectileEmitter;
 
-public final class ShooterBehavior
+public class ShooterBehavior
         extends AbstractPlantBehavior
         implements PlantFoodCapability {
 
@@ -20,11 +23,8 @@ public final class ShooterBehavior
     private final PlantSpec spec;
     private final ShooterProfile profile;
     private final PlantProjectileEmitter projectileEmitter;
+    private final ProjectileAttackController attackController;
     private final ShooterPlantFoodProfile plantFoodProfile;
-
-    private boolean burstActive;
-    private int nextBurstStep;
-    private long nextBurstShotTick;
 
     public ShooterBehavior(Plant owner, PlantSpec spec) {
         super(owner);
@@ -36,11 +36,27 @@ public final class ShooterBehavior
         this.plantFoodProfile = ShooterPlantFoodProfiles.from(spec);
 
         this.projectileEmitter = new PlantProjectileEmitter(spec.getName());
+
+        this.attackController = new ProjectileAttackController(
+                profile,
+                targetRow -> world().board().inBounds(
+                        column(),
+                        targetRow
+                ),
+                this::hasTargetOnPath,
+                this::fireProjectile
+        );
     }
 
     @Override
     public boolean supportsPlantFood() {
         return plantFoodProfile != null;
+    }
+
+    @Override
+    public boolean targetsMatchingPlantsOnBoard() {
+        return plantFoodProfile != null
+                && plantFoodProfile.targetsMatchingPlantsOnBoard();
     }
 
     @Override
@@ -61,44 +77,41 @@ public final class ShooterBehavior
 
     @Override
     public boolean hasOngoingAction() {
-        return burstActive;
+        return attackController.hasOngoingAction();
     }
 
     @Override
     public void updateOngoingAction(long currentTick) {
         ensurePlaced();
 
-        continueBurst(currentTick);
+        attackController.updateOngoingAction(
+                currentTick,
+                row()
+        );
     }
 
     @Override
     public boolean canStartAction(long currentTick) {
         ensurePlaced();
 
-        return hasTargetInAnyShootingLane();
+        return attackController.canStartAction(row());
     }
 
     @Override
     public void startAction(long currentTick) {
         ensurePlaced();
 
-        fireBurstStep(0);
-
-        if (profile.burstLength() <= 1) {
-            burstActive = false;
-            return;
-        }
-
-        burstActive = true;
-        nextBurstStep = 1;
-        nextBurstShotTick = currentTick + profile.ticksBetweenShots();
+        attackController.startAction(
+                currentTick,
+                row()
+        );
     }
 
     @Override
     public void onPlantFoodStarted(long currentTick, long durationTicks) {
         ensurePlaced();
 
-        burstActive = false;
+        attackController.cancelOngoingAction();
     }
 
     @Override
@@ -115,16 +128,27 @@ public final class ShooterBehavior
             return;
         }
 
-        int totalSteps = plantFoodProfile.stepCount(durationTicks);
+        for (ShooterPlantFoodPhase phase
+                : plantFoodProfile.phases()) {
+            startPlantFoodPhase(currentTick, phase);
+        }
+    }
 
-        PlantFoodVolley.start(
+    private void startPlantFoodPhase(
+            long currentTick,
+            ShooterPlantFoodPhase phase
+    ) {
+        int totalSteps = phase.stepCount();
+
+        PlantFoodVolley.startAfterDelay(
                 world().game(),
                 currentTick,
+                phase.startDelayTicks(),
                 totalSteps,
-                plantFoodProfile.ticksBetweenSteps(),
+                phase.ticksBetweenSteps(),
                 () -> !owner().isRemovedFromWorld(),
                 step -> firePlantFoodStep(
-                        plantFoodProfile,
+                        phase,
                         step,
                         totalSteps
                 )
@@ -152,22 +176,6 @@ public final class ShooterBehavior
         return false;
     }
 
-    private boolean hasTargetInAnyShootingLane() {
-        for (ShotPath path : profile.shotPaths()) {
-            int targetRow = row() + path.laneOffset();
-
-            if (!world().board().inBounds(column(), targetRow)) {
-                continue;
-            }
-
-            if (hasTargetOnPath(path, targetRow)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     private boolean hasTargetOnPath(
             ShotPath path,
             int targetRow
@@ -187,22 +195,6 @@ public final class ShooterBehavior
                 profile.rangeTiles(),
                 path.vector()
         );
-    }
-
-    private void fireBurstStep(int burstStep) {
-        for (ShotPath path : profile.shotPaths()) {
-            if (burstStep >= path.shotsPerVolley()) {
-                continue;
-            }
-
-            int targetRow = row() + path.laneOffset();
-
-            if (!world().board().inBounds(column(), targetRow)) {
-                continue;
-            }
-
-            fireProjectile(path, targetRow);
-        }
     }
 
     private void fireProjectile(
@@ -230,38 +222,25 @@ public final class ShooterBehavior
         );
     }
 
-    private void continueBurst(long currentTick) {
-        if (currentTick < nextBurstShotTick) {
-            return;
-        }
-
-        fireBurstStep(nextBurstStep);
-
-        nextBurstStep++;
-
-        if (nextBurstStep >= profile.burstLength()) {
-            burstActive = false;
-            return;
-        }
-
-        nextBurstShotTick = currentTick + profile.ticksBetweenShots();
-    }
-
-    private void firePlantFoodStep(ShooterPlantFoodProfile plantFoodProfile,
+    private void firePlantFoodStep(ShooterPlantFoodPhase phase,
             int volleyStep,
             int totalSteps
     ) {
-        for (PlantFoodShotPath path : plantFoodProfile.shotPaths()) {
+        for (PlantFoodShotPath path : phase.shotPaths()) {
             int targetRow = row() + path.laneOffset();
 
             if (!world().board().inBounds(column(), targetRow)) {
                 continue;
             }
 
-            int projectileCopies = plantFoodProfile.shotsAtStep(path, volleyStep, totalSteps);
+            int projectileCopies = phase.shotsAtStep(
+                    path,
+                    volleyStep,
+                    totalSteps
+            );
 
             firePlantFoodProjectileCopies(
-                    plantFoodProfile,
+                    phase,
                     path,
                     targetRow,
                     projectileCopies
@@ -270,21 +249,40 @@ public final class ShooterBehavior
     }
 
     private void firePlantFoodProjectileCopies(
-            ShooterPlantFoodProfile plantFoodProfile,
+            ShooterPlantFoodPhase phase,
             PlantFoodShotPath path,
             int targetRow,
             int projectileCopies
     ) {
-        for (int copy = 0; copy < projectileCopies; copy++) {
-            double spawnOffsetX = copy * PLANT_FOOD_PROJECTILE_SPACING_TILES * path.direction().sign();
+        ShotVector vector = path.vector();
 
-            projectileEmitter.emit(
+        for (int copy = 0; copy < projectileCopies; copy++) {
+            double spawnOffset =
+                    copy * PLANT_FOOD_PROJECTILE_SPACING_TILES;
+
+            if (vector.isHorizontal()) {
+                projectileEmitter.emit(
+                        targetRow,
+                        spawnOffset * vector.unitColumnStep(),
+                        phase.damagePerProjectile(),
+                        phase.projectileType(),
+                        phase.rangeTiles(),
+                        vector.horizontalDirection(),
+                        phase.hitLimit(),
+                        phase.piercesBlockingTerrain()
+                );
+                continue;
+            }
+
+            projectileEmitter.emitDirectional(
                     targetRow,
-                    spawnOffsetX,
-                    plantFoodProfile.damagePerProjectile(),
-                    plantFoodProfile.projectileType(),
-                    plantFoodProfile.rangeTiles(),
-                    path.direction()
+                    spawnOffset,
+                    phase.damagePerProjectile(),
+                    phase.projectileType(),
+                    phase.rangeTiles(),
+                    vector,
+                    phase.hitLimit(),
+                    phase.piercesBlockingTerrain()
             );
         }
     }

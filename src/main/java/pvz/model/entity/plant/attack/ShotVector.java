@@ -1,4 +1,4 @@
-package pvz.model.entity.plant.shooter;
+package pvz.model.entity.plant.attack;
 
 import pvz.model.core.HorizontalDirection;
 

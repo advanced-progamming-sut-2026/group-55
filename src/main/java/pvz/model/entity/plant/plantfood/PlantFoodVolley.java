@@ -52,9 +52,35 @@ public final class PlantFoodVolley implements Updatable {
             BooleanSupplier canContinue,
             IntConsumer fireStep
     ) {
+        startAfterDelay(
+                game,
+                currentTick,
+                0,
+                totalSteps,
+                gapTicks,
+                canContinue,
+                fireStep
+        );
+    }
+
+    public static void startAfterDelay(
+            Game game,
+            long currentTick,
+            long initialDelayTicks,
+            int totalSteps,
+            long gapTicks,
+            BooleanSupplier canContinue,
+            IntConsumer fireStep
+    ) {
         if (currentTick < 0) {
             throw new IllegalArgumentException(
                     "current tick cannot be negative"
+            );
+        }
+
+        if (initialDelayTicks < 0) {
+            throw new IllegalArgumentException(
+                    "initial volley delay cannot be negative"
             );
         }
 
@@ -67,6 +93,15 @@ public final class PlantFoodVolley implements Updatable {
         );
 
         if (!volley.canContinue.getAsBoolean()) {
+            return;
+        }
+
+        if (initialDelayTicks > 0) {
+            volley.nextShotTick = Math.addExact(
+                    currentTick,
+                    initialDelayTicks
+            );
+            game.register(volley);
             return;
         }
 

@@ -32,6 +32,8 @@ public class Plant extends LivingEntity {
 
     private final PlantBehavior behavior;
 
+    private final PlantFoodCapability plantFoodCapability;
+
     private final SunProductionCapability sunProductionCapability;
 
     private final PlantLifetimeController lifetimeController;
@@ -50,7 +52,7 @@ public class Plant extends LivingEntity {
 
         this.behavior = PlantBehaviorFactory.create(this, spec);
 
-        PlantFoodCapability plantFoodCapability = resolvePlantFoodCapability(behavior);
+        this.plantFoodCapability = resolvePlantFoodCapability(behavior);
 
         this.sunProductionCapability = resolveSunProductionCapability(behavior);
 
@@ -155,7 +157,31 @@ public class Plant extends LivingEntity {
     }
 
     public boolean tryApplyPlantFood(long currentTick) {
-        return plantFoodController.tryActivate(currentTick);
+        boolean activated = plantFoodController.tryActivate(currentTick);
+
+        if (!activated
+                || plantFoodCapability == null
+                || !plantFoodCapability
+                        .targetsMatchingPlantsOnBoard()) {
+            return activated;
+        }
+
+        activatePlantFoodForMatchingPlants(currentTick);
+
+        return true;
+    }
+
+    private void activatePlantFoodForMatchingPlants(
+            long currentTick
+    ) {
+        for (Plant plant : world.getPlants()) {
+            if (plant == this
+                    || plant.spec.getId() != spec.getId()) {
+                continue;
+            }
+
+            plant.plantFoodController.tryActivate(currentTick);
+        }
     }
 
     private void prepareForPlantFood(long currentTick, long durationTicks) {

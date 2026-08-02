@@ -57,6 +57,20 @@ public final class World {
         return List.copyOf(collectibles);
     }
 
+    public List<Plant> getPlants() {
+        List<Plant> plants = new ArrayList<>();
+
+        for (int column = 1; column <= board.getCols(); column++) {
+            for (int row = 1; row <= board.getRows(); row++) {
+                plants.addAll(
+                        board.getTile(column, row).getPlants()
+                );
+            }
+        }
+
+        return List.copyOf(plants);
+    }
+
     public SunCollectionOutcome collectSun(Sun sun) {
         Objects.requireNonNull(sun, "sun cannot be null");
 

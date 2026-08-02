@@ -4,9 +4,10 @@ import java.util.Objects;
 
 import pvz.model.core.HorizontalDirection;
 import pvz.model.core.World;
-import pvz.model.entity.plant.shooter.ShotVector;
+import pvz.model.entity.plant.attack.ShotVector;
 import pvz.model.entity.projectile.DirectionalProjectile;
 import pvz.model.entity.projectile.Projectile;
+import pvz.model.entity.projectile.ProjectileHitLimit;
 import pvz.model.entity.projectile.ProjectileType;
 
 public final class PlantProjectileEmitter {
@@ -47,6 +48,48 @@ public final class PlantProjectileEmitter {
             int rangeTiles,
             HorizontalDirection direction
     ) {
+        emit(
+                targetRow,
+                spawnOffsetX,
+                damage,
+                projectileType,
+                rangeTiles,
+                direction,
+                ProjectileHitLimit.singleHit()
+        );
+    }
+
+    public void emit(
+            int targetRow,
+            double spawnOffsetX,
+            double damage,
+            ProjectileType projectileType,
+            int rangeTiles,
+            HorizontalDirection direction,
+            ProjectileHitLimit hitLimit
+    ) {
+        emit(
+                targetRow,
+                spawnOffsetX,
+                damage,
+                projectileType,
+                rangeTiles,
+                direction,
+                hitLimit,
+                false
+        );
+    }
+
+    public void emit(
+            int targetRow,
+            double spawnOffsetX,
+            double damage,
+            ProjectileType projectileType,
+            int rangeTiles,
+            HorizontalDirection direction,
+            ProjectileHitLimit hitLimit,
+            boolean piercesBlockingTerrain
+    ) {
         ensurePlaced();
 
         world.game().register(
@@ -59,7 +102,9 @@ public final class PlantProjectileEmitter {
                         damage,
                         projectileType,
                         rangeTiles,
-                        direction
+                        direction,
+                        hitLimit,
+                        piercesBlockingTerrain
                 )
         );
     }
@@ -71,6 +116,46 @@ public final class PlantProjectileEmitter {
             int rangeTiles,
             ShotVector vector
     ) {
+        emitDirectional(
+                startRow,
+                0,
+                damage,
+                projectileType,
+                rangeTiles,
+                vector
+        );
+    }
+
+    public void emitDirectional(
+            int startRow,
+            double spawnOffset,
+            double damage,
+            ProjectileType projectileType,
+            int rangeTiles,
+            ShotVector vector
+    ) {
+        emitDirectional(
+                startRow,
+                spawnOffset,
+                damage,
+                projectileType,
+                rangeTiles,
+                vector,
+                ProjectileHitLimit.singleHit(),
+                false
+        );
+    }
+
+    public void emitDirectional(
+            int startRow,
+            double spawnOffset,
+            double damage,
+            ProjectileType projectileType,
+            int rangeTiles,
+            ShotVector vector,
+            ProjectileHitLimit hitLimit,
+            boolean piercesBlockingTerrain
+    ) {
         ensurePlaced();
 
         world.game().register(
@@ -79,17 +164,22 @@ public final class PlantProjectileEmitter {
                         projectileName,
                         column,
                         startRow,
+                        spawnOffset,
                         damage,
                         projectileType,
                         rangeTiles,
-                        vector
+                        vector,
+                        hitLimit,
+                        piercesBlockingTerrain
                 )
         );
     }
 
     private void ensurePlaced() {
         if (world == null) {
-            throw new IllegalStateException("projectile emitter must be placed before use");
+            throw new IllegalStateException(
+                    "projectile emitter must be placed before use"
+            );
         }
     }
 }

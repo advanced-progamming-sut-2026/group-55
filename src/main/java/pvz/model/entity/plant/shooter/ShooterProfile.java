@@ -2,6 +2,9 @@ package pvz.model.entity.plant.shooter;
 
 import java.util.List;
 import java.util.Objects;
+
+import pvz.model.entity.plant.attack.ProjectileAttackProfile;
+import pvz.model.entity.plant.attack.ShotPath;
 import pvz.model.entity.projectile.ProjectileType;
 
 public record ShooterProfile(
@@ -10,7 +13,7 @@ public record ShooterProfile(
         List<ShotPath> shotPaths,
         ProjectileType projectileType,
         int rangeTiles
-) {
+) implements ProjectileAttackProfile {
     public ShooterProfile {
         if (damagePerProjectile < 0) {
             throw new IllegalArgumentException("projectile damage cannot be negative");
@@ -46,10 +49,4 @@ public record ShooterProfile(
         }
     }
 
-    public int burstLength() {
-        return shotPaths.stream()
-                .mapToInt(ShotPath::shotsPerVolley)
-                .max()
-                .orElseThrow();
-    }
 }

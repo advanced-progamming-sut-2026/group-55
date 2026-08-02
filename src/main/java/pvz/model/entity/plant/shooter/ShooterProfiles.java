@@ -6,6 +6,8 @@ import java.util.Objects;
 
 import pvz.model.entity.plant.PlantCategory;
 import pvz.model.entity.plant.PlantSpec;
+import pvz.model.entity.plant.attack.ShotPath;
+import pvz.model.entity.plant.attack.ShotVector;
 import pvz.model.entity.projectile.ProjectileType;
 
 public final class ShooterProfiles {
