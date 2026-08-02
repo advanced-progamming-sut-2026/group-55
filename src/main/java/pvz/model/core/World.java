@@ -45,6 +45,10 @@ public final class World {
         return resources.sunBank();
     }
 
+    public BattleWallet battleWallet() {
+        return resources.battleWallet();
+    }
+
     public void addCollectible(Collectible collectible) {
         collectibles.add(Objects.requireNonNull(collectible));
     }

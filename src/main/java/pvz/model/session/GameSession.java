@@ -11,6 +11,7 @@ import pvz.model.core.World;
 import pvz.model.entity.plant.Plant;
 import pvz.model.entity.plant.PlantFactory;
 import pvz.model.core.BattleResources;
+import pvz.model.core.BattleWallet;
 
 public final class GameSession {
     private final GameSessionConfig config;
@@ -86,6 +87,10 @@ public final class GameSession {
 
     public BattleResources resources() {
         return world.resources();
+    }
+
+    public BattleWallet battleWallet() {
+        return resources().battleWallet();
     }
 
     public void markWon() {

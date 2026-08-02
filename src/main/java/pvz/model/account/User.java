@@ -2,8 +2,9 @@ package pvz.model.account;
 
 import java.util.ArrayList;
 import java.util.List;
+import pvz.model.currency.CurrencyWallet;
 
-public class User {
+public class User implements CurrencyWallet {
     private String username;
     private String passwordHash;
     private String nickname;

@@ -18,6 +18,7 @@ import pvz.view.MenuView;
 import pvz.model.entity.plant.PlantFactory;
 import pvz.model.session.GameRuntime;
 import pvz.model.session.GameSessionFactory;
+import pvz.model.core.BattleWallet;
 
 public class Application {
 
@@ -135,9 +136,52 @@ public class Application {
                 "Game ended with status: " + gameRuntime.status()
         );
 
+        transferBattleCurrency(
+                gameRuntime.session().battleWallet()
+        );
+
         gameRuntime.clear();
         clearStagePreparation();
         appState.setCurrentMenu(MenuName.GAME);
+    }
+
+    private void transferBattleCurrency(BattleWallet battleWallet) {
+        User currentUser = appState.getCurrentUser();
+
+        if (currentUser == null) {
+            view.showError(
+                    "Cannot transfer battle currency without a logged-in user."
+            );
+            return;
+        }
+
+        battleWallet.transferTo(currentUser);
+
+        if (!userManager.save()) {
+            view.showError("Failed to save collected battle currency.");
+            return;
+        }
+
+        if (battleWallet.hasCollectedCurrency()) {
+            showBattleCurrencySummary(battleWallet, currentUser);
+        }
+    }
+
+    private void showBattleCurrencySummary(
+            BattleWallet battleWallet,
+            User currentUser
+    ) {
+        view.showMessage(
+                "Collected this stage: "
+                        + battleWallet.getCollectedCoins()
+                        + " coins, "
+                        + battleWallet.getCollectedDiamonds()
+                        + " diamonds. Total wallet: "
+                        + currentUser.getCoins()
+                        + " coins, "
+                        + currentUser.getDiamonds()
+                        + " diamonds."
+        );
     }
 
     private void clearStagePreparation(){
