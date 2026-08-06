@@ -9,6 +9,7 @@ import java.util.Objects;
 import java.util.Set;
 
 import pvz.model.entity.collectible.Collectible;
+import pvz.model.entity.collectible.plantfood.PlantFood;
 import pvz.model.entity.collectible.sun.Sun;
 import pvz.model.entity.collectible.sun.SunCollectionOutcome;
 import pvz.model.entity.plant.Plant;
@@ -246,4 +247,20 @@ public final class World {
         return SunCollectionOutcome.COLLECTED;
     }
 
+
+    public void collectPlantFood(PlantFood plantFood) {
+        Objects.requireNonNull(
+                plantFood,
+                "plant food cannot be null"
+        );
+
+        if (!collectibles.contains(plantFood)) {
+            throw new IllegalStateException(
+                    "plant food is not available for collection"
+            );
+        }
+
+        resources.tryAddPlantFood();
+        plantFood.remove();
+    }
 }

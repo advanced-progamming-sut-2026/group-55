@@ -6,17 +6,24 @@ import pvz.model.core.Game;
 import pvz.model.core.GameEvents;
 import pvz.model.core.World;
 import pvz.model.entity.LivingEntity;
+import pvz.model.entity.collectible.plantfood.PlantFood;
 import pvz.model.entity.plant.Plant;
 
 public abstract class Zombie extends LivingEntity {
     private static final double CHILLED_SPEED_MULTIPLIER = 0.5;
+    private static final double PLANT_FOOD_DROP_CHANCE = 0.05;
 
     protected double x;
     protected double y;
 
     private final double tilesPerSecond;
     private final double damagePerSecond;
+    private final ArmorType armor;
+    private final ZombieSpec spec;
+
     private World world;
+    private double armorHealth;
+    private boolean bypassArmor;
     private boolean reachedHouse;
 
     private Plant biteTarget;
@@ -30,11 +37,17 @@ public abstract class Zombie extends LivingEntity {
     private long poisonUntilTick;
     private long nextPoisonDamageTick = Long.MAX_VALUE;
 
-    protected Zombie(String name, double health, double tilesPerSecond, double damagePerSecond) {
-        this.name = name;
-        this.health = health;
-        this.tilesPerSecond = tilesPerSecond;
-        this.damagePerSecond = damagePerSecond;
+    protected Zombie(ZombieSpec spec) {
+        this.spec = Objects.requireNonNull(
+                spec,
+                "zombie spec cannot be null"
+        );
+        this.name = spec.getName();
+        this.health = spec.getHitpoints();
+        this.tilesPerSecond = spec.getSpeed();
+        this.damagePerSecond = spec.getEatDps();
+        this.armor = spec.getArmor();
+        this.armorHealth = armor.getHitpoints();
     }
 
     public void spawn(World world, int column, int row) {
@@ -71,6 +84,29 @@ public abstract class Zombie extends LivingEntity {
 
     public int getRow() {
         return getTileY();
+    }
+
+    public ZombieSpec getSpec() {
+        return spec;
+    }
+
+    public ArmorType getArmor() {
+        return armor;
+    }
+
+    public double getArmorHealth() {
+        return armorHealth;
+    }
+
+    @Override
+    protected double modifyIncomingDamage(double damage) {
+        if (bypassArmor || armorHealth <= 0) {
+            return damage;
+        }
+
+        double remainingDamage = damage - armorHealth;
+        armorHealth = Math.max(0, armorHealth - damage);
+        return Math.max(0, remainingDamage);
     }
 
     @Override
@@ -113,7 +149,13 @@ public abstract class Zombie extends LivingEntity {
     }
 
     public void takeDirectDamage(double damage) {
-        takeDamage(damage);
+        bypassArmor = true;
+
+        try {
+            takeDamage(damage);
+        } finally {
+            bypassArmor = false;
+        }
     }
 
     public void applyChill(
@@ -349,6 +391,21 @@ public abstract class Zombie extends LivingEntity {
         plant.takeDamage(damagePerSecond);
     }
 
+    private void tryDropPlantFood() {
+        if (Math.random() > PLANT_FOOD_DROP_CHANCE) {
+            return;
+        }
+
+        PlantFood plantFood = PlantFood.fromZombie(
+                world,
+                getX(),
+                getY()
+        );
+
+        world.addCollectible(plantFood);
+        world.game().register(plantFood);
+    }
+
     @Override
     protected void onDeath() {
         if (world == null) {
@@ -361,6 +418,7 @@ public abstract class Zombie extends LivingEntity {
                         + getTileY() + ")"
         );
 
+        tryDropPlantFood();
         world.removeZombie(this);
         world.game().unregister(this);
     }

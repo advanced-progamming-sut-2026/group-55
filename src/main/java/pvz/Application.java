@@ -1,8 +1,11 @@
 package pvz;
 
 import pvz.controller.*;
+import pvz.data.ZombieCsvLoader;
+import pvz.data.ZombieData;
 import pvz.model.account.User;
 import pvz.model.account.UserManager;
+import pvz.model.entity.zombie.ZombieFactory;
 import pvz.model.service.AuthService;
 import pvz.model.command.Command;
 import pvz.model.utils.AppState;
@@ -24,6 +27,7 @@ public class Application {
 
     private final AppState appState = new AppState();
     private PlantData plantData;
+    private ZombieData zombieData;
     private GameRuntime gameRuntime;
 
     private final UserManager userManager = new UserManager("save.json");
@@ -93,15 +97,18 @@ public class Application {
     private boolean loadGameData() {
         try {
             this.plantData = PlantCsvLoader.load("assets/Data/plants.csv");
+            this.zombieData = ZombieCsvLoader.load("assets/Data/zombies.csv");
             PlantFactory plantFactory = new PlantFactory(plantData.byName());
-            GameSessionFactory sessionFactory = new GameSessionFactory(plantFactory);
+            ZombieFactory zombieFactory = new ZombieFactory(zombieData.byName());
+            GameSessionFactory sessionFactory = new GameSessionFactory(plantFactory, zombieFactory);
             this.gameRuntime = new GameRuntime(sessionFactory);
             this.collectionController =
                     new CollectionController(
                             appState,
                             userManager,
                             view,
-                            plantData
+                            plantData,
+                            zombieData
                     );
             this.plantSelectionController =
                     new PlantSelectionController(

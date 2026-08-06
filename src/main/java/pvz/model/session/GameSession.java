@@ -10,6 +10,8 @@ import pvz.model.core.Game;
 import pvz.model.core.World;
 import pvz.model.entity.plant.Plant;
 import pvz.model.entity.plant.PlantFactory;
+import pvz.model.entity.zombie.Zombie;
+import pvz.model.entity.zombie.ZombieFactory;
 import pvz.model.core.BattleResources;
 import pvz.model.core.BattleWallet;
 
@@ -19,6 +21,7 @@ public final class GameSession {
     private final Board board;
     private final World world;
     private final PlantFactory plantFactory;
+    private final ZombieFactory zombieFactory;
     private final Map<String, Long> lastPlantedTicks = new HashMap<>();
 
     private GameSessionStatus status = GameSessionStatus.CREATED;
@@ -26,11 +29,19 @@ public final class GameSession {
     GameSession(
             GameSessionConfig config,
             World world,
-            PlantFactory plantFactory
+            PlantFactory plantFactory,
+            ZombieFactory zombieFactory
     ) {
         this.config = Objects.requireNonNull(config, "config cannot be null");
         this.world = Objects.requireNonNull(world, "world cannot be null");
-        this.plantFactory = Objects.requireNonNull(plantFactory, "plant factory cannot be null");
+        this.plantFactory = Objects.requireNonNull(
+                plantFactory,
+                "plant factory cannot be null"
+        );
+        this.zombieFactory = Objects.requireNonNull(
+                zombieFactory,
+                "zombie factory cannot be null"
+        );
         this.game = world.game();
         this.board = world.board();
     }
@@ -49,15 +60,20 @@ public final class GameSession {
 
     public Plant createPlant(String plantName) {
         requireRunning();
-        return plantFactory.create(normalizePlantName(plantName));
+        return plantFactory.create(normalizeName(plantName));
+    }
+
+    public Zombie createZombie(String zombieName) {
+        requireRunning();
+        return zombieFactory.create(normalizeName(zombieName));
     }
 
     public boolean isPlantSelected(String plantName) {
-        return config.selectedPlants().contains(normalizePlantName(plantName));
+        return config.selectedPlants().contains(normalizeName(plantName));
     }
 
     public boolean isPlantBoosted(String plantName) {
-        return config.boostedPlants().contains(normalizePlantName(plantName));
+        return config.boostedPlants().contains(normalizeName(plantName));
     }
 
     public long getRemainingRechargeTicks(String plantName, long rechargeTicks) {
@@ -69,7 +85,7 @@ public final class GameSession {
             return 0;
         }
 
-        Long lastTick = lastPlantedTicks.get(normalizePlantName(plantName));
+        Long lastTick = lastPlantedTicks.get(normalizeName(plantName));
 
         if (lastTick == null) {
             return 0;
@@ -82,7 +98,7 @@ public final class GameSession {
 
     public void recordPlanting(String plantName) {
         requireRunning();
-        lastPlantedTicks.put(normalizePlantName(plantName), game.getCurrentTick());
+        lastPlantedTicks.put(normalizeName(plantName), game.getCurrentTick());
     }
 
     public BattleResources resources() {
@@ -116,12 +132,14 @@ public final class GameSession {
         }
     }
 
-    private String normalizePlantName(String plantName) {
-        Objects.requireNonNull(plantName, "plant name cannot be null");
-        String normalizedName = plantName.strip().toLowerCase(Locale.ROOT);
+    private String normalizeName(String name) {
+        Objects.requireNonNull(name, "name cannot be null");
+        String normalizedName = name.strip().toLowerCase(Locale.ROOT);
+
         if (normalizedName.isEmpty()) {
-            throw new IllegalArgumentException("plant name cannot be blank");
+            throw new IllegalArgumentException("name cannot be blank");
         }
+
         return normalizedName;
     }
 
