@@ -1,6 +1,7 @@
 package pvz.controller;
 
 import pvz.data.PlantData;
+import pvz.data.ZombieData;
 import pvz.model.account.UserManager;
 import pvz.model.account.PlayerPlant;
 import pvz.model.account.User;
@@ -16,10 +17,12 @@ import java.util.Comparator;
 public class CollectionController extends BaseController {
 
     private final PlantData plantData;
+    private final ZombieData zombieData;
 
-    public CollectionController(AppState appState, UserManager userManager, MenuView view, PlantData plantData) {
+    public CollectionController(AppState appState, UserManager userManager, MenuView view, PlantData plantData, ZombieData zombieData) {
         super(appState, userManager, view);
         this.plantData = plantData;
+        this.zombieData = zombieData;
     }
 
     @Override

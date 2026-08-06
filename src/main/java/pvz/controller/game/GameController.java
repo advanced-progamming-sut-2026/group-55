@@ -15,7 +15,6 @@ import pvz.model.entity.collectible.Collectible;
 import pvz.model.entity.collectible.sun.Sun;
 import pvz.model.entity.collectible.sun.SunCollectionOutcome;
 import pvz.model.entity.plant.Plant;
-import pvz.model.entity.zombie.BasicZombie;
 import pvz.model.entity.zombie.Zombie;
 import pvz.model.session.GameSession;
 import pvz.model.entity.plant.lifecycle.PlantRemovalResult;
@@ -338,17 +337,20 @@ public final class GameController {
 
     private String handleSpawnZombie(Matcher matcher) {
         String type = matcher.group("type").toLowerCase(Locale.ROOT);
+
         int x = Integer.parseInt(matcher.group("x"));
         int y = Integer.parseInt(matcher.group("y"));
 
         if (!board.inBounds(x, y)) {
             return "location (" + x + ", " + y + ") is out of bounds!";
         }
-        if (!type.equals("normal")) {
+
+        Zombie zombie = session.createZombie(type);
+
+        if (zombie == null) {
             return "unknown zombie type: " + type + "!";
         }
 
-        Zombie zombie = new BasicZombie();
         zombie.spawn(world, x, y);
 
         return "zombie "

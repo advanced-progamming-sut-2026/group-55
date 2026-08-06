@@ -1,6 +1,7 @@
 package pvz.model.entity;
 
 public abstract class LivingEntity extends Entity {
+
     protected double health;
 
     private boolean deathHandled;
@@ -9,8 +10,15 @@ public abstract class LivingEntity extends Entity {
         return health;
     }
 
+
     public final void takeDamage(double damage) {
         if (damage <= 0 || deathHandled || !canTakeDamage()) {
+            return;
+        }
+
+        damage = modifyIncomingDamage(damage);
+
+        if (damage <= 0) {
             return;
         }
 
@@ -22,13 +30,21 @@ public abstract class LivingEntity extends Entity {
         }
     }
 
+
     public final boolean isDead() {
         return health <= 0;
     }
 
+
     protected boolean canTakeDamage() {
         return true;
     }
+
+
+    protected double modifyIncomingDamage(double damage) {
+        return damage;
+    }
+
 
     protected abstract void onDeath();
 }
