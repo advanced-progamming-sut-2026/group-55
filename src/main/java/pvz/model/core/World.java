@@ -1,29 +1,31 @@
 package pvz.model.core;
 
 import pvz.model.core.board.Board;
+import pvz.model.core.board.HorizontalDirection;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
-import pvz.model.core.board.Tile;
 import pvz.model.entity.collectible.Collectible;
 import pvz.model.entity.collectible.sun.Sun;
 import pvz.model.entity.collectible.sun.SunCollectionOutcome;
 import pvz.model.entity.plant.Plant;
+import pvz.model.entity.plant.attack.ShotVector;
 import pvz.model.entity.zombie.Zombie;
 
 public final class World {
     private static final int RADIOACTIVE_ZOMBIE_RADIUS = 2;
-    private static final int RADIOACTIVE_PLANT_RADIUS = 1;
-
     private static final double RADIOACTIVE_ZOMBIE_DAMAGE = 150;
+    private static final int RADIOACTIVE_PLANT_RADIUS = 1;
     private static final double RADIOACTIVE_PLANT_DAMAGE = 80;
 
     private final Game game;
     private final Board board;
     private final BattleResources resources;
-
+    private final ZombieRegistry zombieRegistry =
+            new ZombieRegistry();
     private final List<Collectible> collectibles = new ArrayList<>();
 
     public World(Game game, Board board, BattleResources resources) {
@@ -64,6 +66,131 @@ public final class World {
         return List.copyOf(collectibles);
     }
 
+    public void addZombie(Zombie zombie) {
+        zombieRegistry.add(zombie);
+    }
+
+    public void removeZombie(Zombie zombie) {
+        zombieRegistry.remove(zombie);
+    }
+
+    public List<Zombie> getZombies() {
+        return zombieRegistry.snapshot();
+    }
+
+    public boolean hasStraightTargetAhead(
+            int row,
+            double fromX
+    ) {
+        return board.hasStraightTargetAhead(
+                zombieRegistry.view(),
+                row,
+                fromX
+        );
+    }
+
+    public boolean hasStraightTargetAhead(
+            int row,
+            double fromX,
+            int rangeTiles
+    ) {
+        return board.hasStraightTargetAhead(
+                zombieRegistry.view(),
+                row,
+                fromX,
+                rangeTiles
+        );
+    }
+
+    public boolean hasStraightTarget(
+            int row,
+            double fromX,
+            int rangeTiles,
+            HorizontalDirection direction
+    ) {
+        return board.hasStraightTarget(
+                zombieRegistry.view(),
+                row,
+                fromX,
+                rangeTiles,
+                direction
+        );
+    }
+
+    public boolean hasDirectionalTarget(
+            int startColumn,
+            int startRow,
+            int rangeTiles,
+            ShotVector vector
+    ) {
+        return board.hasDirectionalTarget(
+                zombieRegistry.view(),
+                startColumn,
+                startRow,
+                rangeTiles,
+                vector
+        );
+    }
+
+    public boolean hasZombieAhead(
+            int row,
+            double fromX
+    ) {
+        return hasZombieAhead(
+                row,
+                fromX,
+                Set.of()
+        );
+    }
+
+    public boolean hasZombieAhead(
+            int row,
+            double fromX,
+            Set<Zombie> ignoredZombies
+    ) {
+        return zombieRegistry.hasZombieAhead(
+                row,
+                fromX,
+                ignoredZombies
+        );
+    }
+
+    public Zombie findHitZombie(
+            int row,
+            double fromX,
+            double toX
+    ) {
+        return findHitZombie(
+                row,
+                fromX,
+                toX,
+                Set.of()
+        );
+    }
+
+    public Zombie findHitZombie(
+            int row,
+            double fromX,
+            double toX,
+            Set<Zombie> ignoredZombies
+    ) {
+        return board.findHitZombie(
+                zombieRegistry.view(),
+                row,
+                fromX,
+                toX,
+                ignoredZombies
+        );
+    }
+
+    public Zombie findZombieInTile(
+            int column,
+            int row
+    ) {
+        board.getTile(column, row);
+        return zombieRegistry.findZombieInTile(column, row);
+    }
+
     public List<Plant> getPlants() {
         List<Plant> plants = new ArrayList<>();
 
@@ -88,9 +215,26 @@ public final class World {
         }
 
         if (sun.isRadioactiveWhileFalling()) {
-            explodeRadioactiveSun(
+            board.damageZombiesInArea(
+                    getZombies(),
                     sun.getTileX(),
-                    sun.getTileY()
+                    sun.getTileY(),
+                    RADIOACTIVE_ZOMBIE_RADIUS,
+                    RADIOACTIVE_ZOMBIE_DAMAGE
+            );
+
+            board.damagePlantsInArea(
+                    sun.getTileX(),
+                    sun.getTileY(),
+                    RADIOACTIVE_PLANT_RADIUS,
+                    RADIOACTIVE_PLANT_DAMAGE
+            );
+
+            board.damageTilesInArea(
+                    sun.getTileX(),
+                    sun.getTileY(),
+                    RADIOACTIVE_ZOMBIE_RADIUS,
+                    RADIOACTIVE_ZOMBIE_DAMAGE
             );
 
             sun.remove();
@@ -102,82 +246,4 @@ public final class World {
         return SunCollectionOutcome.COLLECTED;
     }
 
-    private void explodeRadioactiveSun(
-            int centerX,
-            int centerY
-    ) {
-        damageZombiesInExplosion(centerX, centerY);
-        damagePlantsInExplosion(centerX, centerY);
-    }
-    // mantegh zambie ha va plant haye mojood tooye yek square behtare bere tooye board
-    private void damageZombiesInExplosion(
-            int centerX,
-            int centerY
-    ) {
-        for (Zombie zombie : board.getZombies()) {
-            if (isInsideSquare(
-                    zombie.getTileX(),
-                    zombie.getTileY(),
-                    centerX,
-                    centerY,
-                    RADIOACTIVE_ZOMBIE_RADIUS
-            )) {
-                zombie.takeDamage(
-                        RADIOACTIVE_ZOMBIE_DAMAGE
-                );
-            }
-        }
-    }
-
-    private void damagePlantsInExplosion(
-            int centerX,
-            int centerY
-    ) {
-        int minX = Math.max(
-                1,
-                centerX - RADIOACTIVE_PLANT_RADIUS
-        );
-
-        int maxX = Math.min(
-                board.getCols(),
-                centerX + RADIOACTIVE_PLANT_RADIUS
-        );
-
-        int minY = Math.max(
-                1,
-                centerY - RADIOACTIVE_PLANT_RADIUS
-        );
-
-        int maxY = Math.min(
-                board.getRows(),
-                centerY + RADIOACTIVE_PLANT_RADIUS
-        );
-
-        for (int x = minX; x <= maxX; x++) {
-            for (int y = minY; y <= maxY; y++) {
-                damagePlantsInTile(x, y);
-            }
-        }
-    }
-
-    private void damagePlantsInTile(int x, int y) {
-        Tile tile = board.getTile(x, y);
-
-        for (Plant plant : tile.getPlants()) {
-            plant.takeDamage(
-                    RADIOACTIVE_PLANT_DAMAGE
-            );
-        }
-    }
-
-    private boolean isInsideSquare(
-            int x,
-            int y,
-            int centerX,
-            int centerY,
-            int radius
-    ) {
-        return Math.abs(x - centerX) <= radius
-                && Math.abs(y - centerY) <= radius;
-    }
 }

@@ -203,7 +203,7 @@ public final class DirectionalProjectile extends Entity {
             }
         }
 
-        for (Zombie zombie : world.board().getZombies()) {
+        for (Zombie zombie : world.getZombies()) {
             if (hitZombies.contains(zombie)
                     || zombie.getTileX() != column
                     || zombie.getTileY() != row) {

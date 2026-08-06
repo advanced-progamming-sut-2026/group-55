@@ -48,7 +48,7 @@ public final class BowlingBulbBehavior
         ensurePlaced();
 
         return findAvailableBulb(currentTick) >= 0
-                && world().board().hasStraightTargetAhead(
+                && world().hasStraightTargetAhead(
                         row(),
                         owner().getX()
                 );

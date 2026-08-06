@@ -1,6 +1,7 @@
 package pvz.model.entity.zombie;
 
 import java.util.List;
+import java.util.Objects;
 import pvz.model.core.Game;
 import pvz.model.core.GameEvents;
 import pvz.model.core.World;
@@ -22,6 +23,7 @@ public abstract class Zombie extends LivingEntity {
     private long nextBiteTick = Long.MAX_VALUE;
 
     private long chilledUntilTick;
+    private long frozenUntilTick;
 
     private int poisonStacks;
     private double poisonDamagePerStack;
@@ -36,10 +38,24 @@ public abstract class Zombie extends LivingEntity {
     }
 
     public void spawn(World world, int column, int row) {
+        Objects.requireNonNull(world, "world cannot be null");
+
+        if (this.world != null) {
+            throw new IllegalStateException(
+                    "zombie is already spawned"
+            );
+        }
+
+        if (!world.board().inBounds(column, row)) {
+            throw new IllegalArgumentException(
+                    "zombie spawn location is out of bounds"
+            );
+        }
+
+        world.addZombie(this);
         this.world = world;
         this.x = tileCenter(column);
         this.y = tileCenter(row);
-        world.board().addZombie(this);
         world.game().register(this);
     }
 
@@ -61,7 +77,7 @@ public abstract class Zombie extends LivingEntity {
     public void update(long tick) {
         updatePoison(tick);
 
-        if (reachedHouse || isDead()) {
+        if (reachedHouse || isDead() || isFrozen(tick)) {
             return;
         }
 
@@ -147,6 +163,56 @@ public abstract class Zombie extends LivingEntity {
         }
     }
 
+    public void applyFreeze(
+            long currentTick,
+            long durationTicks
+    ) {
+        if (currentTick < 0) {
+            throw new IllegalArgumentException(
+                    "current tick cannot be negative"
+            );
+        }
+
+        if (durationTicks <= 0) {
+            throw new IllegalArgumentException(
+                    "freeze duration must be positive"
+            );
+        }
+
+        frozenUntilTick = Math.max(
+                frozenUntilTick,
+                currentTick + durationTicks
+        );
+
+        if (biteTarget != null) {
+            nextBiteTick = Math.max(
+                    nextBiteTick,
+                    frozenUntilTick
+                            + attackIntervalTicks(
+                                    frozenUntilTick
+                            )
+            );
+        }
+    }
+
+    public void removeFreeze(long currentTick) {
+        if (currentTick < 0) {
+            throw new IllegalArgumentException(
+                    "current tick cannot be negative"
+            );
+        }
+
+        frozenUntilTick = 0;
+
+        if (biteTarget != null) {
+            nextBiteTick = Math.min(
+                    nextBiteTick,
+                    currentTick
+                            + attackIntervalTicks(currentTick)
+            );
+        }
+    }
+
     public void applyPoison(
             long currentTick,
             long durationTicks,
@@ -201,6 +267,10 @@ public abstract class Zombie extends LivingEntity {
 
     public boolean isChilled(long currentTick) {
         return currentTick < chilledUntilTick;
+    }
+
+    public boolean isFrozen(long currentTick) {
+        return currentTick < frozenUntilTick;
     }
 
     private void updateBiting(
@@ -291,7 +361,7 @@ public abstract class Zombie extends LivingEntity {
                         + getTileY() + ")"
         );
 
-        world.board().removeZombie(this);
+        world.removeZombie(this);
         world.game().unregister(this);
     }
 }

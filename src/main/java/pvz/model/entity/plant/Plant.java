@@ -230,10 +230,11 @@ public class Plant extends LivingEntity {
     }
 
     public boolean hasTag(PlantTag tag) {
-        if (spec.getTags().contains(tag)) {
-            return true;
-        }
-        return false;
+        return spec.getTags().contains(tag);
+    }
+
+    public PlantStackingRole getStackingRole() {
+        return spec.getStackingRole();
     }
     // remove damage death
     public boolean isRemovedFromWorld() {

@@ -87,7 +87,7 @@ public final class StrikeThroughBehavior
             ShotPath path,
             int targetRow
     ) {
-        return world().board().hasStraightTarget(
+        return world().hasStraightTarget(
                 targetRow,
                 owner().getX(),
                 profile.rangeTiles(),

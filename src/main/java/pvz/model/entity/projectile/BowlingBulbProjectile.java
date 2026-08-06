@@ -93,8 +93,7 @@ public final class BowlingBulbProjectile
                         nextX
                 );
 
-        Zombie zombie = world.board()
-                .findHitZombie(
+        Zombie zombie = world.findHitZombie(
                         currentRow,
                         previousX,
                         nextX,
@@ -158,7 +157,7 @@ public final class BowlingBulbProjectile
 
         boolean upperHasTarget =
                 world.board().inBounds(1, upperRow)
-                        && world.board().hasZombieAhead(
+                        && world.hasZombieAhead(
                                 upperRow,
                                 x,
                                 hitZombies
@@ -166,7 +165,7 @@ public final class BowlingBulbProjectile
 
         boolean lowerHasTarget =
                 world.board().inBounds(1, lowerRow)
-                        && world.board().hasZombieAhead(
+                        && world.hasZombieAhead(
                                 lowerRow,
                                 x,
                                 hitZombies

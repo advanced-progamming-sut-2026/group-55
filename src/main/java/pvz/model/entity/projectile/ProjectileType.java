@@ -39,8 +39,9 @@ public enum ProjectileType {
 
             case FIRE -> {
                 zombie.removeChill(currentTick);
+                zombie.removeFreeze(currentTick);
                 zombie.takeProjectileDamage(
-                        baseDamage * FIRE_DAMAGE_MULTIPLIER
+                        calculateDamage(baseDamage)
                 );
             }
 
@@ -71,6 +72,12 @@ public enum ProjectileType {
     }
 
     public double damageAgainstTerrain(
+            double baseDamage
+    ) {
+        return calculateDamage(baseDamage);
+    }
+
+    public double calculateDamage(
             double baseDamage
     ) {
         if (this == FIRE) {

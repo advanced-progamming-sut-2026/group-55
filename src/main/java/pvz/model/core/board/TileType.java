@@ -14,7 +14,11 @@ public enum TileType {
     private final double initialHealth;
     private final boolean blocksStraightProjectiles;
 
-    TileType(boolean normallyPlantable, double initialHealth, boolean blocksStraightProjectiles) {
+    TileType(
+            boolean normallyPlantable,
+            double initialHealth,
+            boolean blocksStraightProjectiles)
+    {
         this.normallyPlantable = normallyPlantable;
         this.initialHealth = initialHealth;
         this.blocksStraightProjectiles = blocksStraightProjectiles;

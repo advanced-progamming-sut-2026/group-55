@@ -297,7 +297,7 @@ public class Projectile extends Entity {
         }
 
         while (true) {
-            Zombie zombie = world.board().findHitZombie(
+            Zombie zombie = world.findHitZombie(
                     row,
                     previousX,
                     nextX,
@@ -346,7 +346,7 @@ public class Projectile extends Entity {
             Integer blockingTileColumn
     ) {
         while (true) {
-            Zombie zombie = world.board().findHitZombie(
+            Zombie zombie = world.findHitZombie(
                     row,
                     previousX,
                     nextX,

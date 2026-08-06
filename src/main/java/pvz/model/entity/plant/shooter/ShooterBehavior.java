@@ -181,7 +181,7 @@ public class ShooterBehavior
             int targetRow
     ) {
         if (path.vector().isHorizontal()) {
-            return world().board().hasStraightTarget(
+            return world().hasStraightTarget(
                     targetRow,
                     owner().getX(),
                     profile.rangeTiles(),
@@ -189,7 +189,7 @@ public class ShooterBehavior
             );
         }
 
-        return world().board().hasDirectionalTarget(
+        return world().hasDirectionalTarget(
                 column(),
                 targetRow,
                 profile.rangeTiles(),

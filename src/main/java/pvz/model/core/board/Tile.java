@@ -6,12 +6,15 @@ import java.util.Objects;
 
 import pvz.model.core.GameEvents;
 import pvz.model.entity.plant.Plant;
+import pvz.model.entity.plant.PlantStackingRole;
 import pvz.model.entity.plant.PlantTag;
 
 public final class Tile {
-    private TileType type;
+    private static final int MAX_SELF_STACKING_PLANTS = 5;
 
-    int x; int y;
+    private TileType type;
+    private final int x;
+    private final int y;
     private double health;
     private final List<Plant> plants = new ArrayList<>();
 
@@ -33,105 +36,170 @@ public final class Tile {
         return List.copyOf(plants);
     }
 
-    public void setType(TileType newType) {
-        type = Objects.requireNonNull(newType, "tile type cannot be null");
+    void setType(TileType newType) {
+        type = Objects.requireNonNull(
+                newType,
+                "tile type cannot be null"
+        );
         health = type.getInitialHealth();
     }
 
-    public boolean isPlantableFor(Plant plant) {
+    boolean isPlantableFor(Plant plant) {
         Objects.requireNonNull(plant, "plant cannot be null");
-        if (type.isNormallyPlantable()) {
-            return true;
-        }
+
         if (type == TileType.WATER) {
-            return plant.hasTag(PlantTag.WATER) || hasLilyPad();
+            return plant.hasTag(PlantTag.WATER)
+                    || hasWaterPlatform();
         }
-        return false;
+
+        return type.isNormallyPlantable()
+                && !plant.hasTag(PlantTag.WATER);
     }
-    public boolean canStack(Plant newPlant) {
+
+    boolean canStack(Plant newPlant) {
+        Objects.requireNonNull(newPlant, "plant cannot be null");
+
         if (plants.isEmpty()) {
             return true;
         }
-        boolean onlyLilyPadHere = type == TileType.WATER && hasLilyPad() && plants.size() == 1;
-        if (onlyLilyPadHere && !isLilyPad(newPlant)) {
-            return true; // planting one plant on top of a lily pad
-        }
-        if (isPeaPod(newPlant)) {
-            long peaPodCount = plants.stream().filter(this::isPeaPod).count();
-            boolean othersAreOk = plants.stream()
-                    .allMatch(plant -> isPeaPod(plant) || isLilyPad(plant));
-            return othersAreOk && peaPodCount < 5;
-        }
-        if (isPumpkin(newPlant)) {
-            return !hasPumpkin(plants);
-        }
-        return false;
+
+        return switch (newPlant.getStackingRole()) {
+            case WATER_PLATFORM -> false;
+            case PROTECTIVE_COVER -> !hasProtectiveCover();
+            case SELF_STACKING -> canAddSelfStackingPlant(newPlant);
+            case NONE -> !hasMainPlant();
+        };
     }
 
-    /// canStack helpier method
-    private boolean isLilyPad(Plant plant) {
-        return plant.getName().equalsIgnoreCase("Lily Pad");
-    }
+    void addPlant(Plant plant) {
+        Plant checkedPlant = Objects.requireNonNull(
+                plant,
+                "plant cannot be null"
+        );
 
-    private boolean isPeaPod(Plant plant) {
-        return plant.getName().equalsIgnoreCase("Pea Pod");
-    }
+        int insertionIndex = findInsertionIndex(
+                checkedPlant.getStackingRole()
+        );
 
-    private boolean hasLilyPad() {
-        return plants.stream().anyMatch(plant -> plant.getName().equalsIgnoreCase("Lily Pad"));
-    }
-
-    private boolean isPumpkin(Plant plant) {
-        return plant.getName().equalsIgnoreCase("Pumpkin");
-    }
-
-    private boolean hasPumpkin(List<Plant> plants) {
-        return plants.stream().anyMatch(plant -> plant.getName().equalsIgnoreCase("Pumpkin"));
-    }
-    //////////////////////////////////////////////////////
-
-    public void addPlant(Plant plant) {
-        plants.add(Objects.requireNonNull(plant, "plant cannot be null"));
+        plants.add(insertionIndex, checkedPlant);
     }
 
     boolean removePlant(Plant plant) {
         return plants.remove(plant);
     }
 
-    public boolean hasFirePlant() {
-        return plants.stream().anyMatch(plant -> plant.hasTag(PlantTag.FIRE));
+    int countPlantsWithTag(PlantTag tag) {
+        Objects.requireNonNull(tag, "plant tag cannot be null");
+
+        return (int) plants.stream()
+                .filter(plant -> plant.hasTag(tag))
+                .count();
     }
 
     public boolean blocksStraightProjectiles() {
         return type.blocksStraightProjectiles();
     }
 
-    public boolean takeDamage(double damage) {
+    boolean takeDamage(double damage) {
         if (damage <= 0 || !type.isDestructible()) {
             return false;
         }
+
         health = Math.max(0, health - damage);
+
         if (health == 0) {
             publishDestroyedMessage();
             setType(TileType.NORMAL);
             return true;
         }
+
         return false;
     }
 
-    public boolean applyFireDamage(double damage) {
+    boolean applyFireDamage(double damage) {
         if (type != TileType.FROZEN) {
             return false;
         }
+
         return takeDamage(damage);
+    }
+
+    private boolean canAddSelfStackingPlant(Plant newPlant) {
+        List<Plant> mainPlants = plants.stream()
+                .filter(this::occupiesMainLayer)
+                .toList();
+
+        if (mainPlants.isEmpty()) {
+            return true;
+        }
+
+        if (mainPlants.size() >= MAX_SELF_STACKING_PLANTS) {
+            return false;
+        }
+
+        int newPlantId = newPlant.getSpec().getId();
+
+        return mainPlants.stream().allMatch(
+                plant -> plant.getStackingRole()
+                        == PlantStackingRole.SELF_STACKING
+                        && plant.getSpec().getId() == newPlantId
+        );
+    }
+
+    private boolean hasMainPlant() {
+        return plants.stream().anyMatch(this::occupiesMainLayer);
+    }
+
+    private boolean occupiesMainLayer(Plant plant) {
+        PlantStackingRole role = plant.getStackingRole();
+
+        return role == PlantStackingRole.NONE
+                || role == PlantStackingRole.SELF_STACKING;
+    }
+
+    private boolean hasWaterPlatform() {
+        return hasRole(PlantStackingRole.WATER_PLATFORM);
+    }
+
+    private boolean hasProtectiveCover() {
+        return hasRole(PlantStackingRole.PROTECTIVE_COVER);
+    }
+
+    private boolean hasRole(PlantStackingRole role) {
+        return plants.stream().anyMatch(
+                plant -> plant.getStackingRole() == role
+        );
+    }
+
+    private int findInsertionIndex(PlantStackingRole role) {
+        if (role == PlantStackingRole.WATER_PLATFORM) {
+            return 0;
+        }
+
+        if (role == PlantStackingRole.PROTECTIVE_COVER) {
+            return plants.size();
+        }
+
+        for (int index = 0; index < plants.size(); index++) {
+            if (plants.get(index).getStackingRole()
+                    == PlantStackingRole.PROTECTIVE_COVER) {
+                return index;
+            }
+        }
+
+        return plants.size();
     }
 
     private void publishDestroyedMessage() {
         String message = switch (type) {
-            case TOMBSTONE -> "the tombstone at (" + x + ", " + y + ") is destroyed";
-            case FROZEN -> "the frozen tile at (" + x + ", " + y + ") melted";
-            default -> "tile at (" + x + ", " + y + ") is destroyed";
+            case TOMBSTONE -> "the tombstone at ("
+                    + x + ", " + y + ") is destroyed";
+            case FROZEN -> "the frozen tile at ("
+                    + x + ", " + y + ") melted";
+            default -> "tile at ("
+                    + x + ", " + y + ") is destroyed";
         };
+
         GameEvents.publish(message);
     }
 }
