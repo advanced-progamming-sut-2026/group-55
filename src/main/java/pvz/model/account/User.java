@@ -1,34 +1,55 @@
 package pvz.model.account;
 
-import java.util.ArrayList;
-import java.util.List;
 import pvz.model.currency.CurrencyWallet;
+import pvz.model.greenhouse.Greenhouse;
+import pvz.model.shop.DailyOffer;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public class User implements CurrencyWallet {
+
+    private static final int MAX_PLANT_FOOD = 3;
+    private static final String DEFAULT_CHAPTER = "ancient-egypt";
+
     private String username;
     private String passwordHash;
     private String nickname;
     private String email;
     private String gender;
+
     private int securityQuestionNumber;
     private String securityAnswer;
     private boolean stayLoggedIn;
 
-    private int coins = 0;
-    private int diamonds = 0;
+    private int coins;
+    private int diamonds;
 
-    private int gamesPlayed = 0;
-    private int clearedStages = 0;
-    private int maxMewPoint = 0;
+    private int gamesPlayed;
+    private int clearedStages;
+    private int maxMewPoint;
+
+    private Greenhouse greenhouse;
+    private Set<String> storedBoosts;
+    private int plantFoodCount;
+    private DailyOffer dailyOffer;
 
     private List<String> unlockedChapters;
     private int difficultyLevel = 3;
 
-    private List<NewsItem> newsList = new ArrayList<>();
-    private List<PlayerPlant> unlockedPlants = new ArrayList<>();
-    private List<String> seenZombies = new ArrayList<>();
+    private List<NewsItem> newsList;
+    private List<PlayerPlant> unlockedPlants;
+    private List<String> seenZombies;
 
-    public User(String username, String passwordHash, String nickname, String email, String gender) {
+    public User(
+            String username,
+            String passwordHash,
+            String nickname,
+            String email,
+            String gender
+    ) {
         this.username = username;
         this.passwordHash = passwordHash;
         this.nickname = nickname;
@@ -37,113 +58,306 @@ public class User implements CurrencyWallet {
         this.stayLoggedIn = false;
 
         this.unlockedChapters = new ArrayList<>();
-        this.unlockedChapters.add("ancient-egypt");
+        this.unlockedChapters.add(DEFAULT_CHAPTER);
 
+        this.unlockedPlants = new ArrayList<>();
         this.unlockedPlants.add(new PlayerPlant("peashooter"));
         this.unlockedPlants.add(new PlayerPlant("sunflower"));
+
+        this.greenhouse = new Greenhouse();
+        this.storedBoosts = new HashSet<>();
+        this.newsList = new ArrayList<>();
+        this.seenZombies = new ArrayList<>();
     }
 
+    public String getUsername() {
+        return username;
+    }
 
-    public String getUsername() { return username; }
-    public void setUsername(String username) { this.username = username; }
+    public void setUsername(String username) {
+        this.username = username;
+    }
 
-    public String getPassword() { return passwordHash; }
-    public void setPassword(String passwordHash) { this.passwordHash = passwordHash; }
+    public String getPassword() {
+        return passwordHash;
+    }
 
-    public String getNickname() { return nickname; }
-    public void setNickname(String nickname) { this.nickname = nickname; }
+    public void setPassword(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
 
-    public String getEmail() { return email; }
-    public void setEmail(String email) { this.email = email; }
+    public String getNickname() {
+        return nickname;
+    }
 
-    public void setGender(String gender) { this.gender = gender; }
-    public String getGender() { return gender; }
+    public void setNickname(String nickname) {
+        this.nickname = nickname;
+    }
 
-    public int getSecurityQuestionNumber() { return securityQuestionNumber; }
-    public void setSecurityQuestionNumber(int n) { this.securityQuestionNumber = n; }
+    public String getEmail() {
+        return email;
+    }
 
-    public String getSecurityAnswer() { return securityAnswer; }
-    public void setSecurityAnswer(String a) { this.securityAnswer = a; }
+    public void setEmail(String email) {
+        this.email = email;
+    }
 
-    public boolean isStayLoggedIn() { return stayLoggedIn; }
-    public void setStayLoggedIn(boolean stayLoggedIn) { this.stayLoggedIn = stayLoggedIn; }
+    public String getGender() {
+        return gender;
+    }
 
-    public int getCoins() { return coins; }
-    public void addCoins(int amount) { this.coins += amount; }
+    public void setGender(String gender) {
+        this.gender = gender;
+    }
+
+    public int getSecurityQuestionNumber() {
+        return securityQuestionNumber;
+    }
+
+    public void setSecurityQuestionNumber(int number) {
+        this.securityQuestionNumber = number;
+    }
+
+    public String getSecurityAnswer() {
+        return securityAnswer;
+    }
+
+    public void setSecurityAnswer(String answer) {
+        this.securityAnswer = answer;
+    }
+
+    public boolean isStayLoggedIn() {
+        return stayLoggedIn;
+    }
+
+    public void setStayLoggedIn(boolean stayLoggedIn) {
+        this.stayLoggedIn = stayLoggedIn;
+    }
+
+    @Override
+    public int getCoins() {
+        return coins;
+    }
+
+    @Override
+    public void addCoins(int amount) {
+        long result = (long) coins + amount;
+
+        coins = result > Integer.MAX_VALUE
+                ? Integer.MAX_VALUE
+                : (int) result;
+    }
 
     public boolean spendCoins(int amount) {
-        if (this.coins >= amount) {
-            this.coins -= amount;
-            return true;}
+        if (amount < 0 || coins < amount) {
+            return false;
+        }
 
-        return false;
+        coins -= amount;
+        return true;
     }
 
-    public int getDiamonds() { return diamonds; }
-    public void addDiamonds(int amount) { this.diamonds += amount; }
-
-    public boolean isChapterUnlocked(String chapterName) { return unlockedChapters.contains(chapterName); }
-    public void unlockChapter(String chapterName) {
-        if (!this.unlockedChapters.contains(chapterName)) {
-            this.unlockedChapters.add(chapterName);}}
-
-    public int getDifficultyLevel() { return difficultyLevel; }
-    public void setDifficultyLevel(int difficultyLevel) { this.difficultyLevel = difficultyLevel; }
-
-    public int getGamesPlayed() { return gamesPlayed; }
-    public void setGamesPlayed(int gamesPlayed) { this.gamesPlayed = gamesPlayed; }
-
-    public int getClearedStages() { return clearedStages; }
-    public void setClearedStages(int clearedStages) { this.clearedStages = clearedStages; }
-
-    public int getMaxMewPoint() { return maxMewPoint; }
-    public void setMaxMewPoint(int maxMewPoint) { this.maxMewPoint = maxMewPoint; }
-
-    public void addNews(String message) {
-        if (this.newsList == null) this.newsList = new ArrayList<>();
-        this.newsList.add(new NewsItem(message));
+    @Override
+    public int getDiamonds() {
+        return diamonds;
     }
 
-    public List<NewsItem> getUnreadNews() {
-        if (this.newsList == null) return new ArrayList<>();
-        return newsList.stream().filter(n -> !n.isRead()).toList();
+    @Override
+    public void addDiamonds(int amount) {
+        long result = (long) diamonds + amount;
+
+        diamonds = result > Integer.MAX_VALUE
+                ? Integer.MAX_VALUE
+                : (int) result;
     }
 
-    public List<NewsItem> getAllNews() {
-        if (this.newsList == null) return new ArrayList<>();
-        return newsList;
+    public boolean spendDiamonds(int amount) {
+        if (amount < 0 || diamonds < amount) {
+            return false;
+        }
+
+        diamonds -= amount;
+        return true;
     }
 
-    public void markAllAsRead() {
-        if (this.newsList == null) return;
-        for (NewsItem news : newsList) news.setRead(true);
+    public int getGamesPlayed() {
+        return gamesPlayed;
     }
 
-    public boolean hasUnreadNews() {
-        if (this.newsList == null) return false;
-        return newsList.stream().anyMatch(n -> !n.isRead());
+    public void setGamesPlayed(int gamesPlayed) {
+        this.gamesPlayed = gamesPlayed;
     }
 
-    public List<PlayerPlant> getUnlockedPlants() { return unlockedPlants; }
-    public List<String> getSeenZombies() { return seenZombies; }
+    public int getClearedStages() {
+        return clearedStages;
+    }
 
-    public void addPlant(PlayerPlant plant) { this.unlockedPlants.add(plant); }
+    public void setClearedStages(int clearedStages) {
+        this.clearedStages = clearedStages;
+    }
+
+    public int getMaxMewPoint() {
+        return maxMewPoint;
+    }
+
+    public void setMaxMewPoint(int maxMewPoint) {
+        this.maxMewPoint = maxMewPoint;
+    }
+
+    public Greenhouse getGreenhouse() {
+        if (greenhouse == null) {
+            greenhouse = new Greenhouse();
+        }
+
+        return greenhouse;
+    }
+
+    public List<PlayerPlant> getUnlockedPlants() {
+        if (unlockedPlants == null) {
+            unlockedPlants = new ArrayList<>();
+            unlockedPlants.add(new PlayerPlant("peashooter"));
+            unlockedPlants.add(new PlayerPlant("sunflower"));
+        }
+
+        return unlockedPlants;
+    }
+
+    public void addPlant(PlayerPlant plant) {
+        getUnlockedPlants().add(plant);
+    }
 
     public PlayerPlant getOwnedPlant(String plantName) {
-        for (PlayerPlant plant : unlockedPlants) {
-            if (plant.getPlantName().equalsIgnoreCase(plantName)) return plant;
+        for (PlayerPlant plant : getUnlockedPlants()) {
+            if (plant.getPlantName().equalsIgnoreCase(plantName)) {
+                return plant;
+            }
         }
+
         return null;
     }
 
-    public void addSeenZombie(String zombieName) {
-        if (!seenZombies.contains(zombieName)) seenZombies.add(zombieName);
-    }
-    public boolean spendDiamonds(int amount) {
-        if (this.diamonds >= amount) {
-            this.diamonds -= amount;
-            return true;
+    public Set<String> getStoredBoosts() {
+        if (storedBoosts == null) {
+            storedBoosts = new HashSet<>();
         }
-        return false;
+
+        return storedBoosts;
+    }
+
+    public void addStoredBoost(String plantName) {
+        getStoredBoosts().add(normalizePlantName(plantName));
+    }
+
+    public boolean hasStoredBoost(String plantName) {
+        return getStoredBoosts().contains(
+                normalizePlantName(plantName)
+        );
+    }
+
+    public void removeStoredBoost(String plantName) {
+        getStoredBoosts().remove(
+                normalizePlantName(plantName)
+        );
+    }
+
+    public int getPlantFoodCount() {
+        return plantFoodCount;
+    }
+
+    public boolean addPlantFood(int amount) {
+        long newAmount = (long) plantFoodCount + amount;
+
+        if (amount < 0 || newAmount > MAX_PLANT_FOOD) {
+            return false;
+        }
+
+        plantFoodCount = (int) newAmount;
+        return true;
+    }
+
+    public DailyOffer getDailyOffer() {
+        return dailyOffer;
+    }
+
+    public void setDailyOffer(DailyOffer dailyOffer) {
+        this.dailyOffer = dailyOffer;
+    }
+
+    public boolean isChapterUnlocked(String chapterName) {
+        return getUnlockedChapters().contains(chapterName);
+    }
+
+    public void unlockChapter(String chapterName) {
+        if (!getUnlockedChapters().contains(chapterName)) {
+            getUnlockedChapters().add(chapterName);
+        }
+    }
+
+    public int getDifficultyLevel() {
+        return difficultyLevel;
+    }
+
+    public void setDifficultyLevel(int difficultyLevel) {
+        this.difficultyLevel = difficultyLevel;
+    }
+
+    public void addNews(String message) {
+        getNewsList().add(new NewsItem(message));
+    }
+
+    public List<NewsItem> getUnreadNews() {
+        return getNewsList().stream()
+                .filter(news -> !news.isRead())
+                .toList();
+    }
+
+    public List<NewsItem> getAllNews() {
+        return getNewsList();
+    }
+
+    public void markAllAsRead() {
+        for (NewsItem news : getNewsList()) {
+            news.setRead(true);
+        }
+    }
+
+    public boolean hasUnreadNews() {
+        return getNewsList().stream()
+                .anyMatch(news -> !news.isRead());
+    }
+
+    public List<String> getSeenZombies() {
+        if (seenZombies == null) {
+            seenZombies = new ArrayList<>();
+        }
+
+        return seenZombies;
+    }
+
+    public void addSeenZombie(String zombieName) {
+        if (!getSeenZombies().contains(zombieName)) {
+            getSeenZombies().add(zombieName);
+        }
+    }
+
+    private List<String> getUnlockedChapters() {
+        if (unlockedChapters == null) {
+            unlockedChapters = new ArrayList<>();
+            unlockedChapters.add(DEFAULT_CHAPTER);
+        }
+
+        return unlockedChapters;
+    }
+
+    private List<NewsItem> getNewsList() {
+        if (newsList == null) {
+            newsList = new ArrayList<>();
+        }
+
+        return newsList;
+    }
+
+    private String normalizePlantName(String plantName) {
+        return plantName.toLowerCase();
     }
 }

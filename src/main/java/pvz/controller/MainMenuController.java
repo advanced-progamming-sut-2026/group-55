@@ -17,11 +17,14 @@ public class MainMenuController extends BaseController {
         if (command instanceof Command.MenuLogoutCommand) {
             if (appState.getCurrentUser() != null) {
                 appState.getCurrentUser().setStayLoggedIn(false);
-                userManager.save();}
-
-            appState.setCurrentUser(null);
-            appState.setCurrentMenu(MenuName.REGISTER);
-            view.showSuccess(SystemMessage.LOGOUT_SUCCESS.getMessage());
+                if (userManager.save()) {
+                    appState.setCurrentUser(null);
+                    appState.setCurrentMenu(MenuName.REGISTER);
+                    view.showSuccess(SystemMessage.LOGOUT_SUCCESS.getMessage());
+                } else {
+                    view.showError("Failed to save logout state.");
+                }
+            }
             return null;
         }
 
