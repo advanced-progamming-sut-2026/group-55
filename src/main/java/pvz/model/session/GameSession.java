@@ -5,15 +5,17 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
-import pvz.model.core.board.Board;
+import pvz.model.core.BattleResources;
+import pvz.model.core.BattleWallet;
 import pvz.model.core.Game;
+import pvz.model.core.GameEvents;
+import pvz.model.core.GameStatus;
 import pvz.model.core.World;
+import pvz.model.core.board.Board;
 import pvz.model.entity.plant.Plant;
 import pvz.model.entity.plant.PlantFactory;
 import pvz.model.entity.zombie.Zombie;
 import pvz.model.entity.zombie.ZombieFactory;
-import pvz.model.core.BattleResources;
-import pvz.model.core.BattleWallet;
 
 public final class GameSession {
     private final GameSessionConfig config;
@@ -32,8 +34,14 @@ public final class GameSession {
             PlantFactory plantFactory,
             ZombieFactory zombieFactory
     ) {
-        this.config = Objects.requireNonNull(config, "config cannot be null");
-        this.world = Objects.requireNonNull(world, "world cannot be null");
+        this.config = Objects.requireNonNull(
+                config,
+                "config cannot be null"
+        );
+        this.world = Objects.requireNonNull(
+                world,
+                "world cannot be null"
+        );
         this.plantFactory = Objects.requireNonNull(
                 plantFactory,
                 "plant factory cannot be null"
@@ -48,14 +56,18 @@ public final class GameSession {
 
     public void start() {
         if (status != GameSessionStatus.CREATED) {
-            throw new IllegalStateException("session has already started");
+            throw new IllegalStateException(
+                    "session has already started"
+            );
         }
+
         status = GameSessionStatus.RUNNING;
     }
 
     public void advance(long ticks) {
         requireRunning();
         game.advance(ticks);
+        checkGameState();
     }
 
     public Plant createPlant(String plantName) {
@@ -69,36 +81,49 @@ public final class GameSession {
     }
 
     public boolean isPlantSelected(String plantName) {
-        return config.selectedPlants().contains(normalizeName(plantName));
+        return config.selectedPlants().contains(
+                normalizeName(plantName)
+        );
     }
 
     public boolean isPlantBoosted(String plantName) {
-        return config.boostedPlants().contains(normalizeName(plantName));
+        return config.boostedPlants().contains(
+                normalizeName(plantName)
+        );
     }
 
-    public long getRemainingRechargeTicks(String plantName, long rechargeTicks) {
+    public long getRemainingRechargeTicks(
+            String plantName,
+            long rechargeTicks
+    ) {
         if (rechargeTicks < 0) {
-            throw new IllegalArgumentException("recharge ticks cannot be negative");
+            throw new IllegalArgumentException(
+                    "recharge ticks cannot be negative"
+            );
         }
 
         if (resources().isCooldownCheatEnabled()) {
             return 0;
         }
 
-        Long lastTick = lastPlantedTicks.get(normalizeName(plantName));
+        Long lastTick = lastPlantedTicks.get(
+                normalizeName(plantName)
+        );
 
         if (lastTick == null) {
             return 0;
         }
 
         long elapsedTicks = game.getCurrentTick() - lastTick;
-
         return Math.max(0, rechargeTicks - elapsedTicks);
     }
 
     public void recordPlanting(String plantName) {
         requireRunning();
-        lastPlantedTicks.put(normalizeName(plantName), game.getCurrentTick());
+        lastPlantedTicks.put(
+                normalizeName(plantName),
+                game.getCurrentTick()
+        );
     }
 
     public BattleResources resources() {
@@ -122,22 +147,57 @@ public final class GameSession {
     }
 
     private void finish(GameSessionStatus finalStatus) {
+        Objects.requireNonNull(
+                finalStatus,
+                "final status cannot be null"
+        );
+
+        if (isFinished()) {
+            return;
+        }
+
         requireRunning();
         status = finalStatus;
     }
 
+    private void checkGameState() {
+        GameStatus gameStatus = game.getStateManager().getStatus();
+
+        if (gameStatus == GameStatus.LOST) {
+            markLost();
+            GameEvents.publish(
+                    "The zombie ate your brain; LOSER!!!"
+            );
+            return;
+        }
+
+        if (gameStatus == GameStatus.WON) {
+            markWon();
+            GameEvents.publish(
+                    "Dear humanz, zis is not done yet; "
+                            + "we will come back to eat your brainz, humanz."
+            );
+        }
+    }
+
     private void requireRunning() {
         if (!isRunning()) {
-            throw new IllegalStateException("game session is not running");
+            throw new IllegalStateException(
+                    "game session is not running"
+            );
         }
     }
 
     private String normalizeName(String name) {
         Objects.requireNonNull(name, "name cannot be null");
-        String normalizedName = name.strip().toLowerCase(Locale.ROOT);
+
+        String normalizedName = name.strip()
+                .toLowerCase(Locale.ROOT);
 
         if (normalizedName.isEmpty()) {
-            throw new IllegalArgumentException("name cannot be blank");
+            throw new IllegalArgumentException(
+                    "name cannot be blank"
+            );
         }
 
         return normalizedName;

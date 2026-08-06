@@ -138,10 +138,23 @@ public abstract class Zombie extends LivingEntity {
 
         if (x <= 0) {
             x = 0;
-            reachedHouse = true;
-            GameEvents.publish("a zombie reached the end of lane " + getTileY()
-                    + "! (lawn mower is not implemented yet)");
+            handleReachedHouse();
         }
+    }
+
+    private void handleReachedHouse() {
+        reachedHouse = true;
+
+        int row = getTileY();
+
+        if (world.isLawnMowerAvailable(row)) {
+            world.activateLawnMower(row);
+            return;
+        }
+
+        world.game()
+                .getStateManager()
+                .lose();
     }
 
     public void takeProjectileDamage(double damage) {

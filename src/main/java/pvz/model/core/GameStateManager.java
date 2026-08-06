@@ -1,6 +1,6 @@
 package pvz.model.core;
 
-public class GameStateManager {
+public final class GameStateManager {
 
     private GameStatus status = GameStatus.PLAYING;
 

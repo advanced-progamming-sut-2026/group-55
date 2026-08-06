@@ -1,13 +1,13 @@
 package pvz.model.core;
 
-import pvz.model.core.board.Board;
-import pvz.model.core.board.HorizontalDirection;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
+import pvz.model.core.board.Board;
+import pvz.model.core.board.HorizontalDirection;
+import pvz.model.entity.LawnMower;
 import pvz.model.entity.collectible.Collectible;
 import pvz.model.entity.collectible.plantfood.PlantFood;
 import pvz.model.entity.collectible.sun.Sun;
@@ -25,14 +25,19 @@ public final class World {
     private final Game game;
     private final Board board;
     private final BattleResources resources;
-    private final ZombieRegistry zombieRegistry =
-            new ZombieRegistry();
+    private final ZombieRegistry zombieRegistry = new ZombieRegistry();
+    private final List<LawnMower> lawnMowers = new ArrayList<>();
     private final List<Collectible> collectibles = new ArrayList<>();
 
     public World(Game game, Board board, BattleResources resources) {
-        this.game = Objects.requireNonNull(game);
-        this.board = Objects.requireNonNull(board);
-        this.resources = Objects.requireNonNull(resources);
+        this.game = Objects.requireNonNull(game, "game cannot be null");
+        this.board = Objects.requireNonNull(board, "board cannot be null");
+        this.resources = Objects.requireNonNull(
+                resources,
+                "resources cannot be null"
+        );
+
+        createLawnMowers();
     }
 
     public Game game() {
@@ -56,7 +61,12 @@ public final class World {
     }
 
     public void addCollectible(Collectible collectible) {
-        collectibles.add(Objects.requireNonNull(collectible));
+        collectibles.add(
+                Objects.requireNonNull(
+                        collectible,
+                        "collectible cannot be null"
+                )
+        );
     }
 
     public void removeCollectible(Collectible collectible) {
@@ -247,7 +257,6 @@ public final class World {
         return SunCollectionOutcome.COLLECTED;
     }
 
-
     public void collectPlantFood(PlantFood plantFood) {
         Objects.requireNonNull(
                 plantFood,
@@ -262,5 +271,36 @@ public final class World {
 
         resources.tryAddPlantFood();
         plantFood.remove();
+    }
+
+    public void activateLawnMower(int row) {
+        requireValidLawnMowerRow(row);
+        lawnMowers.get(row - 1).activate();
+    }
+
+    public boolean isLawnMowerAvailable(int row) {
+        if (!isValidLawnMowerRow(row)) {
+            return false;
+        }
+
+        return !lawnMowers.get(row - 1).isUsed();
+    }
+
+    private void createLawnMowers() {
+        for (int row = 1; row <= board.getRows(); row++) {
+            lawnMowers.add(new LawnMower(this, row));
+        }
+    }
+
+    private void requireValidLawnMowerRow(int row) {
+        if (!isValidLawnMowerRow(row)) {
+            throw new IllegalArgumentException(
+                    "invalid lawn mower row: " + row
+            );
+        }
+    }
+
+    private boolean isValidLawnMowerRow(int row) {
+        return row >= 1 && row <= lawnMowers.size();
     }
 }
