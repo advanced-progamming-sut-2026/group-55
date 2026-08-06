@@ -81,12 +81,23 @@ public class Application {
             appState.setCurrentUser(activeSessionUser);
             appState.setCurrentMenu(MenuName.MAIN);
             view.showMessage("Welcome back, " + activeSessionUser.getUsername() + "!");
+            showMainMenuHelp();
         } else {
             appState.setCurrentMenu(MenuName.REGISTER);
             view.showMessage("Welcome to Plants vs Zombies!");
             view.showMessage("To start playing, please register a new account.");
             view.showMessage("Already have an account? Just login!");
         }
+    }
+
+    private void showMainMenuHelp() {
+        view.showMessage("\n--- MAIN MENU ---");
+        view.showMessage("Play");
+        view.showMessage("Settings");
+        view.showMessage("News");
+        view.showMessage("Profile");
+        view.showMessage("Logout");
+        view.showMessage("------------------\n");
     }
 
     private boolean loadGameData() {

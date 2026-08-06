@@ -106,6 +106,8 @@ public abstract class BaseController implements Controller {
             case GAME, SETTINGS, NEWS, PROFILE -> {
                 appState.setCurrentMenu(MenuName.MAIN);
                 view.showSuccess(SystemMessage.ENTERED_MAIN.getMessage());
+                showMainMenuHelp();
+
             }
             case SHOP -> {
                 appState.setCurrentMenu(MenuName.GREENHOUSE);
@@ -133,10 +135,25 @@ public abstract class BaseController implements Controller {
             }
         }
         appState.setCurrentMenu(targetMenu);
+
+        if (targetMenu == MenuName.MAIN) {
+            showMainMenuHelp();
+        }
+
         if (targetMenu == MenuName.GAME) {
             view.showSuccess(SystemMessage.ENTERED_GAME.getMessage());
         } else {
             view.showSuccess("menu entered " + targetMenu.name().toLowerCase());
         }
+    }
+
+    private void showMainMenuHelp() {
+        view.showMessage("\n--- MAIN MENU ---");
+        view.showMessage("Play");
+        view.showMessage("Settings");
+        view.showMessage("News");
+        view.showMessage("Profile");
+        view.showMessage("Logout");
+        view.showMessage("------------------\n");
     }
 }
