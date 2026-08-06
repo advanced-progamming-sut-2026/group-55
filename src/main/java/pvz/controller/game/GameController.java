@@ -5,17 +5,17 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.regex.Matcher;
 
-import pvz.model.core.Board;
+import pvz.model.core.board.Board;
 import pvz.model.core.Game;
 import pvz.model.core.GameEvents;
-import pvz.model.core.Tile;
-import pvz.model.core.TileType;
+import pvz.model.core.board.Tile;
+import pvz.model.core.board.TileType;
 import pvz.model.core.World;
 import pvz.model.entity.collectible.Collectible;
 import pvz.model.entity.collectible.sun.Sun;
+import pvz.model.entity.collectible.plantfood.PlantFood;
 import pvz.model.entity.collectible.sun.SunCollectionOutcome;
 import pvz.model.entity.plant.Plant;
-import pvz.model.entity.zombie.BasicZombie;
 import pvz.model.entity.zombie.Zombie;
 import pvz.model.session.GameSession;
 import pvz.model.entity.plant.lifecycle.PlantRemovalResult;
@@ -58,6 +58,9 @@ public final class GameController {
         }
         if ((matcher = GameCommand.COLLECT_SUN.getMatcher(input)) != null) {
             return handleCollectSun(matcher);
+        }
+        if ((matcher = GameCommand.COLLECT_PLANT_FOOD.getMatcher(input)) != null) {
+            return handleCollectPlantFood(matcher);
         }
         if ((GameCommand.REMOVE_COOLDOWN.getMatcher(input)) != null) {
             return handleRemoveCooldown();
@@ -244,6 +247,37 @@ public final class GameController {
                 + " sun";
     }
 
+    private String handleCollectPlantFood(Matcher matcher) {
+        int x = Integer.parseInt(matcher.group("x"));
+        int y = Integer.parseInt(matcher.group("y"));
+
+        if (!board.inBounds(x, y)) {
+            return "location (" + x + ", " + y + ") is out of bounds!";
+        }
+
+        for (Collectible collectible : world.getCollectibles()) {
+            if (!(collectible instanceof PlantFood plantFood)) {
+                continue;
+            }
+
+            if (plantFood.getTileX() != x || plantFood.getTileY() != y) {
+                continue;
+            }
+
+            world.collectPlantFood(plantFood);
+
+            return "collected plant food; you now have "
+                    + session.resources().getPlantFoodCount()
+                    + " plant food(s)";
+        }
+
+        return "there is no plant food at ("
+                + x
+                + ", "
+                + y
+                + ")!";
+    }
+
     private String handleRemoveCooldown() {
         if (session.resources().isCooldownCheatEnabled()) {
             return "plant cooldowns are already removed!";
@@ -338,17 +372,20 @@ public final class GameController {
 
     private String handleSpawnZombie(Matcher matcher) {
         String type = matcher.group("type").toLowerCase(Locale.ROOT);
+
         int x = Integer.parseInt(matcher.group("x"));
         int y = Integer.parseInt(matcher.group("y"));
 
         if (!board.inBounds(x, y)) {
             return "location (" + x + ", " + y + ") is out of bounds!";
         }
-        if (!type.equals("normal")) {
+
+        Zombie zombie = session.createZombie(type);
+
+        if (zombie == null) {
             return "unknown zombie type: " + type + "!";
         }
 
-        Zombie zombie = new BasicZombie();
         zombie.spawn(world, x, y);
 
         return "zombie "
@@ -385,7 +422,7 @@ public final class GameController {
     }
 
     private char cellSymbol(int x, int y) {
-        for (Zombie zombie : board.getZombies()) {
+        for (Zombie zombie : world.getZombies()) {
             if (zombie.getTileY() == y && zombie.getTileX() == x) {
                 return 'Z';
             }

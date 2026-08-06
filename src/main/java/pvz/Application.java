@@ -1,8 +1,11 @@
 package pvz;
 
 import pvz.controller.*;
+import pvz.data.ZombieCsvLoader;
+import pvz.data.ZombieData;
 import pvz.model.account.User;
 import pvz.model.account.UserManager;
+import pvz.model.entity.zombie.ZombieFactory;
 import pvz.model.service.AuthService;
 import pvz.model.command.Command;
 import pvz.model.utils.AppState;
@@ -18,11 +21,13 @@ import pvz.view.MenuView;
 import pvz.model.entity.plant.PlantFactory;
 import pvz.model.session.GameRuntime;
 import pvz.model.session.GameSessionFactory;
+import pvz.model.core.BattleWallet;
 
 public class Application {
 
     private final AppState appState = new AppState();
     private PlantData plantData;
+    private ZombieData zombieData;
     private GameRuntime gameRuntime;
 
     private final UserManager userManager = new UserManager("save.json");
@@ -36,6 +41,8 @@ public class Application {
     private final NewsMenuParser newsMenuParser = new NewsMenuParser();
     private final CollectionMenuParser collectionParser = new CollectionMenuParser();
     private final PlantSelectionMenuParser plantSelectionParser = new PlantSelectionMenuParser();
+    private final GreenhouseParser greenhouseParser = new GreenhouseParser();
+    private final ShopParser shopParser = new ShopParser();
     private final AuthService authService = new AuthService(userManager);
     private final MenuView view = new ConsoleView();
 
@@ -46,13 +53,13 @@ public class Application {
     private final SettingsController settingsController = new SettingsController(appState, userManager, view);
     private final ProfileController profileController = new ProfileController(appState, userManager, authService, view);
     private final NewsController newsController = new NewsController(appState, userManager, view);
-    private final GreenhouseController greenhouseController = new GreenhouseController(appState, userManager, view);
     private final TravelLogController travelLogController = new TravelLogController(appState, userManager, view);
     private final LeaderboardController leaderboardController = new LeaderboardController(appState, userManager, view);
     private final ChapterController chapterController = new ChapterController(appState, userManager, view);
-
+    private GreenhouseController greenhouseController;
     private CollectionController collectionController;
     private PlantSelectionController plantSelectionController;
+    private ShopController shopController;
 
     public void run() {
         initSession();
@@ -90,15 +97,18 @@ public class Application {
     private boolean loadGameData() {
         try {
             this.plantData = PlantCsvLoader.load("assets/Data/plants.csv");
+            this.zombieData = ZombieCsvLoader.load("assets/Data/zombies.csv");
             PlantFactory plantFactory = new PlantFactory(plantData.byName());
-            GameSessionFactory sessionFactory = new GameSessionFactory(plantFactory);
+            ZombieFactory zombieFactory = new ZombieFactory(zombieData.byName());
+            GameSessionFactory sessionFactory = new GameSessionFactory(plantFactory, zombieFactory);
             this.gameRuntime = new GameRuntime(sessionFactory);
             this.collectionController =
                     new CollectionController(
                             appState,
                             userManager,
                             view,
-                            plantData
+                            plantData,
+                            zombieData
                     );
             this.plantSelectionController =
                     new PlantSelectionController(
@@ -108,6 +118,20 @@ public class Application {
                             plantData,
                             gameRuntime
                     );
+            this.shopController =
+                    new ShopController(
+                            appState,
+                            userManager,
+                            view
+                    );
+            this.greenhouseController =
+                    new GreenhouseController(
+                            appState,
+                            userManager,
+                            view,
+                            plantData
+                    );
+
             return true;
         } catch (IOException e) {
             view.showError(SystemMessage.LOADING_DATA_FAILED.getMessage());
@@ -135,9 +159,52 @@ public class Application {
                 "Game ended with status: " + gameRuntime.status()
         );
 
+        transferBattleCurrency(
+                gameRuntime.session().battleWallet()
+        );
+
         gameRuntime.clear();
         clearStagePreparation();
         appState.setCurrentMenu(MenuName.GAME);
+    }
+
+    private void transferBattleCurrency(BattleWallet battleWallet) {
+        User currentUser = appState.getCurrentUser();
+
+        if (currentUser == null) {
+            view.showError(
+                    "Cannot transfer battle currency without a logged-in user."
+            );
+            return;
+        }
+
+        battleWallet.transferTo(currentUser);
+
+        if (!userManager.save()) {
+            view.showError("Failed to save collected battle currency.");
+            return;
+        }
+
+        if (battleWallet.hasCollectedCurrency()) {
+            showBattleCurrencySummary(battleWallet, currentUser);
+        }
+    }
+
+    private void showBattleCurrencySummary(
+            BattleWallet battleWallet,
+            User currentUser
+    ) {
+        view.showMessage(
+                "Collected this stage: "
+                        + battleWallet.getCollectedCoins()
+                        + " coins, "
+                        + battleWallet.getCollectedDiamonds()
+                        + " diamonds. Total wallet: "
+                        + currentUser.getCoins()
+                        + " coins, "
+                        + currentUser.getDiamonds()
+                        + " diamonds."
+        );
     }
 
     private void clearStagePreparation(){
@@ -170,6 +237,8 @@ public class Application {
             case NEWS -> newsMenuParser.parse(input);
             case COLLECTION -> collectionParser.parse(input);
             case PLANT_SELECTION -> plantSelectionParser.parse(input);
+            case GREENHOUSE -> greenhouseParser.parse(input);
+            case SHOP -> shopParser.parse(input);
             default -> null;
         };
     }
@@ -208,6 +277,7 @@ public class Application {
             case TRAVEL_LOG -> travelLogController.handle(command);
             case LEADERBOARD -> leaderboardController.handle(command);
             case CHAPTER -> chapterController.handle(command);
+            case SHOP -> shopController.handle(command);
         }
 
         if (userBeforeCommand != null && appState.getCurrentUser() == null) {
@@ -215,13 +285,19 @@ public class Application {
         }
     }
 
+
     private boolean isValidMenuTransition(MenuName currentMenu, String targetMenuName) {
         String target = targetMenuName.trim().toLowerCase();
         return switch (currentMenu) {
             case REGISTER -> target.equals("login");
+
             case MAIN -> target.equals("game") || target.equals("settings") ||
-                         target.equals("news") || target.equals("profile");
-            case GAME -> target.equals("collection");
+                    target.equals("news") || target.equals("profile");
+
+            case GAME -> target.equals("collection") || target.equals("leaderboard");
+
+            case GREENHOUSE -> target.equals("shop");
+            case SHOP -> target.equals("greenhouse");
             default -> false;
         };
     }

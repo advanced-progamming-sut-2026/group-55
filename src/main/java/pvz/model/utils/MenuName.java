@@ -8,6 +8,7 @@ public enum MenuName {
     SETTINGS,
     NETWORK,
     NEWS,
+    SHOP,
     PROFILE,
     COLLECTION,
     PLANT_SELECTION,

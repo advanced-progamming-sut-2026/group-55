@@ -1,4 +1,4 @@
-package pvz.model.core;
+package pvz.model.core.board;
 
 public enum HorizontalDirection {
     RIGHT(1),

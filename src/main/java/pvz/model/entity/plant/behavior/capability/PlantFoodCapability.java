@@ -10,6 +10,10 @@ public interface PlantFoodCapability {
         return PlantFoodRules.MINIMUM_DURATION_TICKS;
     }
 
+    default boolean targetsMatchingPlantsOnBoard() {
+        return false;
+    }
+
     default void onPlantFoodStarted(long currentTick, long durationTicks) {
     }
 

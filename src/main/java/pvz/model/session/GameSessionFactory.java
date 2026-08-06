@@ -3,52 +3,90 @@ package pvz.model.session;
 import java.awt.Point;
 import java.util.Objects;
 
-import pvz.model.core.Board;
+import pvz.model.core.board.Board;
 import pvz.model.core.Game;
 import pvz.model.core.BattleResources;
 import pvz.model.core.World;
 import pvz.model.entity.collectible.sun.SkySunSpawner;
 import pvz.model.entity.plant.PlantFactory;
+import pvz.model.entity.zombie.ZombieFactory;
 
 public final class GameSessionFactory {
-    private final PlantFactory plantFactory;
 
-    public GameSessionFactory(PlantFactory plantFactory) {
+    private final PlantFactory plantFactory;
+    private final ZombieFactory zombieFactory;
+
+
+    public GameSessionFactory(
+            PlantFactory plantFactory,
+            ZombieFactory zombieFactory
+    ) {
         this.plantFactory = Objects.requireNonNull(
                 plantFactory,
                 "plant factory cannot be null"
         );
+
+        this.zombieFactory = Objects.requireNonNull(
+                zombieFactory,
+                "zombie factory cannot be null"
+        );
     }
+
 
     public GameSession create(GameSessionConfig config) {
         Objects.requireNonNull(config, "config cannot be null");
 
         Game game = new Game();
 
-        Board board = new Board(config.columns(), config.rows() );
+        Board board = new Board(
+                config.columns(),
+                config.rows()
+        );
 
         addInitialTombstones(board, config);
 
-        BattleResources resources = new BattleResources(config.startingSun());
+        BattleResources resources =
+                new BattleResources(config.startingSun());
 
-        World world = new World(game, board, resources);
+        World world =
+                new World(game, board, resources);
+
 
         game.register(board);
+
 
         if (config.skySunEnabled()) {
             game.register(new SkySunSpawner(world));
         }
 
-        return new GameSession(config, world, plantFactory);
+
+        return new GameSession(
+                config,
+                world,
+                plantFactory,
+                zombieFactory
+        );
     }
 
-    private void addInitialTombstones(Board board, GameSessionConfig config) {
+
+    private void addInitialTombstones(
+            Board board,
+            GameSessionConfig config
+    ) {
         for (Point point : config.tombCoordinates()) {
-            boolean placed = board.placeTombstone(point.x, point.y);
+
+            boolean placed = board.placeTombstone(
+                    point.x,
+                    point.y
+            );
 
             if (!placed) {
-                throw new IllegalStateException("could not place initial tombstone at ("
-                                + point.x + ", " + point.y + ")"
+                throw new IllegalStateException(
+                        "could not place initial tombstone at ("
+                                + point.x
+                                + ", "
+                                + point.y
+                                + ")"
                 );
             }
         }

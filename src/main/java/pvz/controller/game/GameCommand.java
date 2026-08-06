@@ -10,6 +10,7 @@ public enum GameCommand {
     PLUCK("^pluck\\s+plant\\s+-l\\s+\\((?<x>\\d+)\\s*,\\s*(?<y>\\d+)\\)$"),
     SHOW_SUN("^show\\s+sun\\s+amount$"),
     COLLECT_SUN("^collect\\s+sun\\s+-l\\s+\\((?<x>\\d+)\\s*,\\s*(?<y>\\d+)\\)$"),
+    COLLECT_PLANT_FOOD("^collect\\s+plant-food\\s+-l\\s+\\((?<x>\\d+)\\s*,\\s*(?<y>\\d+)\\)$"),
     ADD_PLANT_FOOD("^cheat\\s+add-plant-food$"),
     REMOVE_COOLDOWN("^cheat\\s+remove-cooldown$"),
     FEED_PLANT("^feed\\s+plant\\s+-l\\s+\\((?<x>\\d+)\\s*,\\s*(?<y>\\d+)\\)$"),

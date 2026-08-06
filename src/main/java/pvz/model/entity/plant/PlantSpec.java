@@ -7,6 +7,7 @@ public class PlantSpec {
     private final String name;
     private final PlantCategory category;
     private final Set<PlantTag> tags;
+    private final PlantStackingRole stackingRole;
     private final int cost;
     private final int baseHp;
     private final String damage;
@@ -36,6 +37,10 @@ public class PlantSpec {
         this.name = name;
         this.category = category;
         this.tags = Set.copyOf(tags);
+        this.stackingRole = PlantStackingRole.from(
+                category,
+                this.tags
+        );
         this.cost = cost;
         this.baseHp = baseHp;
         this.damage = damage;
@@ -62,4 +67,16 @@ public class PlantSpec {
     public String getName() { return name; }
     public PlantCategory getCategory() { return category; }
     public Set<PlantTag> getTags() { return tags; }
+
+    public PlantStackingRole getStackingRole() {
+        return stackingRole;
+    }
+
+    public boolean hasPlantFoodEffect() {
+        return plantFoodEffect != null
+                && !plantFoodEffect.isBlank()
+                && !plantFoodEffect.strip()
+                .toLowerCase()
+                .startsWith("none");
+    }
 }

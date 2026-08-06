@@ -69,12 +69,15 @@ public abstract class BaseController implements Controller {
             if (appState.getCurrentMenu() == MenuName.MAIN) {
                 if (appState.getCurrentUser() != null) {
                     appState.getCurrentUser().setStayLoggedIn(false);
-                    userManager.save();
-                }
 
-                appState.setCurrentUser(null);
-                appState.setCurrentMenu(MenuName.REGISTER);
-                view.showSuccess(SystemMessage.LOGOUT_SUCCESS.getMessage());
+                    if (userManager.save()) {
+                        appState.setCurrentUser(null);
+                        appState.setCurrentMenu(MenuName.REGISTER);
+                        view.showSuccess(SystemMessage.LOGOUT_SUCCESS.getMessage());
+                    } else {
+                        view.showError("Failed to logout properly.");
+                    }
+                }
             } else {
                 view.showError(SystemMessage.LOGOUT_NOT_ALLOWED.getMessage());
             }
@@ -91,22 +94,26 @@ public abstract class BaseController implements Controller {
             }
             case LOGIN -> {
                 appState.setCurrentMenu(MenuName.REGISTER);
-                view.showSuccess(SystemMessage.MENU_ENTERED_REGISTER.getMessage());
+                view.showSuccess(SystemMessage.ENTERED_REGISTER.getMessage());
             }
             case MAIN -> {
                 view.showError(SystemMessage.LOGOUT_REQUIRED_MAIN.getMessage());
             }
             case CHAPTER, COLLECTION, GREENHOUSE, TRAVEL_LOG, LEADERBOARD -> {
                 appState.setCurrentMenu(MenuName.GAME);
-                view.showSuccess(SystemMessage.MENU_ENTERED_GAME.getMessage());
+                view.showSuccess(SystemMessage.ENTERED_GAME.getMessage());
             }
             case GAME, SETTINGS, NEWS, PROFILE -> {
                 appState.setCurrentMenu(MenuName.MAIN);
-                view.showSuccess(SystemMessage.MENU_ENTERED_MAIN.getMessage());
+                view.showSuccess(SystemMessage.ENTERED_MAIN.getMessage());
+            }
+            case SHOP -> {
+                appState.setCurrentMenu(MenuName.GREENHOUSE);
+                view.showSuccess(SystemMessage.ENTERED_GREENHOUSE.getMessage());
             }
             default -> {
                 appState.setCurrentMenu(MenuName.MAIN);
-                view.showSuccess(SystemMessage.MENU_ENTERED_MAIN.getMessage());
+                view.showSuccess(SystemMessage.ENTERED_MAIN.getMessage());
             }
         }
     }
@@ -127,7 +134,7 @@ public abstract class BaseController implements Controller {
         }
         appState.setCurrentMenu(targetMenu);
         if (targetMenu == MenuName.GAME) {
-            view.showSuccess(SystemMessage.MENU_ENTERED_GAME.getMessage());
+            view.showSuccess(SystemMessage.ENTERED_GAME.getMessage());
         } else {
             view.showSuccess("menu entered " + targetMenu.name().toLowerCase());
         }

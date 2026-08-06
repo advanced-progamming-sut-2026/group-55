@@ -10,16 +10,15 @@ import java.util.stream.Collectors;
 
 public abstract class BaseManager<T> {
     protected final String filePath;
-    protected final File file; // یک فیلد برای نگهداری آبجکت File اضافه شد
+    protected final File file;
     protected final List<T> items;
     private final Type listType;
 
     public BaseManager(String filePath, Type listType) {
         this.filePath = filePath;
         this.listType = listType;
-        this.file = new File(filePath); // آبجکت File را اینجا می‌سازیم
+        this.file = new File(filePath);
 
-        // حالا آبجکت File را پاس می‌دیم، نه String را
         this.items = SaveManager.load(this.file, listType);
     }
 
@@ -38,18 +37,18 @@ public abstract class BaseManager<T> {
                 .orElse(null);
     }
 
-    public List<T> filter(Predicate<T> condition) {
-        return items.stream()
-                .filter(condition)
-                .collect(Collectors.toList());
-    }
 
     public boolean exists(Predicate<T> condition) {
         return items.stream().anyMatch(condition);
     }
 
     public boolean save() {
-        // اینجا هم آبجکت File را پاس می‌دیم
         return SaveManager.save(this.file, items);
+    }
+
+    public void reload() {
+        List<T> loadedItems = SaveManager.load(this.file, this.listType);
+        this.items.clear();
+        this.items.addAll(loadedItems);
     }
 }

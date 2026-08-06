@@ -1,12 +1,14 @@
 package pvz.controller;
 
 import pvz.data.PlantData;
+import pvz.data.ZombieData;
 import pvz.model.account.UserManager;
 import pvz.model.account.PlayerPlant;
 import pvz.model.account.User;
 import pvz.model.command.CollectionCommand;
 import pvz.model.command.Command;
 import pvz.model.entity.plant.PlantSpec;
+import pvz.model.entity.zombie.ZombieSpec;
 import pvz.model.utils.AppState;
 import pvz.model.utils.Message;
 import pvz.model.utils.SystemMessage;
@@ -16,10 +18,12 @@ import java.util.Comparator;
 public class CollectionController extends BaseController {
 
     private final PlantData plantData;
+    private final ZombieData zombieData;
 
-    public CollectionController(AppState appState, UserManager userManager, MenuView view, PlantData plantData) {
+    public CollectionController(AppState appState, UserManager userManager, MenuView view, PlantData plantData, ZombieData zombieData) {
         super(appState, userManager, view);
         this.plantData = plantData;
+        this.zombieData = zombieData;
     }
 
     @Override
@@ -37,7 +41,9 @@ public class CollectionController extends BaseController {
             case SHOW_PLANT_DETAILS -> handleShowPlantDetails(cmd);
             case PURCHASE_PLANT -> handlePurchasePlant(cmd, currentUser);
             case UPGRADE_PLANT -> handleUpgradePlant(cmd, currentUser);
-            case SHOW_ALL_ZOMBIES, SHOW_ZOMBIES, SHOW_ZOMBIE_DETAILS -> view.showSuccess("Not implemented yet");
+            case SHOW_ZOMBIES -> handleShowZombies(currentUser);
+            case SHOW_ALL_ZOMBIES -> handleShowAllZombies();
+            case SHOW_ZOMBIE_DETAILS -> handleShowZombieDetails(cmd);
             default -> view.showError(SystemMessage.INVALID_COMMAND.getMessage());
         }
         return null;
@@ -118,5 +124,44 @@ public class CollectionController extends BaseController {
         } else {
             view.showError(SystemMessage.COLLECTION_NOT_ENOUGH_SEEDS.getMessage());
         }
+    }
+
+    private void handleShowZombies(User user) {
+        view.showSuccess("Seen Zombies:");
+
+        if (user.getSeenZombies().isEmpty()) {
+            view.showSuccess("No zombies discovered yet.");
+            return;
+        }
+
+        user.getSeenZombies()
+                .forEach(view::showSuccess);
+    }
+
+    private void handleShowAllZombies() {
+        view.showSuccess("All Zombies:");
+
+        zombieData.byId()
+                .values()
+                .forEach(z ->
+                        view.showSuccess(z.getName()));
+    }
+
+    private void handleShowZombieDetails(CollectionCommand cmd) {
+
+        ZombieSpec spec =
+                zombieData.byName().get(cmd.getTargetName().toLowerCase());
+
+        if (spec == null) {
+            view.showError(SystemMessage.COLLECTION_ITEM_NOT_FOUND.getMessage());
+            return;
+        }
+
+        view.showSuccess("Name: " + spec.getName());
+        view.showSuccess("Hitpoints: " + spec.getHitpoints());
+        view.showSuccess("Eat DPS: " + spec.getEatDps());
+        view.showSuccess("Speed: " + spec.getSpeed());
+        view.showSuccess("Wave Cost: " + spec.getWaveCost());
+        view.showSuccess("Armor: " + spec.getArmor());
     }
 }
