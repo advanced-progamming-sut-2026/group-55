@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import pvz.model.entity.LawnMower;
 import pvz.model.entity.collectible.Collectible;
 import pvz.model.entity.collectible.sun.Sun;
 import pvz.model.entity.collectible.plantfood.PlantFood;
@@ -22,12 +23,15 @@ public final class World {
     private final Board board;
     private final BattleResources resources;
 
+    private final List<LawnMower> lawnMowers = new ArrayList<>();
     private final List<Collectible> collectibles = new ArrayList<>();
 
     public World(Game game, Board board, BattleResources resources) {
         this.game = Objects.requireNonNull(game);
         this.board = Objects.requireNonNull(board);
         this.resources = Objects.requireNonNull(resources);
+
+        createLawnMowers();
     }
 
     public Game game() {
@@ -99,12 +103,40 @@ public final class World {
         plantFood.remove();
     }
 
+    public void activateLawnMower(int row) {
+
+        if (row < 1 || row > lawnMowers.size()) {
+            throw new IllegalArgumentException(
+                    "Invalid lawn mower row: " + row
+            );
+        }
+
+        lawnMowers.get(row - 1).activate();
+    }
+
+
+    public boolean isLawnMowerAvailable(int row) {
+
+        if (row < 1 || row > lawnMowers.size()) {
+            return false;
+        }
+
+        return !lawnMowers.get(row - 1).isUsed();
+    }
+
     private void explodeRadioactiveSun(
             int centerX,
             int centerY
     ) {
         damageZombiesInExplosion(centerX, centerY);
         damagePlantsInExplosion(centerX, centerY);
+    }
+
+    private void createLawnMowers() {
+
+        for (int row = 1; row <= board.getRows(); row++) {
+            lawnMowers.add(new LawnMower(this, row));
+        }
     }
     // mantegh zambie ha va plant haye mojood tooye yek square behtare bere tooye board
     private void damageZombiesInExplosion(

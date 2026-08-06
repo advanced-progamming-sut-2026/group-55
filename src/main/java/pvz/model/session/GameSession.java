@@ -5,14 +5,11 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
-import pvz.model.core.Board;
-import pvz.model.core.Game;
-import pvz.model.core.World;
+import pvz.model.core.*;
 import pvz.model.entity.plant.Plant;
 import pvz.model.entity.plant.PlantFactory;
 import pvz.model.entity.zombie.Zombie;
 import pvz.model.entity.zombie.ZombieFactory;
-import pvz.model.core.BattleResources;
 
 public final class GameSession {
 
@@ -72,6 +69,8 @@ public final class GameSession {
     public void advance(long ticks) {
         requireRunning();
         game.advance(ticks);
+
+        checkGameState();
     }
 
 
@@ -169,11 +168,37 @@ public final class GameSession {
 
 
     private void finish(GameSessionStatus finalStatus) {
-        requireRunning();
+
+        if (isFinished()) {
+            return;
+        }
 
         status = finalStatus;
     }
 
+    private void checkGameState() {
+
+        if (game.getStateManager().getStatus() == GameStatus.LOST) {
+
+            markLost();
+
+            GameEvents.publish(
+                    "The zombie ate your brain; LOSER!!!"
+            );
+
+            return;
+        }
+
+
+        if (game.getStateManager().getStatus() == GameStatus.WON) {
+
+            markWon();
+
+            GameEvents.publish(
+                    "Dear humanz, zis is not done yet; we will come back to eat your brainz, humanz."
+            );
+        }
+    }
 
     private void requireRunning() {
         if (!isRunning()) {
@@ -240,3 +265,4 @@ public final class GameSession {
         return status;
     }
 }
+

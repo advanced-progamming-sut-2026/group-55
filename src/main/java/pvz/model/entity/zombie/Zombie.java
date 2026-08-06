@@ -23,12 +23,12 @@ public abstract class Zombie extends LivingEntity {
     private double armorHealth;
 
     protected World world;
-    private boolean reachedHouse;
 
     protected final ZombieSpec spec;
 
 
     protected Zombie(ZombieSpec spec) {
+
         this.spec = spec;
 
         this.name = spec.getName();
@@ -43,6 +43,7 @@ public abstract class Zombie extends LivingEntity {
 
 
     public void spawn(World world, int column, int row) {
+
         this.world = world;
 
         this.x = tileCenter(column);
@@ -110,11 +111,6 @@ public abstract class Zombie extends LivingEntity {
     @Override
     public void update(long tick) {
 
-        if (reachedHouse) {
-            return;
-        }
-
-
         Plant target = frontPlant();
 
 
@@ -130,17 +126,22 @@ public abstract class Zombie extends LivingEntity {
 
         x -= tilesPerSecond / Game.TICKS_PER_SECOND;
 
-
         if (x <= 0) {
 
             x = 0;
-            reachedHouse = true;
 
-            GameEvents.publish(
-                    "A zombie reached the end of lane "
-                            + getTileY()
-                            + "!"
-            );
+            int row = getTileY();
+
+            if (world.isLawnMowerAvailable(row)) {
+
+                world.activateLawnMower(row);
+
+            } else {
+
+                world.game()
+                        .getStateManager()
+                        .lose();
+            }
         }
     }
 
