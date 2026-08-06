@@ -74,6 +74,10 @@ public abstract class BaseController implements Controller {
                         appState.setCurrentUser(null);
                         appState.setCurrentMenu(MenuName.REGISTER);
                         view.showSuccess(SystemMessage.LOGOUT_SUCCESS.getMessage());
+
+                        view.showMessage("Welcome to Plants vs Zombies!");
+                        view.showMessage("To start playing, please register a new account.");
+                        view.showMessage("Already have an account? Just login!");
                     } else {
                         view.showError("Failed to logout properly.");
                     }

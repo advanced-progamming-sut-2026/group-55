@@ -85,7 +85,19 @@ public class LoginController extends BaseController {
 
             appState.setCurrentMenu(MenuName.MAIN);
             view.showSuccess(SystemMessage.LOGIN_SUCCESS.getMessage());
+
+            showMainMenuHelp();
         }
+    }
+
+    private void showMainMenuHelp() {
+        view.showMessage("\n--- MAIN MENU ---");
+        view.showMessage("Play");
+        view.showMessage("Settings");
+        view.showMessage("News");
+        view.showMessage("Profile");
+        view.showMessage("Logout");
+        view.showMessage("------------------\n");
     }
 
     private void processForgetPassword(LoginCommand forget) {
