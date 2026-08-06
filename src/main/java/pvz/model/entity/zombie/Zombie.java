@@ -6,9 +6,12 @@ import pvz.model.core.Game;
 import pvz.model.core.GameEvents;
 import pvz.model.core.World;
 import pvz.model.entity.LivingEntity;
+import pvz.model.entity.collectible.plantfood.PlantFood;
 import pvz.model.entity.plant.Plant;
 
 public abstract class Zombie extends LivingEntity {
+
+    private static final double PLANT_FOOD_DROP_CHANCE = 0.05;
 
     protected double x;
     protected double y;
@@ -171,6 +174,25 @@ public abstract class Zombie extends LivingEntity {
     }
 
 
+    private void tryDropPlantFood() {
+
+        if (Math.random() > PLANT_FOOD_DROP_CHANCE) {
+            return;
+        }
+
+
+        PlantFood plantFood = PlantFood.fromZombie(
+                world,
+                getX(),
+                getY()
+        );
+
+
+        world.addCollectible(plantFood);
+        world.game().register(plantFood);
+    }
+
+
     @Override
     protected void onDeath() {
 
@@ -187,6 +209,9 @@ public abstract class Zombie extends LivingEntity {
                         + getTileY()
                         + ")"
         );
+
+
+        tryDropPlantFood();
 
 
         world.board().removeZombie(this);
