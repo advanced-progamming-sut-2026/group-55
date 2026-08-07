@@ -1,6 +1,7 @@
 package pvz.controller;
 
 import pvz.model.account.UserManager;
+import pvz.model.utils.MenuHelp;
 import pvz.model.command.Command;
 import pvz.model.utils.*;
 import pvz.view.MenuView;
@@ -74,6 +75,7 @@ public abstract class BaseController implements Controller {
                         appState.setCurrentUser(null);
                         appState.setCurrentMenu(MenuName.REGISTER);
                         view.showSuccess(SystemMessage.LOGOUT_SUCCESS.getMessage());
+                        view.showRegisterWelcome();
                     } else {
                         view.showError("Failed to logout properly.");
                     }
@@ -106,6 +108,7 @@ public abstract class BaseController implements Controller {
             case GAME, SETTINGS, NEWS, PROFILE -> {
                 appState.setCurrentMenu(MenuName.MAIN);
                 view.showSuccess(SystemMessage.ENTERED_MAIN.getMessage());
+                showMenuHelp(MenuName.MAIN);
             }
             case SHOP -> {
                 appState.setCurrentMenu(MenuName.GREENHOUSE);
@@ -114,6 +117,7 @@ public abstract class BaseController implements Controller {
             default -> {
                 appState.setCurrentMenu(MenuName.MAIN);
                 view.showSuccess(SystemMessage.ENTERED_MAIN.getMessage());
+                showMenuHelp(MenuName.MAIN);
             }
         }
     }
@@ -137,6 +141,23 @@ public abstract class BaseController implements Controller {
             view.showSuccess(SystemMessage.ENTERED_GAME.getMessage());
         } else {
             view.showSuccess("menu entered " + targetMenu.name().toLowerCase());
+        }
+        showMenuHelp(targetMenu);
+    }
+    protected void showMenuHelp(MenuName menu) {
+
+        switch (menu) {
+
+            case MAIN -> {
+                view.showMessage("---MAIN MENU---");
+
+                for (String command : MenuHelp.MAIN) {
+                    view.showMessage(command);
+                }
+            }
+
+            default -> {
+            }
         }
     }
 }

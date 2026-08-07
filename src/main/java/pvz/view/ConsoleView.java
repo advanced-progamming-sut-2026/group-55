@@ -15,4 +15,10 @@ public class ConsoleView implements MenuView {
     public void showMessage(String message) {
         System.out.println(message);
     }
+
+    public void showRegisterWelcome() {
+        showMessage("Welcome to Plants vs Zombies!");
+        showMessage("To start playing, please register a new account.");
+        showMessage("Already have an account? Just login!");
+    }
 }

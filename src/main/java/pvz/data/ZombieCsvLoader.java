@@ -33,7 +33,7 @@ public class ZombieCsvLoader {
                     ArmorType.valueOf(parts[6])
             );
 
-            byName.put(spec.getName(), spec);
+            byName.put(spec.getName().toLowerCase(), spec);
             byId.put(spec.getId(), spec);
         }
 

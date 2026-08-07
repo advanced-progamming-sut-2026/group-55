@@ -9,6 +9,7 @@ import pvz.model.entity.zombie.ZombieFactory;
 import pvz.model.service.AuthService;
 import pvz.model.command.Command;
 import pvz.model.utils.AppState;
+import pvz.model.utils.MenuHelp;
 import pvz.model.utils.MenuName;
 import pvz.view.commandparser.*;
 import pvz.model.utils.SystemMessage;
@@ -86,11 +87,12 @@ public class Application {
             appState.setCurrentUser(activeSessionUser);
             appState.setCurrentMenu(MenuName.MAIN);
             view.showMessage("Welcome back, " + activeSessionUser.getUsername() + "!");
+            view.showMessage("--- MAIN MENU ---");
+            for (String command : MenuHelp.MAIN) {
+                view.showMessage(command);}
         } else {
             appState.setCurrentMenu(MenuName.REGISTER);
-            view.showMessage("Welcome to Plants vs Zombies!");
-            view.showMessage("To start playing, please register a new account.");
-            view.showMessage("Already have an account? Just login!");
+            view.showRegisterWelcome();
         }
     }
 
