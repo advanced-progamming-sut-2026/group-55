@@ -50,6 +50,9 @@ public final class GameController {
         if (GameCommand.SHOW_MAP.getMatcher(input) != null) {
             return handleShowMap();
         }
+        if (GameCommand.SHOW_ZOMBIES.getMatcher(input) != null) {
+            return handleShowZombies();
+        }
         if ((matcher = GameCommand.PLUCK.getMatcher(input)) != null) {
             return handlePluck(matcher);
         }
@@ -417,6 +420,60 @@ public final class GameController {
         output.append("Z = zombie, capital letter = plant's first, ")
                 .append("lowercase letter = non-normal tile's first, ")
                 .append(". = normal tile");
+
+        return output.toString();
+    }
+
+    private String handleShowZombies() {
+        List<Zombie> zombies = world.getZombies();
+
+        if (zombies.isEmpty()) {
+            return "there are no zombies on the board!";
+        }
+
+        StringBuilder output = new StringBuilder();
+
+        long currentTick = game.getCurrentTick();
+
+        for (Zombie zombie : zombies) {
+
+            output.append(zombie.getName())
+                    .append(":\n");
+
+            output.append("\tposition: ")
+                    .append(zombie.getTileX())
+                    .append(", ")
+                    .append(zombie.getTileY())
+                    .append("\n");
+
+            output.append("\thealth: ")
+                    .append(zombie.getHealth())
+                    .append("\n");
+
+            output.append("\tarmor:\n");
+
+            if (!zombie.getArmor().toString().equals("NONE")) {
+                output.append("\t\t")
+                        .append(zombie.getArmor()
+                                .name()
+                                .toLowerCase())
+                        .append(": ")
+                        .append(zombie.getArmor().getHitpoints())
+                        .append("\n");
+            }
+
+            output.append("\teffects:\n");
+
+            if (zombie.isChilled(currentTick)) {
+                output.append("\t\tchilled: active\n");
+            }
+
+            if (zombie.isFrozen(currentTick)) {
+                output.append("\t\tfrozen: active\n");
+            }
+
+            output.append("\n");
+        }
 
         return output.toString();
     }
