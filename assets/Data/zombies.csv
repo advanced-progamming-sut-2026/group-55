@@ -3,7 +3,7 @@ ZombieDefault,Default,190,100,0.185,100,NONE
 ZombieArmor1,Cone Head,190,100,0.185,200,CONE
 ZombieArmor2,Bucket Head,190,100,0.185,400,BUCKET
 ZombieArmor4,Brick Head,190,100,0.185,700,BRICK
-ZombieDarkArmor3,Knight,190,100,0.185,550,SHOULDER_ARMOR
+ZombieDarkArmor3,Knight,190,100,0.185,550,CROWN
 ZombieGargantuar,Gargantuar,3600,1500,0.24,1500,NONE
 ZombieImp,Imp,190,100,0.22,100,NONE
 ZombieRa,Ra,190,100,0.20,100,NONE

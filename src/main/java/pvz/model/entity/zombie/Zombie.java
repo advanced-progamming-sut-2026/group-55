@@ -16,8 +16,9 @@ public abstract class Zombie extends LivingEntity {
     protected double x;
     protected double y;
 
-    private final double tilesPerSecond;
-    private final double damagePerSecond;
+    private double tilesPerSecond;
+    private double damagePerSecond;
+
     private final ArmorType armor;
     private final ZombieSpec spec;
 
@@ -82,9 +83,19 @@ public abstract class Zombie extends LivingEntity {
         return y;
     }
 
+    protected void setTilesPerSecond(double speed) {
+        this.tilesPerSecond = speed;
+    }
+
+    protected void setDamagePerSecond(double damage) {
+        this.damagePerSecond = damage;
+    }
+
     public int getRow() {
         return getTileY();
     }
+
+    public World getWorld() { return world; }
 
     public ZombieSpec getSpec() {
         return spec;
@@ -400,7 +411,7 @@ public abstract class Zombie extends LivingEntity {
         return plants.isEmpty() ? null : plants.get(plants.size() - 1);
     }
 
-    private void bite(Plant plant) {
+    protected void bite(Plant plant) {
         plant.takeDamage(damagePerSecond);
     }
 

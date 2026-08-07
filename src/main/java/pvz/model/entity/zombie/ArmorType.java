@@ -5,8 +5,7 @@ public enum ArmorType {
     CONE(370, false),
     BUCKET(1100, true),
     BRICK(2200, false),
-    SHOULDER_ARMOR(1600, true),
-    CROWN(1600, true),
+    CROWN(3200, true),
     NEWSPAPER(800, false);
 
     private final int hitpoints;
