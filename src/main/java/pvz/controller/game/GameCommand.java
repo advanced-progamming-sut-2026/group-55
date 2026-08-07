@@ -7,6 +7,7 @@ public enum GameCommand {
     PLANT("^plant\\s+plant\\s+-t\\s+(?<type>.+?)\\s+-l\\s+\\((?<x>\\d+)\\s*,\\s*(?<y>\\d+)\\)$"),
     ADVANCE_TIME("^advance\\s+time\\s+-t\\s+(?<count>\\d+)\\s+ticks?$"),
     SHOW_MAP("^show\\s+map$"),
+    SHOW_ZOMBIES("^zombies\\s+info$"),
     PLUCK("^pluck\\s+plant\\s+-l\\s+\\((?<x>\\d+)\\s*,\\s*(?<y>\\d+)\\)$"),
     SHOW_SUN("^show\\s+sun\\s+amount$"),
     COLLECT_SUN("^collect\\s+sun\\s+-l\\s+\\((?<x>\\d+)\\s*,\\s*(?<y>\\d+)\\)$"),
