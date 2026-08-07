@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import pvz.model.entity.zombie.ArmorType;
@@ -33,7 +34,8 @@ public class ZombieCsvLoader {
                     ArmorType.valueOf(parts[6])
             );
 
-            byName.put(spec.getName().toLowerCase(), spec);
+            byName.put(spec.getName().toLowerCase(Locale.ROOT)
+                    , spec);
             byId.put(spec.getId(), spec);
         }
 
