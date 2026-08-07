@@ -85,6 +85,10 @@ public class LoginController extends BaseController {
 
             appState.setCurrentMenu(MenuName.MAIN);
             view.showSuccess(SystemMessage.LOGIN_SUCCESS.getMessage());
+            view.showMessage("--- MAIN MENU ---");
+            for (String command : MenuHelp.MAIN) {
+                view.showMessage(command);
+            }
         }
     }
 
