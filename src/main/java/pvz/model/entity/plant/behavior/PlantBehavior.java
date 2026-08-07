@@ -1,5 +1,7 @@
 package pvz.model.entity.plant.behavior;
 
+import pvz.model.entity.plant.lifecycle.PlantThreat;
+
 public interface PlantBehavior {
 
     void onPlaced(PlantPlacementContext context);
@@ -17,4 +19,7 @@ public interface PlantBehavior {
     void startAction(
             long currentTick
     );
+
+    default void onRemoved(PlantThreat threat) {
+    }
 }

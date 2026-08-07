@@ -31,6 +31,7 @@ public abstract class Zombie extends LivingEntity {
 
     private long chilledUntilTick;
     private long frozenUntilTick;
+    private long butteredUntilTick;
 
     private int poisonStacks;
     private double poisonDamagePerStack;
@@ -113,7 +114,10 @@ public abstract class Zombie extends LivingEntity {
     public void update(long tick) {
         updatePoison(tick);
 
-        if (reachedHouse || isDead() || isFrozen(tick)) {
+        if (reachedHouse
+                || isDead()
+                || isFrozen(tick)
+                || isButtered(tick)) {
             return;
         }
 
@@ -239,15 +243,7 @@ public abstract class Zombie extends LivingEntity {
                 currentTick + durationTicks
         );
 
-        if (biteTarget != null) {
-            nextBiteTick = Math.max(
-                    nextBiteTick,
-                    frozenUntilTick
-                            + attackIntervalTicks(
-                                    frozenUntilTick
-                            )
-            );
-        }
+        delayBiteUntilAfterHardStop(currentTick);
     }
 
     public void removeFreeze(long currentTick) {
@@ -266,6 +262,31 @@ public abstract class Zombie extends LivingEntity {
                             + attackIntervalTicks(currentTick)
             );
         }
+    }
+
+
+    public void applyButterStun(
+            long currentTick,
+            long durationTicks
+    ) {
+        if (currentTick < 0) {
+            throw new IllegalArgumentException(
+                    "current tick cannot be negative"
+            );
+        }
+
+        if (durationTicks <= 0) {
+            throw new IllegalArgumentException(
+                    "butter stun duration must be positive"
+            );
+        }
+
+        butteredUntilTick = Math.max(
+                butteredUntilTick,
+                currentTick + durationTicks
+        );
+
+        delayBiteUntilAfterHardStop(currentTick);
     }
 
     public void applyPoison(
@@ -328,6 +349,10 @@ public abstract class Zombie extends LivingEntity {
         return currentTick < frozenUntilTick;
     }
 
+    public boolean isButtered(long currentTick) {
+        return currentTick < butteredUntilTick;
+    }
+
     private void updateBiting(
             Plant target,
             long currentTick
@@ -346,6 +371,29 @@ public abstract class Zombie extends LivingEntity {
 
         nextBiteTick = currentTick
                 + attackIntervalTicks(currentTick);
+    }
+
+    private void delayBiteUntilAfterHardStop(
+            long currentTick
+    ) {
+        if (biteTarget == null) {
+            return;
+        }
+
+        long hardStopEndTick = Math.max(
+                frozenUntilTick,
+                butteredUntilTick
+        );
+
+        if (hardStopEndTick <= currentTick) {
+            return;
+        }
+
+        nextBiteTick = Math.max(
+                nextBiteTick,
+                hardStopEndTick
+                        + attackIntervalTicks(hardStopEndTick)
+        );
     }
 
     private long attackIntervalTicks(long currentTick) {

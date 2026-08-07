@@ -226,7 +226,7 @@ public final class World {
         }
 
         if (sun.isRadioactiveWhileFalling()) {
-            board.damageZombiesInArea(
+            board.damageZombiesDirectlyInArea(
                     getZombies(),
                     sun.getTileX(),
                     sun.getTileY(),

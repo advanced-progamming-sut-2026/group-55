@@ -1,7 +1,6 @@
 package pvz.model.core.board;
 
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 
 import pvz.model.core.Updatable;
@@ -120,20 +119,49 @@ public final class Board implements Updatable {
             int radius,
             double damage
     ) {
-        areaDamageResolver.damageZombies(zombies, centerX, centerY, radius, damage);
+        damageZombiesDirectlyInArea(
+                zombies,
+                centerX,
+                centerY,
+                radius,
+                damage
+        );
     }
 
-    public void damageZombiesInArea(
+    public void damageZombiesDirectlyInArea(
             List<Zombie> zombies,
             int centerX,
             int centerY,
             int radius,
-            double baseDamage,
-            ProjectileType projectileType
+            double damage
     ) {
-        Objects.requireNonNull(projectileType, "projectile type cannot be null");
-        double finalDamage = projectileType.calculateDamage(baseDamage);
-        damageZombiesInArea(zombies, centerX, centerY, radius, finalDamage);
+        areaDamageResolver.damageZombiesDirectly(
+                zombies,
+                centerX,
+                centerY,
+                radius,
+                damage
+        );
+    }
+
+    public void damageZombiesWithProjectileInArea(
+            List<Zombie> zombies,
+            int centerX,
+            int centerY,
+            int radius,
+            double damage,
+            ProjectileType projectileType,
+            long currentTick
+    ) {
+        areaDamageResolver.damageZombiesWithProjectile(
+                zombies,
+                centerX,
+                centerY,
+                radius,
+                damage,
+                projectileType,
+                currentTick
+        );
     }
 
     public void damagePlantsInArea(int centerX, int centerY, int radius, double damage) {

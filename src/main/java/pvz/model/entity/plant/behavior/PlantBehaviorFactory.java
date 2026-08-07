@@ -4,9 +4,11 @@ import java.util.Objects;
 
 import pvz.model.entity.plant.Plant;
 import pvz.model.entity.plant.PlantSpec;
+import pvz.model.entity.plant.lobber.LobberBehaviorFactory;
 import pvz.model.entity.plant.shooter.ShooterBehaviorFactory;
 import pvz.model.entity.plant.strikethrough.StrikeThroughBehaviorFactory;
 import pvz.model.entity.plant.sun.SunProducerBehavior;
+import pvz.model.entity.plant.wall.WallBehaviorFactory;
 
 public final class PlantBehaviorFactory {
 
@@ -30,6 +32,18 @@ public final class PlantBehaviorFactory {
 
             case STRIKE_THROUGH ->
                     StrikeThroughBehaviorFactory.create(
+                            owner,
+                            spec
+                    );
+
+            case WALL ->
+                    WallBehaviorFactory.create(
+                            owner,
+                            spec
+                    );
+
+            case LOBBER ->
+                    LobberBehaviorFactory.create(
                             owner,
                             spec
                     );

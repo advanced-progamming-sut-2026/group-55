@@ -16,6 +16,7 @@ import pvz.model.entity.plant.behavior.PlantBehaviorFactory;
 import pvz.model.entity.plant.behavior.PlantPlacementContext;
 import pvz.model.entity.plant.behavior.capability.PlantFoodCapability;
 import pvz.model.entity.plant.behavior.capability.SunProductionCapability;
+import pvz.model.entity.plant.behavior.capability.VaultBlockingCapability;
 
 public class Plant extends LivingEntity {
     private final PlantSpec spec;
@@ -236,6 +237,11 @@ public class Plant extends LivingEntity {
     public PlantStackingRole getStackingRole() {
         return spec.getStackingRole();
     }
+
+    public boolean blocksVaulting() {
+        return behavior instanceof VaultBlockingCapability capability
+                && capability.blocksVaulting();
+    }
     // remove damage death
     public boolean isRemovedFromWorld() {
         return removedFromWorld;
@@ -260,17 +266,22 @@ public class Plant extends LivingEntity {
             health = 0;
         }
 
-        finishRemoval(eventMessage);
+        finishRemoval(threat, eventMessage);
 
         return PlantRemovalResult.REMOVED;
     }
 
-    private void finishRemoval(String eventMessage) {
+    private void finishRemoval(
+            PlantThreat threat,
+            String eventMessage
+    ) {
         removedFromWorld = true;
 
         world.board().detachPlant(column, row, this);
 
         world.game().unregister(this);
+
+        behavior.onRemoved(threat);
 
         if (eventMessage != null && !eventMessage.isBlank()) {
             GameEvents.publish(eventMessage);

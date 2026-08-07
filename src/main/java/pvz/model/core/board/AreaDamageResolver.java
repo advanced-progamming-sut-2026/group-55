@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Objects;
 
 import pvz.model.entity.plant.Plant;
+import pvz.model.entity.projectile.ProjectileType;
 import pvz.model.entity.zombie.Zombie;
 
 final class AreaDamageResolver {
@@ -17,30 +18,55 @@ final class AreaDamageResolver {
         );
     }
 
-    void damageZombies(
+    void damageZombiesDirectly(
             List<Zombie> zombies,
             int centerX,
             int centerY,
             int radius,
             double damage
     ) {
-        Objects.requireNonNull(
+        applyToZombies(
                 zombies,
-                "zombies cannot be null"
+                centerX,
+                centerY,
+                radius,
+                damage,
+                zombie -> zombie.takeDirectDamage(damage)
         );
-        validateArea(centerX, centerY, radius, damage);
+    }
 
-        for (Zombie zombie : zombies) {
-            if (isInsideSquare(
-                    zombie.getTileX(),
-                    zombie.getTileY(),
-                    centerX,
-                    centerY,
-                    radius
-            )) {
-                zombie.takeDirectDamage(damage);
-            }
+    void damageZombiesWithProjectile(
+            List<Zombie> zombies,
+            int centerX,
+            int centerY,
+            int radius,
+            double damage,
+            ProjectileType projectileType,
+            long currentTick
+    ) {
+        Objects.requireNonNull(
+                projectileType,
+                "projectile type cannot be null"
+        );
+
+        if (currentTick < 0) {
+            throw new IllegalArgumentException(
+                    "current tick cannot be negative"
+            );
         }
+
+        applyToZombies(
+                zombies,
+                centerX,
+                centerY,
+                radius,
+                damage,
+                zombie -> projectileType.hitZombie(
+                        zombie,
+                        damage,
+                        currentTick
+                )
+        );
     }
 
     void damagePlants(
@@ -81,6 +107,37 @@ final class AreaDamageResolver {
         }
     }
 
+    private void applyToZombies(
+            List<Zombie> zombies,
+            int centerX,
+            int centerY,
+            int radius,
+            double damage,
+            ZombieDamageOperation operation
+    ) {
+        Objects.requireNonNull(
+                zombies,
+                "zombies cannot be null"
+        );
+        Objects.requireNonNull(
+                operation,
+                "zombie damage operation cannot be null"
+        );
+        validateArea(centerX, centerY, radius, damage);
+
+        for (Zombie zombie : zombies) {
+            if (isInsideSquare(
+                    zombie.getTileX(),
+                    zombie.getTileY(),
+                    centerX,
+                    centerY,
+                    radius
+            )) {
+                operation.apply(zombie);
+            }
+        }
+    }
+
     private void damagePlantsInTile(
             int x,
             int y,
@@ -105,9 +162,9 @@ final class AreaDamageResolver {
             );
         }
 
-        if (damage < 0) {
+        if (!Double.isFinite(damage) || damage < 0) {
             throw new IllegalArgumentException(
-                    "area damage cannot be negative"
+                    "area damage must be finite and non-negative"
             );
         }
     }
@@ -137,5 +194,10 @@ final class AreaDamageResolver {
     ) {
         return Math.abs(x - centerX) <= radius
                 && Math.abs(y - centerY) <= radius;
+    }
+
+    @FunctionalInterface
+    private interface ZombieDamageOperation {
+        void apply(Zombie zombie);
     }
 }
