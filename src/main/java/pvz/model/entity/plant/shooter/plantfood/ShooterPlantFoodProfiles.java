@@ -1,4 +1,4 @@
-package pvz.model.entity.plant.shooter;
+package pvz.model.entity.plant.shooter.plantfood;
 
 import java.util.List;
 import java.util.Locale;
@@ -10,6 +10,8 @@ import pvz.model.entity.plant.PlantCategory;
 import pvz.model.entity.plant.PlantSpec;
 import pvz.model.entity.plant.PlantTag;
 import pvz.model.entity.plant.attack.ShotPath;
+import pvz.model.entity.plant.shooter.ShooterProfile;
+import pvz.model.entity.plant.shooter.ShooterProfiles;
 import pvz.model.entity.projectile.ProjectileHitLimit;
 
 public final class ShooterPlantFoodProfiles {
@@ -220,8 +222,7 @@ public final class ShooterPlantFoodProfiles {
                         ),
                         baseProfile.projectileType(),
                         FULL_BOARD_RANGE,
-                        ProjectileHitLimit.unlimited(),
-                        true
+                        ProjectileHitLimit.unlimited()
                 );
 
         return new ShooterPlantFoodProfile(

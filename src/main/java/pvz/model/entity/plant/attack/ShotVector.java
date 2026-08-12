@@ -26,10 +26,7 @@ public record ShotVector(
             );
         }
 
-        int divisor = greatestCommonDivisor(
-                Math.abs(columnStep),
-                Math.abs(rowStep)
-        );
+        int divisor = greatestCommonDivisor(Math.abs(columnStep), Math.abs(rowStep));
 
         columnStep /= divisor;
         rowStep /= divisor;
@@ -46,9 +43,7 @@ public record ShotVector(
             );
         }
 
-        return columnStep > 0
-                ? HorizontalDirection.RIGHT
-                : HorizontalDirection.LEFT;
+        return columnStep > 0 ? HorizontalDirection.RIGHT : HorizontalDirection.LEFT;
     }
 
     public double unitColumnStep() {

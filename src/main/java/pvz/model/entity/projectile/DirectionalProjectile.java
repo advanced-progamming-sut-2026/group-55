@@ -18,7 +18,6 @@ public final class DirectionalProjectile extends Entity {
     private final ProjectileType type;
     private final ShotVector vector;
     private final ProjectileHitLimit hitLimit;
-    private final boolean piercesBlockingTerrain;
     private final Set<Zombie> hitZombies = new HashSet<>();
     private final Set<Long> hitTerrainTiles = new HashSet<>();
 
@@ -70,8 +69,7 @@ public final class DirectionalProjectile extends Entity {
                 type,
                 rangeTiles,
                 vector,
-                ProjectileHitLimit.singleHit(),
-                false
+                ProjectileHitLimit.singleHit()
         );
     }
 
@@ -85,8 +83,7 @@ public final class DirectionalProjectile extends Entity {
             ProjectileType type,
             int rangeTiles,
             ShotVector vector,
-            ProjectileHitLimit hitLimit,
-            boolean piercesBlockingTerrain
+            ProjectileHitLimit hitLimit
     ) {
         if (damage < 0) {
             throw new IllegalArgumentException(
@@ -130,8 +127,6 @@ public final class DirectionalProjectile extends Entity {
                 hitLimit,
                 "projectile hit limit cannot be null"
         );
-
-        this.piercesBlockingTerrain = piercesBlockingTerrain;
 
         this.x = tileCenter(startColumn)
                 + spawnOffset * vector.unitColumnStep();
@@ -197,7 +192,7 @@ public final class DirectionalProjectile extends Entity {
                 );
             }
 
-            if (!piercesBlockingTerrain) {
+            if (hitLimit.isReachedBy(hitZombies.size() + hitTerrainTiles.size())) {
                 world.game().unregister(this);
                 return;
             }
@@ -213,7 +208,7 @@ public final class DirectionalProjectile extends Entity {
             type.hitZombie(zombie, damage, tick);
             hitZombies.add(zombie);
 
-            if (hitLimit.isReachedBy(hitZombies.size())) {
+            if (hitLimit.isReachedBy(hitZombies.size() + hitTerrainTiles.size())) {
                 world.game().unregister(this);
                 return;
             }

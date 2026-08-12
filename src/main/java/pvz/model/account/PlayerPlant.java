@@ -26,7 +26,7 @@ public class PlayerPlant {
     public void addSeedPackets(int amount) {
         long newAmount = (long) this.seedPackets + amount;
         if (newAmount > Integer.MAX_VALUE) {
-            this.seedPackets = Integer.MAX_VALUE; // قفل شدن روی حداکثر مقدار ممکن
+            this.seedPackets = Integer.MAX_VALUE;
         } else {
             this.seedPackets = (int) newAmount;
         }

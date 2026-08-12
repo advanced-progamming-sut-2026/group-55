@@ -51,10 +51,15 @@ public class GreenhouseService {
             throw new Exception(SystemMessage.GREENHOUSE_NOT_READY.getMessage());
 
         GreenhousePlant plant = pot.getPlant();
-        if (plant.isMarigold()) {
-            user.addCoins(500);
-        } else {
-            user.addStoredBoost(plant.getPlantName());
+        // TODO(Saba): Review collection rewards. Currently every collected plant
+        // grants 500 coins. Verify whether only Marigold should grant coins and
+        // other plants should only grant their stored boost.
+        user.addCoins(500);
+
+        if (!plant.isMarigold()) {
+            if (!user.hasStoredBoost(plant.getPlantName())) {
+                user.addStoredBoost(plant.getPlantName());
+            }
         }
         pot.clear();
     }
@@ -79,6 +84,7 @@ public class GreenhouseService {
         }
 
         pot.getPlant().forceReady();
+        user.getGreenhouse().updateAllPots();
     }
 
     private void validatePotForPlanting(Pot pot) throws Exception {

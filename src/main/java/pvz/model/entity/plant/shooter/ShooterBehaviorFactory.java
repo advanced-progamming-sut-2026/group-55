@@ -6,6 +6,7 @@ import java.util.Objects;
 import pvz.model.entity.plant.Plant;
 import pvz.model.entity.plant.PlantSpec;
 import pvz.model.entity.plant.behavior.PlantBehavior;
+import pvz.model.entity.plant.shooter.bowlingbulb.BowlingBulbBehavior;
 
 public final class ShooterBehaviorFactory {
 

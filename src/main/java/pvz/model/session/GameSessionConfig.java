@@ -195,6 +195,8 @@ public record GameSessionConfig(
         }
     }
 
+    //helper method
+
     private static String normalizePlantName(
             String plantName
     ) {

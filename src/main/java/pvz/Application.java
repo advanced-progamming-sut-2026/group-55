@@ -296,7 +296,12 @@ public class Application {
             case MAIN -> target.equals("game") || target.equals("settings") ||
                     target.equals("news") || target.equals("profile");
 
-            case GAME -> target.equals("collection") || target.equals("leaderboard");
+            case GAME ->
+                    target.equals("collection") ||
+                            target.equals("leaderboard") ||
+                            target.equals("chapter") ||
+                            target.equals("greenhouse") ||
+                            target.equals("travel-log");
 
             case GREENHOUSE -> target.equals("shop");
             case SHOP -> target.equals("greenhouse");

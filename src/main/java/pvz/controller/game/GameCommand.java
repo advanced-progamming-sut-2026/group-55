@@ -14,6 +14,7 @@ public enum GameCommand {
     COLLECT_PLANT_FOOD("^collect\\s+plant-food\\s+-l\\s+\\((?<x>\\d+)\\s*,\\s*(?<y>\\d+)\\)$"),
     ADD_PLANT_FOOD("^cheat\\s+add-plant-food$"),
     REMOVE_COOLDOWN("^cheat\\s+remove-cooldown$"),
+    ADD_SUN("^cheat\\s+add\\s+-n\\s+(?<count>\\d+)\\s+suns?$"),
     FEED_PLANT("^feed\\s+plant\\s+-l\\s+\\((?<x>\\d+)\\s*,\\s*(?<y>\\d+)\\)$"),
     SPAWN_ZOMBIE("^cheat\\s+spawn-zombie\\s+-t\\s+(?<type>\\S+)\\s+-l\\s+\\(?(?<x>\\d+)\\s*,\\s*(?<y>\\d+)\\)?$");
 

@@ -1,4 +1,4 @@
-package pvz.model.entity.plant.shooter;
+package pvz.model.entity.plant.shooter.plantfood;
 
 import java.util.List;
 import java.util.Objects;

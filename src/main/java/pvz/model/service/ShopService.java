@@ -59,7 +59,8 @@ public class ShopService {
         for (int y = 2; y <= 4; y++) {
             for (int x = 1; x <= 5; x++) {
                 Pot pot = user.getGreenhouse().getPot(x, y);
-                if (pot != null && pot.isLocked()) lockedPots++;
+                if (pot != null && pot.isLocked())
+                    lockedPots++;
             }
         }
 
@@ -171,7 +172,12 @@ public class ShopService {
             }
 
             PlayerPlant randomPlant = unlocked.get(random.nextInt(unlocked.size()));
-            currentOffer = new DailyOffer(randomPlant.getPlantName(), DAILY_OFFER_PRICE, today);
+            currentOffer =
+                    new DailyOffer(
+                            randomPlant.getPlantName(),
+                            DAILY_OFFER_PRICE,
+                            today);
+
             user.setDailyOffer(currentOffer);
 
             return new DailyOfferResult(currentOffer, true);

@@ -35,6 +35,13 @@ final class ExplodeONutBehavior extends WallBehavior {
                 explosionDamage
         );
 
+        world().board().damageTilesInArea(
+                column(),
+                row(),
+                EXPLOSION_RADIUS,
+                explosionDamage
+        );
+
         GameEvents.publish(
                 owner().getName()
                         + " at ("

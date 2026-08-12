@@ -1,4 +1,4 @@
-package pvz.model.entity.plant.shooter;
+package pvz.model.entity.plant.shooter.plantfood;
 
 import java.util.List;
 import java.util.Objects;
@@ -14,8 +14,7 @@ public record ShooterPlantFoodPhase(
         List<PlantFoodShotPath> shotPaths,
         ProjectileType projectileType,
         int rangeTiles,
-        ProjectileHitLimit hitLimit,
-        boolean piercesBlockingTerrain
+        ProjectileHitLimit hitLimit
 ) {
     public ShooterPlantFoodPhase {
         if (startDelayTicks < 0) {
@@ -91,8 +90,7 @@ public record ShooterPlantFoodPhase(
                 shotPaths,
                 projectileType,
                 rangeTiles,
-                ProjectileHitLimit.singleHit(),
-                false
+                ProjectileHitLimit.singleHit()
         );
     }
 

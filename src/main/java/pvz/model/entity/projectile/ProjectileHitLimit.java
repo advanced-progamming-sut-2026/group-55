@@ -1,12 +1,12 @@
 package pvz.model.entity.projectile;
 
-public record ProjectileHitLimit(int maximumZombieHits) {
+public record ProjectileHitLimit(int maximumHits) {
     private static final int UNLIMITED_HITS = Integer.MAX_VALUE;
 
     public ProjectileHitLimit {
-        if (maximumZombieHits <= 0) {
+        if (maximumHits <= 0) {
             throw new IllegalArgumentException(
-                    "maximum zombie hits must be positive"
+                    "maximum hits must be positive"
             );
         }
     }
@@ -16,26 +16,26 @@ public record ProjectileHitLimit(int maximumZombieHits) {
     }
 
     public static ProjectileHitLimit limitedTo(
-            int maximumZombieHits
+            int maximumHits
     ) {
-        return new ProjectileHitLimit(maximumZombieHits);
+        return new ProjectileHitLimit(maximumHits);
     }
 
     public static ProjectileHitLimit unlimited() {
         return new ProjectileHitLimit(UNLIMITED_HITS);
     }
 
-    public boolean isReachedBy(int zombieHitCount) {
-        if (zombieHitCount < 0) {
+    public boolean isReachedBy(int hitCount) {
+        if (hitCount < 0) {
             throw new IllegalArgumentException(
-                    "zombie hit count cannot be negative"
+                    "hit count cannot be negative"
             );
         }
 
-        return zombieHitCount >= maximumZombieHits;
+        return hitCount >= maximumHits;
     }
 
     public boolean isUnlimited() {
-        return maximumZombieHits == UNLIMITED_HITS;
+        return maximumHits == UNLIMITED_HITS;
     }
 }

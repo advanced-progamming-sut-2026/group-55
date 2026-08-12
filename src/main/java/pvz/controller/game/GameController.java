@@ -59,6 +59,9 @@ public final class GameController {
         if (GameCommand.SHOW_SUN.getMatcher(input) != null) {
             return "you have " + world.sunBank().getBalance() + " sun";
         }
+        if ((matcher = GameCommand.ADD_SUN.getMatcher(input)) != null) {
+            return handleAddSun(matcher);
+        }
         if ((matcher = GameCommand.COLLECT_SUN.getMatcher(input)) != null) {
             return handleCollectSun(matcher);
         }
@@ -248,6 +251,16 @@ public final class GameController {
                 + " sun; you now have "
                 + world.sunBank().getBalance()
                 + " sun";
+    }
+
+    private String handleAddSun(Matcher matcher) {
+        int count = Integer.parseInt(matcher.group("count"));
+
+        world.sunBank().add(count);
+
+        return "sun added! you now have "
+                + world.sunBank().getBalance()
+                + " sun.";
     }
 
     private String handleCollectPlantFood(Matcher matcher) {

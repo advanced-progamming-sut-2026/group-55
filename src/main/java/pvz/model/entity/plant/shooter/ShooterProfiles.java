@@ -12,7 +12,7 @@ import pvz.model.entity.projectile.ProjectileType;
 
 public final class ShooterProfiles {
     private static final double DEFAULT_SHOT_DAMAGE = 20;
-    private static final long RAPID_SHOT_GAP_TICKS = 3;
+    private static final long RAPID_SHOT_GAP_TICKS = 2;
     private static final int FULL_BOARD_RANGE = Integer.MAX_VALUE;
     private static final int SHORT_RANGE_TILES = 3;
 

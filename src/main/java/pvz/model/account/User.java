@@ -14,6 +14,42 @@ public class User implements CurrencyWallet {
     private static final int MAX_PLANT_FOOD = 3;
     private static final String DEFAULT_CHAPTER = "ancient-egypt";
 
+    private static final List<String> DEFAULT_UNLOCKED_PLANT_NAMES = List.of(
+            "Sunflower",
+            "Twin Sunflower",
+            "Sun-shroom",
+            "Primal Sunflower",
+
+            "Peashooter",
+            "Repeater",
+            "Threepeater",
+            "Snow Pea",
+            "Rotobaga",
+            "Pea Pod",
+            "Split Pea",
+            "Citron",
+            "Bowling Bulb",
+            "Fire Peashooter",
+            "Starfruit",
+            "Goo Peashooter",
+            "Mega Gatling Pea",
+            "Sea-shroom",
+            "Puff-shroom",
+
+            "Cactus",
+            "Fume-shroom",
+
+            "Cabbage-pult",
+            "Kernel-pult",
+            "Melon-pult",
+            "Winter Melon",
+
+            "Wall-nut",
+            "Tall-nut",
+            "Explode-o-nut",
+            "Pumpkin"
+    );
+
     private String username;
     private String passwordHash;
     private String nickname;
@@ -60,9 +96,7 @@ public class User implements CurrencyWallet {
         this.unlockedChapters = new ArrayList<>();
         this.unlockedChapters.add(DEFAULT_CHAPTER);
 
-        this.unlockedPlants = new ArrayList<>();
-        this.unlockedPlants.add(new PlayerPlant("peashooter"));
-        this.unlockedPlants.add(new PlayerPlant("sunflower"));
+        this.unlockedPlants = createDefaultUnlockedPlants();
 
         this.greenhouse = new Greenhouse();
         this.storedBoosts = new HashSet<>();
@@ -214,9 +248,7 @@ public class User implements CurrencyWallet {
 
     public List<PlayerPlant> getUnlockedPlants() {
         if (unlockedPlants == null) {
-            unlockedPlants = new ArrayList<>();
-            unlockedPlants.add(new PlayerPlant("peashooter"));
-            unlockedPlants.add(new PlayerPlant("sunflower"));
+            unlockedPlants = createDefaultUnlockedPlants();
         }
 
         return unlockedPlants;
@@ -355,6 +387,16 @@ public class User implements CurrencyWallet {
         }
 
         return newsList;
+    }
+
+    private static List<PlayerPlant> createDefaultUnlockedPlants() {
+        List<PlayerPlant> plants = new ArrayList<>();
+
+        for (String plantName : DEFAULT_UNLOCKED_PLANT_NAMES) {
+            plants.add(new PlayerPlant(plantName));
+        }
+
+        return plants;
     }
 
     private String normalizePlantName(String plantName) {

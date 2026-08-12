@@ -1,4 +1,4 @@
-package pvz.model.entity.plant.shooter;
+package pvz.model.entity.plant.shooter.bowlingbulb;
 
 import java.util.ArrayList;
 import java.util.List;

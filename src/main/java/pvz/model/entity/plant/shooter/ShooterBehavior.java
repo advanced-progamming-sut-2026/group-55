@@ -12,6 +12,10 @@ import pvz.model.entity.plant.behavior.AbstractPlantBehavior;
 import pvz.model.entity.plant.behavior.capability.PlantFoodCapability;
 import pvz.model.entity.plant.plantfood.PlantFoodVolley;
 import pvz.model.entity.plant.projectile.PlantProjectileEmitter;
+import pvz.model.entity.plant.shooter.plantfood.PlantFoodShotPath;
+import pvz.model.entity.plant.shooter.plantfood.ShooterPlantFoodPhase;
+import pvz.model.entity.plant.shooter.plantfood.ShooterPlantFoodProfile;
+import pvz.model.entity.plant.shooter.plantfood.ShooterPlantFoodProfiles;
 
 public class ShooterBehavior
         extends AbstractPlantBehavior
@@ -48,28 +52,7 @@ public class ShooterBehavior
         );
     }
 
-    @Override
-    public boolean supportsPlantFood() {
-        return plantFoodProfile != null;
-    }
-
-    @Override
-    public boolean targetsMatchingPlantsOnBoard() {
-        return plantFoodProfile != null
-                && plantFoodProfile.targetsMatchingPlantsOnBoard();
-    }
-
-    @Override
-    public long requestedDurationTicks() {
-        if (plantFoodProfile == null) {
-            throw new IllegalStateException(
-                    spec.getName() + " does not have a shooter plant food profile"
-            );
-        }
-
-        return plantFoodProfile.durationTicks();
-    }
-
+    ///* plantBehavior
     @Override
     protected void afterPlaced() {
         projectileEmitter.onPlaced(world(), column());
@@ -107,6 +90,30 @@ public class ShooterBehavior
         );
     }
 
+    ///* plantFoodBehavior
+
+    @Override
+    public boolean supportsPlantFood() {
+        return plantFoodProfile != null;
+    }
+
+    @Override
+    public boolean targetsMatchingPlantsOnBoard() {
+        return plantFoodProfile != null
+                && plantFoodProfile.targetsMatchingPlantsOnBoard();
+    }
+
+    @Override
+    public long requestedDurationTicks() {
+        if (plantFoodProfile == null) {
+            throw new IllegalStateException(
+                    spec.getName() + " does not have a shooter plant food profile"
+            );
+        }
+
+        return plantFoodProfile.durationTicks();
+    }
+
     @Override
     public void onPlantFoodStarted(long currentTick, long durationTicks) {
         ensurePlaced();
@@ -134,6 +141,7 @@ public class ShooterBehavior
         }
     }
 
+    /// //////////////////////////////////////////
     private void startPlantFoodPhase(
             long currentTick,
             ShooterPlantFoodPhase phase
@@ -268,8 +276,7 @@ public class ShooterBehavior
                         phase.projectileType(),
                         phase.rangeTiles(),
                         vector.horizontalDirection(),
-                        phase.hitLimit(),
-                        phase.piercesBlockingTerrain()
+                        phase.hitLimit()
                 );
                 continue;
             }
@@ -281,8 +288,7 @@ public class ShooterBehavior
                     phase.projectileType(),
                     phase.rangeTiles(),
                     vector,
-                    phase.hitLimit(),
-                    phase.piercesBlockingTerrain()
+                    phase.hitLimit()
             );
         }
     }

@@ -1,8 +1,7 @@
 package pvz.model.entity.plant.plantfood;
 
 import pvz.model.entity.plant.PlantSpec;
-import pvz.model.entity.plant.shooter
-        .ShooterPlantFoodProfiles;
+import pvz.model.entity.plant.shooter.plantfood.ShooterPlantFoodProfiles;
 import pvz.model.entity.plant.sun.SunProfiles;
 
 public final class PlantFoodSupport {

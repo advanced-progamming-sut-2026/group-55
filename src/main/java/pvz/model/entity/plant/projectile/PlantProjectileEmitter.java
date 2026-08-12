@@ -68,28 +68,6 @@ public final class PlantProjectileEmitter {
             HorizontalDirection direction,
             ProjectileHitLimit hitLimit
     ) {
-        emit(
-                targetRow,
-                spawnOffsetX,
-                damage,
-                projectileType,
-                rangeTiles,
-                direction,
-                hitLimit,
-                false
-        );
-    }
-
-    public void emit(
-            int targetRow,
-            double spawnOffsetX,
-            double damage,
-            ProjectileType projectileType,
-            int rangeTiles,
-            HorizontalDirection direction,
-            ProjectileHitLimit hitLimit,
-            boolean piercesBlockingTerrain
-    ) {
         ensurePlaced();
 
         world.game().register(
@@ -103,8 +81,7 @@ public final class PlantProjectileEmitter {
                         projectileType,
                         rangeTiles,
                         direction,
-                        hitLimit,
-                        piercesBlockingTerrain
+                        hitLimit
                 )
         );
     }
@@ -141,8 +118,7 @@ public final class PlantProjectileEmitter {
                 projectileType,
                 rangeTiles,
                 vector,
-                ProjectileHitLimit.singleHit(),
-                false
+                ProjectileHitLimit.singleHit()
         );
     }
 
@@ -153,8 +129,7 @@ public final class PlantProjectileEmitter {
             ProjectileType projectileType,
             int rangeTiles,
             ShotVector vector,
-            ProjectileHitLimit hitLimit,
-            boolean piercesBlockingTerrain
+            ProjectileHitLimit hitLimit
     ) {
         ensurePlaced();
 
@@ -169,8 +144,7 @@ public final class PlantProjectileEmitter {
                         projectileType,
                         rangeTiles,
                         vector,
-                        hitLimit,
-                        piercesBlockingTerrain
+                        hitLimit
                 )
         );
     }

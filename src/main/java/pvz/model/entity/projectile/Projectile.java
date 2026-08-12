@@ -17,7 +17,6 @@ public class Projectile extends Entity {
     private final double damage;
     private final ProjectileType type;
     private final ProjectileHitLimit hitLimit;
-    private final boolean piercesBlockingTerrain;
     private final Set<Zombie> hitZombies =
             new HashSet<>();
     private final Set<Integer> hitTerrainColumns =
@@ -110,34 +109,6 @@ public class Projectile extends Entity {
             HorizontalDirection direction,
             ProjectileHitLimit hitLimit
     ) {
-        this(
-                world,
-                name,
-                startColumn,
-                startRow,
-                spawnOffsetX,
-                damage,
-                type,
-                rangeTiles,
-                direction,
-                hitLimit,
-                false
-        );
-    }
-
-    public Projectile(
-            World world,
-            String name,
-            int startColumn,
-            int startRow,
-            double spawnOffsetX,
-            double damage,
-            ProjectileType type,
-            int rangeTiles,
-            HorizontalDirection direction,
-            ProjectileHitLimit hitLimit,
-            boolean piercesBlockingTerrain
-    ) {
         if (rangeTiles <= 0) {
             throw new IllegalArgumentException("projectile range must be positive");
         }
@@ -174,8 +145,6 @@ public class Projectile extends Entity {
                 hitLimit,
                 "projectile hit limit cannot be null"
         );
-
-        this.piercesBlockingTerrain = piercesBlockingTerrain;
 
         this.x = calculateStartX(startColumn, spawnOffsetX);
         this.y = tileCenter(startRow);
@@ -279,44 +248,25 @@ public class Projectile extends Entity {
 
         x = nextX;
 
-        Integer blockingTileColumn = world.board().findHitBlockingTile(
-                                            row,
-                                            previousX,
-                                            nextX
-                                            );
-
-        if (piercesBlockingTerrain) {
-            updatePiercingProjectile(
-                    tick,
-                    row,
-                    previousX,
-                    nextX,
-                    blockingTileColumn
-            );
-            return;
-        }
+        // TODO: The resolver returns only the first blocking tile in the
+        // movement segment. When a projectile moves from one already-hit
+        // blocking tile directly into another, the second tile may be
+        // skipped for this tick.
 
         while (true) {
-            Zombie zombie = world.findHitZombie(
-                    row,
-                    previousX,
-                    nextX,
-                    hitZombies
-            );
+            Integer blockingTileColumn = world.board().findHitBlockingTile(row, previousX, nextX);
 
-            if (isBlockingTileFirst(
-                    blockingTileColumn,
-                    zombie,
-                    previousX
-            )) {
-                world.board().damageTerrain(
-                        blockingTileColumn,
-                        row,
-                        type.damageAgainstTerrain(damage)
-                );
+            Zombie zombie = world.findHitZombie(row, previousX, nextX, hitZombies);
 
-                world.game().unregister(this);
-                return;
+            if (isBlockingTileFirst(blockingTileColumn, zombie, previousX)
+                    && hitTerrainColumns.add(blockingTileColumn)) {
+
+                world.board().damageTerrain(blockingTileColumn, row, type.damageAgainstTerrain(damage));
+
+                if (hitLimit.isReachedBy(hitZombies.size() + hitTerrainColumns.size())) {
+                    world.game().unregister(this);
+                    return;
+                }
             }
 
             if (zombie == null) {
@@ -326,7 +276,7 @@ public class Projectile extends Entity {
             type.hitZombie(zombie, damage, tick);
             hitZombies.add(zombie);
 
-            if (hitLimit.isReachedBy(hitZombies.size())) {
+            if (hitLimit.isReachedBy(hitZombies.size() + hitTerrainColumns.size())) {
                 world.game().unregister(this);
                 return;
             }
@@ -335,52 +285,5 @@ public class Projectile extends Entity {
         if (hasReachedTerminal()) {
             world.game().unregister(this);
         }
-    }
-
-
-    private void updatePiercingProjectile(
-            long tick,
-            int row,
-            double previousX,
-            double nextX,
-            Integer blockingTileColumn
-    ) {
-        while (true) {
-            Zombie zombie = world.findHitZombie(
-                    row,
-                    previousX,
-                    nextX,
-                    hitZombies
-            );
-
-            if (zombie == null) {
-                break;
-            }
-
-            type.hitZombie(zombie, damage, tick);
-            hitZombies.add(zombie);
-
-            if (hitLimit.isReachedBy(hitZombies.size())) {
-                world.game().unregister(this);
-                return;
-            }
-        }
-
-        if (blockingTileColumn != null
-                && hitTerrainColumns.add(blockingTileColumn)) {
-            world.board().damageTerrain(
-                    blockingTileColumn,
-                    row,
-                    type.damageAgainstTerrain(damage)
-            );
-        }
-
-        if (hasReachedTerminal()) {
-            world.game().unregister(this);
-        }
-    }
-
-    public HorizontalDirection getDirection() {
-        return direction;
     }
 }
