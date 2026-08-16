@@ -14,6 +14,7 @@ public record GameSessionConfig(
         int columns,
         int rows,
         int startingSun,
+        int startingPlantFood,
         int difficultyLevel,
         boolean skySunEnabled,
         List<String> selectedPlants,
@@ -113,6 +114,13 @@ public record GameSessionConfig(
             this.selectedPlants = selectedPlants;
         }
 
+        private int startingPlantFood = 0;
+
+        public Builder startingPlantFood(int startingPlantFood) {
+            this.startingPlantFood = startingPlantFood;
+            return this;
+        }
+
         public Builder columns(int columns) {
             this.columns = columns;
             return this;
@@ -186,6 +194,7 @@ public record GameSessionConfig(
                     columns,
                     rows,
                     startingSun,
+                    startingPlantFood,
                     difficultyLevel,
                     skySunEnabled,
                     selectedPlants,

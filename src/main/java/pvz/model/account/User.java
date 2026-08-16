@@ -296,6 +296,10 @@ public class User implements CurrencyWallet {
         return plantFoodCount;
     }
 
+    public void clearPlantFood() {
+        this.plantFoodCount = 0;
+    }
+
     public boolean addPlantFood(int amount) {
         long newAmount = (long) plantFoodCount + amount;
 
