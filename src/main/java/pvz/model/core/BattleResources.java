@@ -8,10 +8,12 @@ public final class BattleResources {
     private int plantFoodCount;
     private boolean cooldownCheatEnabled;
 
-    public BattleResources(int startingSun) {
+    public BattleResources(int startingSun, int startingPlantFood) {
         this.sunBank = new SunBank(startingSun);
         this.battleWallet = new BattleWallet();
-        this.plantFoodCount = 0;
+
+        this.plantFoodCount = Math.min(startingPlantFood, MAX_PLANT_FOOD);
+
         this.cooldownCheatEnabled = false;
     }
 
@@ -34,7 +36,6 @@ public final class BattleResources {
         }
 
         return false;
-
     }
 
     public boolean tryConsumePlantFood() {

@@ -291,45 +291,37 @@ public class PlantSelectionController extends BaseController {
     }
 
     private void handleStartGame(User currentUser) {
-        String selectedChapter =
-                appState.getSelectedChapter();
+        String selectedChapter = appState.getSelectedChapter();
 
         if (!canStartGame(selectedChapter)) {
             return;
         }
 
-        Set<String> consumedStoredBoosts =
-                consumeStoredBoosts(currentUser);
-
-        Set<String> activeBoosts =
-                new HashSet<>(boostedPlants);
-
+        Set<String> consumedStoredBoosts = consumeStoredBoosts(currentUser);
+        Set<String> activeBoosts = new HashSet<>(boostedPlants);
         activeBoosts.addAll(consumedStoredBoosts);
 
-        GameSessionConfig config =
-                createGameConfig(
-                        selectedChapter,
-                        activeBoosts
-                );
+        int transferredPlantFood = currentUser.getPlantFoodCount();
+        currentUser.clearPlantFood();
+
+        GameSessionConfig config = createGameConfig(
+                selectedChapter,
+                activeBoosts,
+                transferredPlantFood
+        );
 
         if (!userManager.save()) {
-            restoreStoredBoosts(
-                    currentUser,
-                    consumedStoredBoosts
-            );
+            restoreStoredBoosts(currentUser, consumedStoredBoosts);
+            currentUser.addPlantFood(transferredPlantFood);
 
-            view.showError(
-                    "Failed to save game state. Cannot start game."
-            );
+            view.showError("Failed to save game state. Cannot start game.");
             return;
         }
 
         gameRuntime.start(config);
         appState.setCurrentMenu(MenuName.PLAYING);
 
-        view.showSuccess(
-                SystemMessage.PLANT_SELECTION_START_GAME.getMessage()
-        );
+        view.showSuccess(SystemMessage.PLANT_SELECTION_START_GAME.getMessage());
     }
 
     private boolean canStartGame(String selectedChapter) {
@@ -392,15 +384,15 @@ public class PlantSelectionController extends BaseController {
 
     private GameSessionConfig createGameConfig(
             String selectedChapter,
-            Set<String> activeBoosts
+            Set<String> activeBoosts,
+            int startingPlantFood
     ) {
         return new GameSessionConfig.Builder(
                 selectedChapter,
                 List.copyOf(selectedPlants)
         )
-                .boostedPlants(
-                        Set.copyOf(activeBoosts)
-                )
+                .boostedPlants(Set.copyOf(activeBoosts))
+                .startingPlantFood(startingPlantFood)
                 .build();
     }
 

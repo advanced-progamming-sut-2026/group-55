@@ -5,8 +5,8 @@ import java.util.Objects;
 import pvz.model.core.Game;
 import pvz.model.core.World;
 import pvz.model.entity.Entity;
-import pvz.model.entity.plant.lobber.LobberShot;
-import pvz.model.entity.plant.lobber.LobberTarget;
+import pvz.model.entity.plant.category.lobber.LobberShot;
+import pvz.model.entity.plant.category.lobber.LobberTarget;
 import pvz.model.entity.zombie.Zombie;
 
 public final class LobbedProjectile extends Entity {

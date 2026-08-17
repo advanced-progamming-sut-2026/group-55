@@ -4,11 +4,11 @@ import java.util.Objects;
 
 import pvz.model.entity.plant.Plant;
 import pvz.model.entity.plant.PlantSpec;
-import pvz.model.entity.plant.lobber.LobberBehaviorFactory;
-import pvz.model.entity.plant.shooter.ShooterBehaviorFactory;
-import pvz.model.entity.plant.strikethrough.StrikeThroughBehaviorFactory;
-import pvz.model.entity.plant.sun.SunProducerBehavior;
-import pvz.model.entity.plant.wall.WallBehaviorFactory;
+import pvz.model.entity.plant.category.lobber.LobberBehaviorFactory;
+import pvz.model.entity.plant.category.shooter.ShooterBehaviorFactory;
+import pvz.model.entity.plant.category.strikethrough.StrikeThroughBehaviorFactory;
+import pvz.model.entity.plant.category.sun.SunProducerBehavior;
+import pvz.model.entity.plant.category.wall.WallBehaviorFactory;
 
 public final class PlantBehaviorFactory {
 

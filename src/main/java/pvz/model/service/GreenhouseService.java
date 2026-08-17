@@ -11,6 +11,7 @@ import pvz.model.greenhouse.PotState;
 import pvz.model.utils.SystemMessage;
 import java.util.List;
 import java.util.Random;
+import pvz.model.entity.plant.plantfood.PlantFoodSupport;
 
 public class GreenhouseService {
     private static final long MARIGOLD_GROW_TIME = 7200000L; // 2 hours
@@ -51,16 +52,15 @@ public class GreenhouseService {
             throw new Exception(SystemMessage.GREENHOUSE_NOT_READY.getMessage());
 
         GreenhousePlant plant = pot.getPlant();
-        // TODO(Saba): Review collection rewards. Currently every collected plant
-        // grants 500 coins. Verify whether only Marigold should grant coins and
-        // other plants should only grant their stored boost.
-        user.addCoins(500);
 
-        if (!plant.isMarigold()) {
+        if (plant.isMarigold()) {
+            user.addCoins(500);
+        } else {
             if (!user.hasStoredBoost(plant.getPlantName())) {
                 user.addStoredBoost(plant.getPlantName());
             }
         }
+
         pot.clear();
     }
 
@@ -97,7 +97,7 @@ public class GreenhouseService {
         List<PlayerPlant> validPlants = user.getUnlockedPlants().stream()
                 .filter(p -> {
                     PlantSpec spec = plantData.byName().get(p.getPlantName().toLowerCase());
-                    return spec != null && spec.hasPlantFoodEffect();
+                    return spec != null && PlantFoodSupport.isImplemented(spec);
                 }).toList();
 
         if (validPlants.isEmpty()) {

@@ -46,7 +46,7 @@ public final class GameSessionFactory {
         addInitialTombstones(board, config);
 
         BattleResources resources =
-                new BattleResources(config.startingSun());
+                new BattleResources(config.startingSun(), config.startingPlantFood());
 
         World world =
                 new World(game, board, resources);
