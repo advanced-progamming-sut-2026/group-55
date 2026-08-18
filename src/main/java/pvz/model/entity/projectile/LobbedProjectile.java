@@ -111,11 +111,6 @@ public final class LobbedProjectile extends Entity {
                 tileCenter(impactColumn),
                 progress
         );
-        y = interpolate(
-                startY,
-                tileCenter(impactRow),
-                progress
-        );
 
         if (progress < 1) {
             return;
@@ -140,20 +135,21 @@ public final class LobbedProjectile extends Entity {
             return;
         }
 
-        world.board().damageTerrain(
-                impactColumn,
-                impactRow,
-                shot.projectileType()
-                        .damageAgainstTerrain(shot.damage())
-        );
-
         if (shot.splashRadius() > 0) {
             damageArea(
                     currentTick,
                     impactColumn,
                     impactRow
             );
+            return;
         }
+
+        world.board().damageTerrain(
+                impactColumn,
+                impactRow,
+                shot.projectileType()
+                        .damageAgainstTerrain(shot.damage())
+        );
     }
 
     private void impactZombieTarget(
@@ -172,7 +168,7 @@ public final class LobbedProjectile extends Entity {
 
         Zombie zombie = target.zombie();
 
-        if (zombie.isDead()) {
+        if (zombie.isDead() || target.hasLostZombie()) {
             return;
         }
 
@@ -198,6 +194,14 @@ public final class LobbedProjectile extends Entity {
                 shot.damage(),
                 shot.projectileType(),
                 currentTick
+        );
+
+        world.board().damageTilesInArea(
+                impactColumn,
+                impactRow,
+                shot.splashRadius(),
+                shot.projectileType()
+                        .damageAgainstTerrain(shot.damage())
         );
     }
 

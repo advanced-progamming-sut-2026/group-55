@@ -6,8 +6,9 @@ import pvz.model.entity.zombie.Zombie;
 
 public final class LobberTarget {
     private final Zombie zombie;
+    private final int targetRow;
     private int lastKnownColumn;
-    private int lastKnownRow;
+    private boolean zombieLost;
 
     private LobberTarget(
             Zombie zombie,
@@ -21,8 +22,8 @@ public final class LobberTarget {
         }
 
         this.zombie = zombie;
+        this.targetRow = row;
         this.lastKnownColumn = column;
-        this.lastKnownRow = row;
     }
 
     public static LobberTarget zombie(Zombie zombie) {
@@ -66,15 +67,24 @@ public final class LobberTarget {
 
     public int currentRow() {
         refreshLastKnownPosition();
-        return lastKnownRow;
+        return targetRow;
+    }
+
+    public boolean hasLostZombie() {
+        refreshLastKnownPosition();
+        return zombieLost;
     }
 
     private void refreshLastKnownPosition() {
-        if (zombie == null || zombie.isDead()) {
+        if (zombie == null || zombie.isDead() || zombieLost) {
+            return;
+        }
+
+        if (zombie.getTileY() != targetRow) {
+            zombieLost = true;
             return;
         }
 
         lastKnownColumn = zombie.getTileX();
-        lastKnownRow = zombie.getTileY();
     }
 }

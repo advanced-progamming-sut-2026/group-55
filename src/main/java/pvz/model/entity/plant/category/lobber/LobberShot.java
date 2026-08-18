@@ -11,7 +11,7 @@ public record LobberShot(
         long butterStunTicks
 ) {
     public LobberShot {
-        if (!Double.isFinite(damage) || damage < 0) {
+        if (!Double.isFinite(damage) || damage <= 0) {
             throw new IllegalArgumentException(
                     "lobber damage must be finite and non-negative"
             );

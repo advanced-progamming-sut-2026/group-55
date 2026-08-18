@@ -32,7 +32,8 @@ final class LobberProfiles {
             case "cabbage-pult",
                     "kernel-pult",
                     "melon-pult",
-                    "winter melon" -> true;
+                    "winter melon",
+                    "pepper-pult" -> true;
             default -> false;
         };
     }
@@ -68,6 +69,12 @@ final class LobberProfiles {
                     parseSimpleDamage(spec),
                     AREA_SPLASH_RADIUS,
                     ProjectileType.ICE
+            );
+
+            case "pepper-pult" -> singleShot(
+                    parseSimpleDamage(spec),
+                    AREA_SPLASH_RADIUS,
+                    ProjectileType.FIRE
             );
 
             default -> throw new IllegalArgumentException(
