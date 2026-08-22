@@ -4,6 +4,7 @@ import java.util.Objects;
 
 import pvz.model.core.Game;
 import pvz.model.entity.zombie.Zombie;
+import pvz.model.entity.zombie.DamageContext;
 
 public enum ProjectileType {
     NORMAL,
@@ -35,18 +36,16 @@ public enum ProjectileType {
 
         switch (this) {
             case NORMAL ->
-                    zombie.takeProjectileDamage(baseDamage);
+                    hit(zombie, baseDamage, currentTick, false);
 
             case FIRE -> {
                 zombie.removeChill(currentTick);
                 zombie.removeFreeze(currentTick);
-                zombie.takeProjectileDamage(
-                        calculateDamage(baseDamage)
-                );
+                hit(zombie, calculateDamage(baseDamage), currentTick, false);
             }
 
             case ICE -> {
-                zombie.takeProjectileDamage(baseDamage);
+                hit(zombie, baseDamage, currentTick, false);
 
                 if (!zombie.isDead()) {
                     zombie.applyChill(
@@ -57,7 +56,7 @@ public enum ProjectileType {
             }
 
             case POISON -> {
-                zombie.takeDirectDamage(baseDamage);
+                hit(zombie, baseDamage, currentTick, true);
 
                 if (!zombie.isDead()) {
                     zombie.applyPoison(
@@ -69,6 +68,24 @@ public enum ProjectileType {
                 }
             }
         }
+    }
+
+    private void hit(
+            Zombie zombie,
+            double damage,
+            long currentTick,
+            boolean bypassArmor
+    ) {
+        zombie.receiveHit(new DamageContext(
+                damage,
+                bypassArmor
+                        ? DamageContext.DamageSource.POISON
+                        : DamageContext.DamageSource.PROJECTILE,
+                this,
+                DamageContext.AttackPath.STRAIGHT,
+                bypassArmor,
+                currentTick
+        ));
     }
 
     public double damageAgainstTerrain(

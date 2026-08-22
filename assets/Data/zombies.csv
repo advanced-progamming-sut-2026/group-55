@@ -1,28 +1,28 @@
-id,name,hitpoints,eatDps,speed,waveCost,armor
-ZombieDefault,Default,190,100,0.185,100,NONE
-ZombieArmor1,Cone Head,190,100,0.185,200,CONE
-ZombieArmor2,Bucket Head,190,100,0.185,400,BUCKET
-ZombieArmor4,Brick Head,190,100,0.185,700,BRICK
-ZombieDarkArmor3,Knight,190,100,0.185,550,SHOULDER_ARMOR
-ZombieGargantuar,Gargantuar,3600,1500,0.24,1500,NONE
-ZombieImp,Imp,190,100,0.22,100,NONE
-ZombieRa,Ra,190,100,0.20,100,NONE
-ZombieExplorer,Explorer,250,100,0.25,250,NONE
-ZombieTombRaiser,Tomb Raiser,380,100,0.185,300,NONE
-ZombieIceAgeDodo,Dodo,490,100,0.30,600,NONE
-ZombieIceAgeHunter,Hunter,700,100,0.12,500,NONE
-ZombieIceAgeTroglobite,Troglobite,470,100,0.185,600,NONE
-ZombieBeachFisherman,Fisherman,1000,100,0.185,700,NONE
-ZombieBeachOctopus,Octopus,910,100,0.12,900,NONE
-ZombieBeachSnorkel,Snorkel,350,100,0.185,200,NONE
-ZombieDarkJuggler,Juggler,420,100,0.20,450,NONE
-ZombieWizard,Wizard,490,100,0.12,800,NONE
-ZombieDarkKing,King,1000,100,0.00,750,NONE
-ZombieDarkImpDragon,Imp Dragon,190,100,0.185,150,NONE
-ZombieModernAllStar,Allstar,1100,100,0.16,1000,NONE
-ZombieArcade,Arcade,490,100,0.19,600,NONE
-ZombieLostCityJane,Umbrella,350,100,0.25,200,NONE
-ZombieCrystalSkull,Turquoise,250,100,0.185,500,NONE
-ZombieProspector,Prospector,190,100,0.16,200,NONE
-ZombiePiano,Piano,840,4000,0.12,450,NONE
-ZombieNewspaper,News Paper,460,200,0.22,700,NEWSPAPER
+id,name,baseHp,eatDps,speed,waveCost,waveWeight,armors,behaviors,runtimeStatus
+ZombieDefault,Default,190,100,0.185,100,1000,,,SUPPORTED
+ZombieArmor1,Cone Head,190,100,0.185,200,3000,CONE,,SUPPORTED
+ZombieArmor2,Bucket Head,190,100,0.185,400,4000,BUCKET,,SUPPORTED
+ZombieArmor4,Brick Head,190,100,0.185,700,3000,BRICK,,SUPPORTED
+ZombieDarkArmor3,Knight,190,100,0.185,550,4500,CROWN|SHOULDER_ARMOR,,SUPPORTED
+ZombieGargantuar,Gargantuar,3600,1500,0.24,1500,3000,,,PLANNED
+ZombieImp,Imp,190,100,0.22,100,1000,,,PLANNED
+ZombieRa,Ra,190,100,0.20,100,700,,,PLANNED
+ZombieExplorer,Explorer,250,100,0.25,250,3000,,,PLANNED
+ZombieTombRaiser,Tomb Raiser,380,100,0.185,300,2000,,TOMB_SPAWN,SUPPORTED
+ZombieIceAgeDodo,Dodo,490,100,0.30,600,3500,,,PLANNED
+ZombieIceAgeHunter,Hunter,700,100,0.12,500,3500,,,PLANNED
+ZombieIceAgeTroglobite,Troglobite,470,100,0.185,600,3500,,,PLANNED
+ZombieBeachFisherman,Fisherman,1000,100,0.185,700,2500,,,PLANNED
+ZombieBeachOctopus,Octopus,910,100,0.12,900,3500,,,PLANNED
+ZombieBeachSnorkel,Snorkel,350,100,0.185,200,3000,,,PLANNED
+ZombieDarkJuggler,Juggler,420,100,0.20,450,3500,,,PLANNED
+ZombieWizard,Wizard,490,100,0.12,800,3500,,,PLANNED
+ZombieDarkKing,King,1000,100,0.00,750,2000,,,PLANNED
+ZombieDarkImpDragon,Imp Dragon,190,100,0.185,150,2000,,,PLANNED
+ZombieModernAllStar,Allstar,1100,100,0.16,1000,3500,,,PLANNED
+ZombieArcade,Arcade,490,100,0.19,600,1000,,,PLANNED
+ZombieLostCityJane,Umbrella,350,100,0.25,200,3000,,,PLANNED
+ZombieCrystalSkull,Turquoise,250,100,0.185,500,3000,,,PLANNED
+ZombieProspector,Prospector,190,100,0.16,200,3000,,,PLANNED
+ZombiePiano,Piano,840,4000,0.12,450,2000,,,PLANNED
+ZombieNewspaper,News Paper,460,200,0.22,700,4000,NEWSPAPER,,PLANNED

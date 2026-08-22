@@ -1,0 +1,7 @@
+id,name,baseHp,metallic
+CONE,Cone,370,false
+BUCKET,Bucket,1100,true
+BRICK,Brick,2200,false
+SHOULDER_ARMOR,Shoulder Armor,1600,true
+CROWN,Crown,1600,true
+NEWSPAPER,Newspaper,800,false
