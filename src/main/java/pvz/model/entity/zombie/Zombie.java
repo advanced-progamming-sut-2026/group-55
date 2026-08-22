@@ -8,8 +8,9 @@ import pvz.model.core.World;
 import pvz.model.entity.LivingEntity;
 import pvz.model.entity.collectible.plantfood.PlantFood;
 import pvz.model.entity.plant.Plant;
+import pvz.model.entity.zombie.behavior.ZombieBehavior;
 
-public abstract class Zombie extends LivingEntity {
+public final class Zombie extends LivingEntity {
     private static final double CHILLED_SPEED_MULTIPLIER = 0.5;
     private static final double PLANT_FOOD_DROP_CHANCE = 0.05;
 
@@ -18,12 +19,12 @@ public abstract class Zombie extends LivingEntity {
 
     private final double tilesPerSecond;
     private final double damagePerSecond;
-    private final ArmorType armor;
+    private final ArmorSet armorSet;
     private final ZombieSpec spec;
+    private final List<ZombieBehavior> behaviors;
 
     private World world;
-    private double armorHealth;
-    private boolean bypassArmor;
+    private DamageContext incomingDamage;
     private boolean reachedHouse;
 
     private Plant biteTarget;
@@ -38,7 +39,11 @@ public abstract class Zombie extends LivingEntity {
     private long poisonUntilTick;
     private long nextPoisonDamageTick = Long.MAX_VALUE;
 
-    protected Zombie(ZombieSpec spec) {
+    public Zombie(
+            ZombieSpec spec,
+            ArmorSet armorSet,
+            List<ZombieBehavior> behaviors
+    ) {
         this.spec = Objects.requireNonNull(
                 spec,
                 "zombie spec cannot be null"
@@ -47,8 +52,11 @@ public abstract class Zombie extends LivingEntity {
         this.health = spec.getHitpoints();
         this.tilesPerSecond = spec.getSpeed();
         this.damagePerSecond = spec.getEatDps();
-        this.armor = spec.getArmor();
-        this.armorHealth = armor.getHitpoints();
+        this.armorSet = Objects.requireNonNull(
+                armorSet,
+                "armor set cannot be null"
+        );
+        this.behaviors = List.copyOf(behaviors);
     }
 
     public void spawn(World world, int column, int row) {
@@ -71,6 +79,9 @@ public abstract class Zombie extends LivingEntity {
         this.x = tileCenter(column);
         this.y = tileCenter(row);
         world.game().register(this);
+        for (ZombieBehavior behavior : behaviors) {
+            behavior.onSpawn(this, world, world.game().getCurrentTick());
+        }
     }
 
     @Override
@@ -91,23 +102,31 @@ public abstract class Zombie extends LivingEntity {
         return spec;
     }
 
-    public ArmorType getArmor() {
-        return armor;
+    public ArmorSet getArmorSet() {
+        return armorSet;
     }
 
     public double getArmorHealth() {
-        return armorHealth;
+        return armorSet.layers().stream()
+                .mapToDouble(ArmorInstance::remainingHealth)
+                .sum();
     }
 
     @Override
     protected double modifyIncomingDamage(double damage) {
-        if (bypassArmor || armorHealth <= 0) {
+        if (incomingDamage == null
+                || incomingDamage.bypassArmor()
+                || !armorSet.hasIntactArmor()) {
             return damage;
         }
-
-        double remainingDamage = damage - armorHealth;
-        armorHealth = Math.max(0, armorHealth - damage);
-        return Math.max(0, remainingDamage);
+        ArmorSet.ArmorDamageResult result = armorSet.absorb(damage);
+        long currentTick = incomingDamage.tick();
+        for (ArmorInstance brokenArmor : result.brokenLayers()) {
+            for (ZombieBehavior behavior : behaviors) {
+                behavior.onArmorBroken(this, brokenArmor, currentTick);
+            }
+        }
+        return result.overflowDamage();
     }
 
     @Override
@@ -121,9 +140,18 @@ public abstract class Zombie extends LivingEntity {
             return;
         }
 
+        for (ZombieBehavior behavior : behaviors) {
+            behavior.onTick(this, world, tick);
+        }
+
         Plant target = frontPlant();
 
         if (target != null) {
+            for (ZombieBehavior behavior : behaviors) {
+                if (behavior.onPlantEncounter(this, target, world, tick)) {
+                    return;
+                }
+            }
             updateBiting(target, tick);
             return;
         }
@@ -162,17 +190,46 @@ public abstract class Zombie extends LivingEntity {
     }
 
     public void takeProjectileDamage(double damage) {
-        takeDamage(damage);
+        receiveHit(new DamageContext(
+                damage,
+                DamageContext.DamageSource.PROJECTILE,
+                null,
+                DamageContext.AttackPath.UNKNOWN,
+                false,
+                currentTick()
+        ));
     }
 
     public void takeDirectDamage(double damage) {
-        bypassArmor = true;
+        receiveHit(new DamageContext(
+                damage,
+                DamageContext.DamageSource.DIRECT,
+                null,
+                DamageContext.AttackPath.UNKNOWN,
+                true,
+                currentTick()
+        ));
+    }
 
-        try {
-            takeDamage(damage);
-        } finally {
-            bypassArmor = false;
+    public void receiveHit(DamageContext context) {
+        Objects.requireNonNull(context, "damage context cannot be null");
+        DamageContext processed = context;
+        for (ZombieBehavior behavior : behaviors) {
+            processed = Objects.requireNonNull(
+                    behavior.onIncomingHit(this, processed),
+                    "behavior cannot return a null damage context"
+            );
         }
+        incomingDamage = processed;
+        try {
+            takeDamage(processed.damage());
+        } finally {
+            incomingDamage = null;
+        }
+    }
+
+    private long currentTick() {
+        return world == null ? 0 : world.game().getCurrentTick();
     }
 
     public void applyChill(
@@ -353,6 +410,10 @@ public abstract class Zombie extends LivingEntity {
         return currentTick < butteredUntilTick;
     }
 
+    public boolean isPoisoned(long currentTick) {
+        return poisonStacks > 0 && currentTick <= poisonUntilTick;
+    }
+
     private void updateBiting(
             Plant target,
             long currentTick
@@ -417,10 +478,14 @@ public abstract class Zombie extends LivingEntity {
                 && nextPoisonDamageTick <= poisonUntilTick
                 && !isDead()) {
 
-            takeDirectDamage(
-                    poisonStacks
-                            * poisonDamagePerStack
-            );
+            receiveHit(new DamageContext(
+                    poisonStacks * poisonDamagePerStack,
+                    DamageContext.DamageSource.POISON,
+                    null,
+                    DamageContext.AttackPath.UNKNOWN,
+                    true,
+                    currentTick
+            ));
 
             nextPoisonDamageTick +=
                     Game.TICKS_PER_SECOND;
@@ -471,6 +536,10 @@ public abstract class Zombie extends LivingEntity {
     protected void onDeath() {
         if (world == null) {
             return;
+        }
+
+        for (ZombieBehavior behavior : behaviors) {
+            behavior.onDeath(this, world, currentTick());
         }
 
         GameEvents.publish(

@@ -17,6 +17,7 @@ import pvz.model.entity.collectible.plantfood.PlantFood;
 import pvz.model.entity.collectible.sun.SunCollectionOutcome;
 import pvz.model.entity.plant.Plant;
 import pvz.model.entity.zombie.Zombie;
+import pvz.model.entity.zombie.ArmorInstance;
 import pvz.model.session.GameSession;
 import pvz.model.entity.plant.lifecycle.PlantRemovalResult;
 import pvz.model.entity.plant.lifecycle.PlantThreat;
@@ -396,7 +397,12 @@ public final class GameController {
             return "location (" + x + ", " + y + ") is out of bounds!";
         }
 
-        Zombie zombie = session.createZombie(type);
+        Zombie zombie;
+        try {
+            zombie = session.createZombie(type);
+        } catch (UnsupportedOperationException exception) {
+            return exception.getMessage() + "!";
+        }
 
         if (zombie == null) {
             return "unknown zombie type: " + type + "!";
@@ -465,13 +471,17 @@ public final class GameController {
 
             output.append("\tarmor:\n");
 
-            if (!zombie.getArmor().toString().equals("NONE")) {
+            if (zombie.getArmorSet().layers().isEmpty()) {
+                output.append("\t\tnone\n");
+            }
+
+            for (ArmorInstance armor : zombie.getArmorSet().layers()) {
                 output.append("\t\t")
-                        .append(zombie.getArmor()
-                                .name()
-                                .toLowerCase())
+                        .append(armor.spec().name().toLowerCase())
                         .append(": ")
-                        .append(zombie.getArmor().getHitpoints())
+                        .append(armor.remainingHealth())
+                        .append("/")
+                        .append(armor.spec().maxHealth())
                         .append("\n");
             }
 
@@ -483,6 +493,14 @@ public final class GameController {
 
             if (zombie.isFrozen(currentTick)) {
                 output.append("\t\tfrozen: active\n");
+            }
+
+            if (zombie.isButtered(currentTick)) {
+                output.append("\t\tbuttered: active\n");
+            }
+
+            if (zombie.isPoisoned(currentTick)) {
+                output.append("\t\tpoisoned: active\n");
             }
 
             output.append("\n");

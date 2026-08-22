@@ -1,0 +1,3 @@
+zombieId,behavior,param,value
+ZombieTombRaiser,TOMB_SPAWN,intervalSeconds,6
+ZombieTombRaiser,TOMB_SPAWN,tombsPerCast,2

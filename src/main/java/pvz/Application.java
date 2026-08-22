@@ -101,7 +101,7 @@ public class Application {
             this.plantData = PlantCsvLoader.load("assets/Data/plants.csv");
             this.zombieData = ZombieCsvLoader.load("assets/Data/zombies.csv");
             PlantFactory plantFactory = new PlantFactory(plantData.byName());
-            ZombieFactory zombieFactory = new ZombieFactory(zombieData.byName());
+            ZombieFactory zombieFactory = new ZombieFactory(zombieData);
             GameSessionFactory sessionFactory = new GameSessionFactory(plantFactory, zombieFactory);
             this.gameRuntime = new GameRuntime(sessionFactory);
             this.collectionController =
