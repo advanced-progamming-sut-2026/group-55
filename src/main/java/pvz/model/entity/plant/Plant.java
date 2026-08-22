@@ -15,6 +15,7 @@ import pvz.model.entity.plant.lifecycle.PlantRemovalResult;
 import pvz.model.entity.plant.behavior.PlantBehaviorFactory;
 import pvz.model.entity.plant.behavior.PlantPlacementContext;
 import pvz.model.entity.plant.behavior.capability.PlantFoodCapability;
+import pvz.model.entity.plant.behavior.capability.DamageModifierCapability;
 import pvz.model.entity.plant.behavior.capability.SunProductionCapability;
 import pvz.model.entity.plant.behavior.capability.VaultBlockingCapability;
 
@@ -291,6 +292,16 @@ public class Plant extends LivingEntity {
     @Override
     protected boolean canTakeDamage() {
         return canBeAffectedBy(PlantThreat.DAMAGE);
+    }
+
+    @Override
+    protected double modifyIncomingDamage(double damage) {
+        if (behavior
+                instanceof DamageModifierCapability modifier) {
+            return modifier.modifyIncomingDamage(damage);
+        }
+
+        return damage;
     }
 
     @Override

@@ -1,6 +1,8 @@
 package pvz.model.entity.plant.category.lobber;
 
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Objects;
 
 import pvz.model.core.World;
@@ -40,6 +42,33 @@ final class LobberTargetResolver {
         }
 
         return findNearestTerrainAhead();
+    }
+
+    List<LobberTarget> findPlantFoodTargets() {
+        List<LobberTarget> targets = new ArrayList<>();
+
+        world.getZombies().stream()
+                .filter(zombie -> !zombie.isDead())
+                .map(LobberTarget::zombie)
+                .forEach(targets::add);
+
+        for (int row = 1; row <= world.board().getRows(); row++) {
+            for (int column = 1;
+                 column <= world.board().getCols();
+                 column++) {
+                TileType type = world.board()
+                        .getTile(column, row)
+                        .getType();
+
+                if (type.isDestructible()) {
+                    targets.add(
+                            LobberTarget.terrain(column, row)
+                    );
+                }
+            }
+        }
+
+        return List.copyOf(targets);
     }
 
     private Zombie findNearestZombieAhead() {

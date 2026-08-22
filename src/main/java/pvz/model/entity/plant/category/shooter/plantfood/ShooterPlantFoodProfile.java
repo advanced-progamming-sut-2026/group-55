@@ -7,7 +7,8 @@ import pvz.model.entity.projectile.ProjectileType;
 
 public record ShooterPlantFoodProfile(
         List<ShooterPlantFoodPhase> phases,
-        boolean targetsMatchingPlantsOnBoard
+        boolean targetsMatchingPlantsOnBoard,
+        ShooterPlantFoodStartEffect startEffect
 ) {
     public ShooterPlantFoodProfile {
         phases = List.copyOf(
@@ -22,12 +23,32 @@ public record ShooterPlantFoodProfile(
                     "shooter plant food needs at least one phase"
             );
         }
+
+        startEffect = Objects.requireNonNull(
+                startEffect,
+                "shooter plant food start effect cannot be null"
+        );
     }
 
     public ShooterPlantFoodProfile(
             List<ShooterPlantFoodPhase> phases
     ) {
-        this(phases, false);
+        this(
+                phases,
+                false,
+                ShooterPlantFoodStartEffect.NONE
+        );
+    }
+
+    public ShooterPlantFoodProfile(
+            List<ShooterPlantFoodPhase> phases,
+            boolean targetsMatchingPlantsOnBoard
+    ) {
+        this(
+                phases,
+                targetsMatchingPlantsOnBoard,
+                ShooterPlantFoodStartEffect.NONE
+        );
     }
 
     public ShooterPlantFoodProfile(
@@ -50,7 +71,8 @@ public record ShooterPlantFoodProfile(
                                 rangeTiles
                         )
                 ),
-                false
+                false,
+                ShooterPlantFoodStartEffect.NONE
         );
     }
 

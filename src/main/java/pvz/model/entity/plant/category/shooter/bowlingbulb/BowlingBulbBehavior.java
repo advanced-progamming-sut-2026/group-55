@@ -5,14 +5,18 @@ import java.util.Objects;
 import pvz.model.entity.plant.Plant;
 import pvz.model.entity.plant.PlantSpec;
 import pvz.model.entity.plant.behavior.AbstractPlantBehavior;
+import pvz.model.entity.plant.behavior.capability.PlantFoodCapability;
+import pvz.model.entity.plant.plantfood.PlantFoodVolley;
 import pvz.model.entity.projectile.BowlingBulbProjectile;
 import pvz.model.entity.projectile.ProjectileType;
 
 public final class BowlingBulbBehavior
-        extends AbstractPlantBehavior {
+        extends AbstractPlantBehavior
+        implements PlantFoodCapability {
 
     private final PlantSpec spec;
     private final BowlingBulbProfile profile;
+    private final BowlingBulbPlantFoodProfile plantFoodProfile;
     private final long[] availableAtTick;
 
     private int nextBulbIndex;
@@ -29,6 +33,8 @@ public final class BowlingBulbBehavior
         );
 
         this.profile = BowlingBulbProfile.from(spec);
+        this.plantFoodProfile =
+                BowlingBulbPlantFoodProfile.from(spec);
 
         this.availableAtTick =
                 new long[profile.bulbs().size()];
@@ -88,6 +94,43 @@ public final class BowlingBulbBehavior
         nextBulbIndex =
                 (bulbIndex + 1)
                         % profile.bulbs().size();
+    }
+
+    @Override
+    public boolean supportsPlantFood() {
+        return true;
+    }
+
+    @Override
+    public void applyPlantFood(
+            long currentTick,
+            long durationTicks
+    ) {
+        ensurePlaced();
+
+        PlantFoodVolley.start(
+                world().game(),
+                currentTick,
+                plantFoodProfile.totalBulbs(),
+                plantFoodProfile.ticksBetweenBulbs(),
+                () -> !owner().isRemovedFromWorld(),
+                ignoredStep -> firePlantFoodBulb()
+        );
+    }
+
+    private void firePlantFoodBulb() {
+        world().game().register(
+                BowlingBulbProjectile.explosive(
+                        world(),
+                        spec.getName()
+                                + " charged projectile",
+                        column(),
+                        row(),
+                        plantFoodProfile.damagePerBulb(),
+                        ProjectileType.NORMAL,
+                        plantFoodProfile.explosionRadius()
+                )
+        );
     }
 
     private int findAvailableBulb(

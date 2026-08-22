@@ -4,12 +4,10 @@ import java.util.Objects;
 
 import pvz.model.entity.plant.Plant;
 import pvz.model.entity.plant.PlantSpec;
+import pvz.model.entity.plant.PlantTag;
 import pvz.model.entity.plant.behavior.PlantBehavior;
 
 public final class WallBehaviorFactory {
-    private static final int TALL_NUT_ID = 45;
-    private static final int EXPLODE_O_NUT_ID = 49;
-
     private WallBehaviorFactory() {
     }
 
@@ -17,17 +15,33 @@ public final class WallBehaviorFactory {
         Objects.requireNonNull(owner, "owner plant cannot be null");
         Objects.requireNonNull(spec, "plant spec cannot be null");
 
-        if (spec.getId() == EXPLODE_O_NUT_ID) {
+        boolean blocksVaulting = WallProfiles.blocksVaulting(spec);
+
+        if (spec.getTags().contains(PlantTag.EXPLOSIVE)) {
             return new ExplodeONutBehavior(
                     owner,
+                    blocksVaulting,
+                    spec.getBaseHp(),
                     parseExplosionDamage(spec)
+            );
+        }
+
+        if (supportsPlantFood(spec)) {
+            return new ArmoredWallBehavior(
+                    owner,
+                    blocksVaulting,
+                    spec.getBaseHp()
             );
         }
 
         return new WallBehavior(
                 owner,
-                spec.getId() == TALL_NUT_ID
+                blocksVaulting
         );
+    }
+
+    public static boolean supportsPlantFood(PlantSpec spec) {
+        return WallProfiles.supportsArmorPlantFood(spec);
     }
 
     private static double parseExplosionDamage(PlantSpec spec) {

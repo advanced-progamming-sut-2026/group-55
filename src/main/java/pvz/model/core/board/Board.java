@@ -208,6 +208,20 @@ public final class Board implements Updatable {
         );
     }
 
+    public void freezeZombiesInRow(
+            List<Zombie> zombies,
+            int row,
+            long currentTick,
+            long durationTicks
+    ) {
+        areaStatusEffectResolver.freezeZombiesInRow(
+                zombies,
+                row,
+                currentTick,
+                durationTicks
+        );
+    }
+
     public boolean placeTombstone(int column, int row) {
         return terrainManager.placeTombstone(column, row);
     }

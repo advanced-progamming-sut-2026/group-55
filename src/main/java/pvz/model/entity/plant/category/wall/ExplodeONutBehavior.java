@@ -4,13 +4,18 @@ import pvz.model.core.GameEvents;
 import pvz.model.entity.plant.Plant;
 import pvz.model.entity.plant.lifecycle.PlantThreat;
 
-final class ExplodeONutBehavior extends WallBehavior {
+final class ExplodeONutBehavior extends ArmoredWallBehavior {
     private static final int EXPLOSION_RADIUS = 1;
 
     private final double explosionDamage;
 
-    ExplodeONutBehavior(Plant owner, double explosionDamage) {
-        super(owner, false);
+    ExplodeONutBehavior(
+            Plant owner,
+            boolean blocksVaulting,
+            double armorCapacity,
+            double explosionDamage
+    ) {
+        super(owner, blocksVaulting, armorCapacity);
 
         if (explosionDamage <= 0) {
             throw new IllegalArgumentException(
@@ -27,6 +32,16 @@ final class ExplodeONutBehavior extends WallBehavior {
             return;
         }
 
+        destroyArmor();
+        explode(false);
+    }
+
+    @Override
+    protected void onArmorDestroyed() {
+        explode(true);
+    }
+
+    private void explode(boolean armorExplosion) {
         world().board().damageZombiesDirectlyInArea(
                 world().getZombies(),
                 column(),
@@ -48,7 +63,10 @@ final class ExplodeONutBehavior extends WallBehavior {
                         + column()
                         + ", "
                         + row()
-                        + ") exploded."
+                        + ") "
+                        + (armorExplosion
+                        ? "armor exploded."
+                        : "exploded.")
         );
     }
 

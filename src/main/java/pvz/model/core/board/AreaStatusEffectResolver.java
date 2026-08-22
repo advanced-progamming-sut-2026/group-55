@@ -61,6 +61,34 @@ final class AreaStatusEffectResolver {
         );
     }
 
+    void freezeZombiesInRow(
+            List<Zombie> zombies,
+            int row,
+            long currentTick,
+            long durationTicks
+    ) {
+        validateTime(currentTick, durationTicks);
+        Objects.requireNonNull(
+                zombies,
+                "zombies cannot be null"
+        );
+
+        if (!grid.inBounds(1, row)) {
+            throw new IndexOutOfBoundsException(
+                    "row " + row + " is out of bounds"
+            );
+        }
+
+        for (Zombie zombie : zombies) {
+            if (zombie.getRow() == row) {
+                zombie.applyFreeze(
+                        currentTick,
+                        durationTicks
+                );
+            }
+        }
+    }
+
     private void applyToZombies(
             List<Zombie> zombies,
             int centerX,
