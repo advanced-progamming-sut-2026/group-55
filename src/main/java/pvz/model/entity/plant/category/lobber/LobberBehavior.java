@@ -1,14 +1,18 @@
 package pvz.model.entity.plant.category.lobber;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.function.DoubleSupplier;
 
 import pvz.model.entity.plant.Plant;
 import pvz.model.entity.plant.PlantSpec;
 import pvz.model.entity.plant.behavior.AbstractPlantBehavior;
+import pvz.model.entity.plant.behavior.capability.PlantFoodCapability;
 import pvz.model.entity.projectile.LobbedProjectile;
 
-final class LobberBehavior extends AbstractPlantBehavior {
+final class LobberBehavior
+        extends AbstractPlantBehavior
+        implements PlantFoodCapability {
     private final PlantSpec spec;
     private final LobberProfile profile;
     private final DoubleSupplier randomValueSupplier;
@@ -76,6 +80,50 @@ final class LobberBehavior extends AbstractPlantBehavior {
                         spec.getName() + " lobbed projectile",
                         column(),
                         row(),
+                        target,
+                        shot,
+                        currentTick
+                )
+        );
+    }
+
+    @Override
+    public boolean supportsPlantFood() {
+        return true;
+    }
+
+    @Override
+    public void applyPlantFood(
+            long currentTick,
+            long durationTicks
+    ) {
+        ensurePlaced();
+
+        List<LobberTarget> targets =
+                targetResolver.findPlantFoodTargets();
+        LobberShot plantFoodShot = profile.plantFoodShot();
+
+        for (LobberTarget target : targets) {
+            launchPlantFoodProjectile(
+                    target,
+                    plantFoodShot,
+                    currentTick
+            );
+        }
+    }
+
+    private void launchPlantFoodProjectile(
+            LobberTarget target,
+            LobberShot shot,
+            long currentTick
+    ) {
+        world().game().register(
+                new LobbedProjectile(
+                        world(),
+                        spec.getName()
+                                + " plant food lobbed projectile",
+                        1,
+                        target.currentRow(),
                         target,
                         shot,
                         currentTick

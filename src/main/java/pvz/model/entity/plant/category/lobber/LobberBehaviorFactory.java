@@ -12,6 +12,10 @@ public final class LobberBehaviorFactory {
     private LobberBehaviorFactory() {
     }
 
+    public static boolean supportsPlantFood(PlantSpec spec) {
+        return spec != null && LobberProfiles.supports(spec);
+    }
+
     public static PlantBehavior create(
             Plant owner,
             PlantSpec spec

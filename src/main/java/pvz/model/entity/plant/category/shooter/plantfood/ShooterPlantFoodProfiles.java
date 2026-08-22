@@ -8,7 +8,6 @@ import pvz.model.core.Game;
 import pvz.model.core.board.HorizontalDirection;
 import pvz.model.entity.plant.PlantCategory;
 import pvz.model.entity.plant.PlantSpec;
-import pvz.model.entity.plant.PlantTag;
 import pvz.model.entity.plant.attack.ShotPath;
 import pvz.model.entity.plant.category.shooter.ShooterProfile;
 import pvz.model.entity.plant.category.shooter.ShooterProfiles;
@@ -51,10 +50,6 @@ public final class ShooterPlantFoodProfiles {
             return null;
         }
 
-        if (spec.getTags().contains(PlantTag.SHROOM)) {
-            return createShortLivedShroomProfile(spec);
-        }
-
         String plantName = spec.getName()
                 .strip()
                 .toLowerCase(Locale.ROOT);
@@ -70,12 +65,16 @@ public final class ShooterPlantFoodProfiles {
         }
 
         return switch (plantName) {
+            case "sea-shroom", "puff-shroom" ->
+                    createBoardWideShroomProfile(spec);
             case "pea pod" -> createPeaPodProfile(spec);
             case "repeater" -> createRepeaterProfile(spec);
             case "mega gatling pea" ->
                     createMegaGatlingPeaProfile(spec);
             case "split pea" -> createSplitPeaProfile(spec);
+            case "snow pea" -> createSnowPeaProfile(spec);
             case "citron" -> createCitronProfile(spec);
+            case "bowling bulb" -> null;
             default -> createBasePathRapidVolleyProfile(
                     spec,
                     RAPID_VOLLEY_TOTAL_SHOTS
@@ -83,7 +82,7 @@ public final class ShooterPlantFoodProfiles {
         };
     }
 
-    private static ShooterPlantFoodProfile createShortLivedShroomProfile(
+    private static ShooterPlantFoodProfile createBoardWideShroomProfile(
             PlantSpec spec
     ) {
         ShooterProfile baseProfile = ShooterProfiles.from(spec);
@@ -204,6 +203,26 @@ public final class ShooterPlantFoodProfiles {
         );
     }
 
+    private static ShooterPlantFoodProfile createSnowPeaProfile(
+            PlantSpec spec
+    ) {
+        ShooterProfile baseProfile = ShooterProfiles.from(spec);
+
+        ShooterPlantFoodPhase icyVolley =
+                createRapidVolleyPhase(
+                        baseProfile,
+                        plantFoodPathsFrom(
+                                baseProfile,
+                                RAPID_VOLLEY_TOTAL_SHOTS
+                        )
+                );
+
+        return new ShooterPlantFoodProfile(
+                List.of(icyVolley),
+                false,
+                ShooterPlantFoodStartEffect.FREEZE_OWNER_LANE
+        );
+    }
 
     private static ShooterPlantFoodProfile createCitronProfile(
             PlantSpec spec

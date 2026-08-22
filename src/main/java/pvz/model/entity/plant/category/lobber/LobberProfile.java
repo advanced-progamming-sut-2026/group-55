@@ -40,6 +40,14 @@ final class LobberProfile {
         this.specialShotChance = specialShotChance;
     }
 
+    LobberShot plantFoodShot() {
+        if (specialShot != null) {
+            return specialShot;
+        }
+
+        return regularShot;
+    }
+
     LobberShot selectShot(double randomValue) {
         if (!Double.isFinite(randomValue)
                 || randomValue < 0

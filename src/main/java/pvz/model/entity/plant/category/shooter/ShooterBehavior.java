@@ -3,6 +3,7 @@ package pvz.model.entity.plant.category.shooter;
 import java.util.List;
 import java.util.Objects;
 
+import pvz.model.core.Game;
 import pvz.model.entity.plant.Plant;
 import pvz.model.entity.plant.PlantSpec;
 import pvz.model.entity.plant.attack.ProjectileAttackController;
@@ -16,12 +17,15 @@ import pvz.model.entity.plant.category.shooter.plantfood.PlantFoodShotPath;
 import pvz.model.entity.plant.category.shooter.plantfood.ShooterPlantFoodPhase;
 import pvz.model.entity.plant.category.shooter.plantfood.ShooterPlantFoodProfile;
 import pvz.model.entity.plant.category.shooter.plantfood.ShooterPlantFoodProfiles;
+import pvz.model.entity.plant.category.shooter.plantfood.ShooterPlantFoodStartEffect;
 
 public class ShooterBehavior
         extends AbstractPlantBehavior
         implements PlantFoodCapability {
 
     private static final double PLANT_FOOD_PROJECTILE_SPACING_TILES = 1.0 / 5.0;
+    private static final long SNOW_PEA_FREEZE_DURATION_TICKS =
+            3L * Game.TICKS_PER_SECOND;
     private static final String PEA_POD_NAME = "Pea Pod";
 
     private final PlantSpec spec;
@@ -119,6 +123,7 @@ public class ShooterBehavior
         ensurePlaced();
 
         attackController.cancelOngoingAction();
+        applyPlantFoodStartEffect(currentTick);
     }
 
     @Override
@@ -142,6 +147,25 @@ public class ShooterBehavior
     }
 
     /// //////////////////////////////////////////
+    private void applyPlantFoodStartEffect(
+            long currentTick
+    ) {
+        ShooterPlantFoodStartEffect startEffect =
+                plantFoodProfile.startEffect();
+
+        switch (startEffect) {
+            case NONE -> {
+            }
+            case FREEZE_OWNER_LANE ->
+                    world().board().freezeZombiesInRow(
+                            world().getZombies(),
+                            row(),
+                            currentTick,
+                            SNOW_PEA_FREEZE_DURATION_TICKS
+                    );
+        }
+    }
+
     private void startPlantFoodPhase(
             long currentTick,
             ShooterPlantFoodPhase phase

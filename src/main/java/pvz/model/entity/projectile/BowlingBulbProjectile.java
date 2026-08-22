@@ -19,6 +19,7 @@ public final class BowlingBulbProjectile
     private final ProjectileType type;
     private final Set<Zombie> hitZombies =
             new HashSet<>();
+    private final int explosionRadius;
 
     private double x;
     private double y;
@@ -33,9 +34,35 @@ public final class BowlingBulbProjectile
             double damage,
             ProjectileType type
     ) {
+        this(
+                world,
+                name,
+                startColumn,
+                startRow,
+                damage,
+                type,
+                0
+        );
+    }
+
+    private BowlingBulbProjectile(
+            World world,
+            String name,
+            int startColumn,
+            int startRow,
+            double damage,
+            ProjectileType type,
+            int explosionRadius
+    ) {
         if (damage < 0) {
             throw new IllegalArgumentException(
                     "projectile damage cannot be negative"
+            );
+        }
+
+        if (explosionRadius < 0) {
+            throw new IllegalArgumentException(
+                    "explosion radius cannot be negative"
             );
         }
 
@@ -58,6 +85,33 @@ public final class BowlingBulbProjectile
         this.y = tileCenter(startRow);
         this.targetRow = startRow;
         this.damage = damage;
+        this.explosionRadius = explosionRadius;
+    }
+
+    public static BowlingBulbProjectile explosive(
+            World world,
+            String name,
+            int startColumn,
+            int startRow,
+            double damage,
+            ProjectileType type,
+            int explosionRadius
+    ) {
+        if (explosionRadius <= 0) {
+            throw new IllegalArgumentException(
+                    "explosive bulb needs a positive explosion radius"
+            );
+        }
+
+        return new BowlingBulbProjectile(
+                world,
+                name,
+                startColumn,
+                startRow,
+                damage,
+                type,
+                explosionRadius
+        );
     }
 
     @Override
@@ -105,25 +159,85 @@ public final class BowlingBulbProjectile
                 zombie,
                 previousX
         )) {
-            world.board().damageTerrain(
+            hitBlockingTile(
                     blockingTileColumn,
                     currentRow,
-                    type.damageAgainstTerrain(damage)
+                    tick
             );
-
             world.game().unregister(this);
             return;
         }
 
         if (zombie != null) {
-            type.hitZombie(zombie, damage, tick);
-            hitZombies.add(zombie);
+            hitZombie(zombie, tick);
             bounceToNextLane(currentRow);
         }
 
         if (x >= world.board().getCols()) {
             world.game().unregister(this);
         }
+    }
+
+    private void hitBlockingTile(
+            int column,
+            int row,
+            long currentTick
+    ) {
+        if (isExplosive()) {
+            explodeAt(column, row, currentTick);
+            return;
+        }
+
+        world.board().damageTerrain(
+                column,
+                row,
+                type.damageAgainstTerrain(damage)
+        );
+    }
+
+    private void hitZombie(
+            Zombie zombie,
+            long currentTick
+    ) {
+        hitZombies.add(zombie);
+
+        if (isExplosive()) {
+            explodeAt(
+                    zombie.getTileX(),
+                    zombie.getTileY(),
+                    currentTick
+            );
+            return;
+        }
+
+        type.hitZombie(zombie, damage, currentTick);
+    }
+
+    private void explodeAt(
+            int centerColumn,
+            int centerRow,
+            long currentTick
+    ) {
+        world.board().damageZombiesWithProjectileInArea(
+                world.getZombies(),
+                centerColumn,
+                centerRow,
+                explosionRadius,
+                damage,
+                type,
+                currentTick
+        );
+
+        world.board().damageTilesInArea(
+                centerColumn,
+                centerRow,
+                explosionRadius,
+                type.damageAgainstTerrain(damage)
+        );
+    }
+
+    private boolean isExplosive() {
+        return explosionRadius > 0;
     }
 
     private boolean isBlockingTileFirst(
