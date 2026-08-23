@@ -10,6 +10,7 @@ import pvz.model.entity.plant.PlantSpec;
 import pvz.model.entity.plant.plantfood.PlantFoodSupport;
 import pvz.model.session.GameRuntime;
 import pvz.model.session.GameSessionConfig;
+import pvz.model.session.GameSessionConfigFactory;
 import pvz.model.utils.AppState;
 import pvz.model.utils.MenuName;
 import pvz.model.utils.Message;
@@ -20,12 +21,14 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 public class PlantSelectionController extends BaseController {
 
     private final PlantData plantData;
     private final GameRuntime gameRuntime;
+    private final GameSessionConfigFactory configFactory;
     private final List<String> selectedPlants;
     private final Set<String> boostedPlants;
     private int maxSlots = 8;
@@ -35,11 +38,16 @@ public class PlantSelectionController extends BaseController {
             UserManager userManager,
             MenuView view,
             PlantData plantData,
-            GameRuntime gameRuntime
+            GameRuntime gameRuntime,
+            GameSessionConfigFactory configFactory
     ) {
         super(appState, userManager, view);
         this.plantData = plantData;
         this.gameRuntime = gameRuntime;
+        this.configFactory = Objects.requireNonNull(
+                configFactory,
+                "game session config factory cannot be null"
+        );
         this.selectedPlants = new ArrayList<>();
         this.boostedPlants = new HashSet<>();
     }
@@ -291,9 +299,9 @@ public class PlantSelectionController extends BaseController {
     }
 
     private void handleStartGame(User currentUser) {
-        String selectedChapter = appState.getSelectedChapter();
+        String selectedLevelId = appState.getSelectedLevelId();
 
-        if (!canStartGame(selectedChapter)) {
+        if (!canStartGame(selectedLevelId)) {
             return;
         }
 
@@ -305,9 +313,10 @@ public class PlantSelectionController extends BaseController {
         currentUser.clearPlantFood();
 
         GameSessionConfig config = createGameConfig(
-                selectedChapter,
+                selectedLevelId,
                 activeBoosts,
-                transferredPlantFood
+                transferredPlantFood,
+                currentUser.getDifficultyLevel()
         );
 
         if (!userManager.save()) {
@@ -322,9 +331,17 @@ public class PlantSelectionController extends BaseController {
         appState.setCurrentMenu(MenuName.PLAYING);
 
         view.showSuccess(SystemMessage.PLANT_SELECTION_START_GAME.getMessage());
+        view.showMessage(
+                "Mission: clear all waves before a zombie reaches the house."
+        );
+        view.showMessage(
+                "Level " + config.levelId() + " has "
+                        + gameRuntime.session().waveManager().getTotalWaves()
+                        + " waves."
+        );
     }
 
-    private boolean canStartGame(String selectedChapter) {
+    private boolean canStartGame(String selectedLevelId) {
         if (selectedPlants.isEmpty()) {
             view.showError(
                     SystemMessage.PLANT_SELECTION_EMPTY_START.getMessage()
@@ -332,9 +349,9 @@ public class PlantSelectionController extends BaseController {
             return false;
         }
 
-        if (selectedChapter == null
-                || selectedChapter.isBlank()) {
-            view.showError("No chapter selected!");
+        if (selectedLevelId == null
+                || selectedLevelId.isBlank()) {
+            view.showError("No level selected!");
             return false;
         }
 
@@ -383,17 +400,18 @@ public class PlantSelectionController extends BaseController {
     }
 
     private GameSessionConfig createGameConfig(
-            String selectedChapter,
+            String selectedLevelId,
             Set<String> activeBoosts,
-            int startingPlantFood
+            int startingPlantFood,
+            int difficultyLevel
     ) {
-        return new GameSessionConfig.Builder(
-                selectedChapter,
-                List.copyOf(selectedPlants)
-        )
-                .boostedPlants(Set.copyOf(activeBoosts))
-                .startingPlantFood(startingPlantFood)
-                .build();
+        return configFactory.create(
+                selectedLevelId,
+                List.copyOf(selectedPlants),
+                Set.copyOf(activeBoosts),
+                startingPlantFood,
+                difficultyLevel
+        );
     }
 
     private List<String> findBoostedButNotSelectedPlants() {
@@ -426,5 +444,13 @@ public class PlantSelectionController extends BaseController {
     public void resetSelection() {
         selectedPlants.clear();
         boostedPlants.clear();
+    }
+
+    @Override
+    protected void handleMenuExit() {
+        resetSelection();
+        appState.setSelectedLevelId(null);
+        appState.setCurrentMenu(MenuName.CHAPTER);
+        view.showSuccess("returned to chapter levels");
     }
 }

@@ -8,6 +8,8 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import pvz.model.session.condition.WinCondition;
+import pvz.model.wave.WaveConfiguration;
 
 public record GameSessionConfig(
         String levelId,
@@ -19,7 +21,9 @@ public record GameSessionConfig(
         boolean skySunEnabled,
         List<String> selectedPlants,
         Set<String> boostedPlants,
-        List<Point> tombCoordinates
+        List<Point> tombCoordinates,
+        WaveConfiguration waveConfiguration,
+        WinCondition winCondition
 ) {
 
     public GameSessionConfig {
@@ -65,6 +69,14 @@ public record GameSessionConfig(
                 tombCoordinates,
                 "tomb coordinates cannot be null"
         );
+        Objects.requireNonNull(
+                waveConfiguration,
+                "wave configuration cannot be null"
+        );
+        Objects.requireNonNull(
+                winCondition,
+                "win condition cannot be null"
+        );
 
         selectedPlants = selectedPlants.stream()
                 .map(GameSessionConfig::normalizePlantName)
@@ -105,6 +117,8 @@ public record GameSessionConfig(
         private boolean skySunEnabled = true;
         private Set<String> boostedPlants = Set.of();
         private List<Point> tombCoordinates = List.of();
+        private WaveConfiguration waveConfiguration;
+        private WinCondition winCondition;
 
         public Builder(
                 String levelId,
@@ -188,6 +202,18 @@ public record GameSessionConfig(
             return this;
         }
 
+        public Builder waveConfiguration(
+                WaveConfiguration waveConfiguration
+        ) {
+            this.waveConfiguration = waveConfiguration;
+            return this;
+        }
+
+        public Builder winCondition(WinCondition winCondition) {
+            this.winCondition = winCondition;
+            return this;
+        }
+
         public GameSessionConfig build() {
             return new GameSessionConfig(
                     levelId,
@@ -199,7 +225,9 @@ public record GameSessionConfig(
                     skySunEnabled,
                     selectedPlants,
                     boostedPlants,
-                    tombCoordinates
+                    tombCoordinates,
+                    waveConfiguration,
+                    winCondition
             );
         }
     }
