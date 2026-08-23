@@ -224,6 +224,12 @@ public class User implements CurrencyWallet {
         this.gamesPlayed = gamesPlayed;
     }
 
+    public void incrementGamesPlayed() {
+        if (gamesPlayed < Integer.MAX_VALUE) {
+            gamesPlayed++;
+        }
+    }
+
     public int getClearedStages() {
         return clearedStages;
     }

@@ -40,4 +40,33 @@ public class Greenhouse {
         }
         return false;
     }
+
+    public int unlockPots(int count) {
+        if (count < 0) {
+            throw new IllegalArgumentException(
+                    "pot count cannot be negative"
+            );
+        }
+
+        int unlocked = 0;
+        while (unlocked < count && unlockNextAvailablePot()) {
+            unlocked++;
+        }
+
+        return unlocked;
+    }
+
+    public int getUnlockedPotCount() {
+        int unlocked = 0;
+
+        for (Pot[] row : pots) {
+            for (Pot pot : row) {
+                if (!pot.isLocked()) {
+                    unlocked++;
+                }
+            }
+        }
+
+        return unlocked;
+    }
 }

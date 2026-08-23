@@ -6,13 +6,11 @@ import pvz.model.core.Game;
 import pvz.model.core.GameEvents;
 import pvz.model.core.World;
 import pvz.model.entity.LivingEntity;
-import pvz.model.entity.collectible.plantfood.PlantFood;
 import pvz.model.entity.plant.Plant;
 import pvz.model.entity.zombie.behavior.ZombieBehavior;
 
 public final class Zombie extends LivingEntity {
     private static final double CHILLED_SPEED_MULTIPLIER = 0.5;
-    private static final double PLANT_FOOD_DROP_CHANCE = 0.05;
 
     protected double x;
     protected double y;
@@ -27,6 +25,7 @@ public final class Zombie extends LivingEntity {
     private World world;
     private DamageContext incomingDamage;
     private boolean reachedHouse;
+    private boolean glowing;
 
     private Plant biteTarget;
     private long nextBiteTick = Long.MAX_VALUE;
@@ -127,6 +126,20 @@ public final class Zombie extends LivingEntity {
 
     public ArmorSet getArmorSet() {
         return armorSet;
+    }
+
+    public boolean isGlowing() {
+        return glowing;
+    }
+
+    public void setGlowing(boolean glowing) {
+        if (world != null) {
+            throw new IllegalStateException(
+                    "glowing state cannot change after spawn"
+            );
+        }
+
+        this.glowing = glowing;
     }
 
     public double getArmorHealth() {
@@ -437,6 +450,30 @@ public final class Zombie extends LivingEntity {
         return poisonStacks > 0 && currentTick <= poisonUntilTick;
     }
 
+    public long getRemainingChillTicks(long currentTick) {
+        return remainingTicks(chilledUntilTick, currentTick);
+    }
+
+    public long getRemainingFreezeTicks(long currentTick) {
+        return remainingTicks(frozenUntilTick, currentTick);
+    }
+
+    public long getRemainingButterTicks(long currentTick) {
+        return remainingTicks(butteredUntilTick, currentTick);
+    }
+
+    public long getRemainingPoisonTicks(long currentTick) {
+        if (!isPoisoned(currentTick)) {
+            return 0;
+        }
+
+        return remainingTicks(poisonUntilTick, currentTick);
+    }
+
+    private long remainingTicks(long endTick, long currentTick) {
+        return Math.max(0, endTick - currentTick);
+    }
+
     private void updateBiting(
             Plant target,
             long currentTick
@@ -540,21 +577,6 @@ public final class Zombie extends LivingEntity {
         plant.takeDamage(damagePerSecond);
     }
 
-    private void tryDropPlantFood() {
-        if (Math.random() > PLANT_FOOD_DROP_CHANCE) {
-            return;
-        }
-
-        PlantFood plantFood = PlantFood.fromZombie(
-                world,
-                getX(),
-                getY()
-        );
-
-        world.addCollectible(plantFood);
-        world.game().register(plantFood);
-    }
-
     @Override
     protected void onDeath() {
         if (world == null) {
@@ -571,7 +593,7 @@ public final class Zombie extends LivingEntity {
                         + getTileY() + ")"
         );
 
-        tryDropPlantFood();
+        world.resolveZombieDeathDrops(this);
         world.removeZombie(this);
         world.game().unregister(this);
     }

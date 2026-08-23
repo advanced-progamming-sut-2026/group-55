@@ -3,7 +3,9 @@ package pvz.model.core;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Random;
 import java.util.Set;
+import java.util.random.RandomGenerator;
 
 import pvz.model.core.board.Board;
 import pvz.model.core.board.HorizontalDirection;
@@ -21,6 +23,9 @@ public final class World {
     private static final double RADIOACTIVE_ZOMBIE_DAMAGE = 150;
     private static final int RADIOACTIVE_PLANT_RADIUS = 1;
     private static final double RADIOACTIVE_PLANT_DAMAGE = 80;
+    private static final double GLOWING_ZOMBIE_CHANCE = 0.05;
+    private static final double REWARD_DROP_CHANCE = 0.10;
+    private static final int COIN_DROP_AMOUNT = 50;
 
     private final Game game;
     private final Board board;
@@ -28,13 +33,27 @@ public final class World {
     private final ZombieRegistry zombieRegistry = new ZombieRegistry();
     private final List<LawnMower> lawnMowers = new ArrayList<>();
     private final List<Collectible> collectibles = new ArrayList<>();
+    private final RandomGenerator random;
 
     public World(Game game, Board board, BattleResources resources) {
+        this(game, board, resources, new Random());
+    }
+
+    public World(
+            Game game,
+            Board board,
+            BattleResources resources,
+            RandomGenerator random
+    ) {
         this.game = Objects.requireNonNull(game, "game cannot be null");
         this.board = Objects.requireNonNull(board, "board cannot be null");
         this.resources = Objects.requireNonNull(
                 resources,
                 "resources cannot be null"
+        );
+        this.random = Objects.requireNonNull(
+                random,
+                "random generator cannot be null"
         );
 
         createLawnMowers();
@@ -78,11 +97,80 @@ public final class World {
     }
 
     public void addZombie(Zombie zombie) {
-        zombieRegistry.add(zombie);
+        Zombie checkedZombie = Objects.requireNonNull(
+                zombie,
+                "zombie cannot be null"
+        );
+        checkedZombie.setGlowing(
+                random.nextDouble() < GLOWING_ZOMBIE_CHANCE
+        );
+        zombieRegistry.add(checkedZombie);
     }
 
     public void removeZombie(Zombie zombie) {
         zombieRegistry.remove(zombie);
+    }
+
+    public void resolveZombieDeathDrops(Zombie zombie) {
+        Objects.requireNonNull(zombie, "zombie cannot be null");
+
+        if (zombie.isGlowing()) {
+            dropPlantFood();
+        }
+
+        if (random.nextDouble() < REWARD_DROP_CHANCE) {
+            dropPersistentReward();
+        }
+    }
+
+    private void dropPlantFood() {
+        if (resources.tryAddPlantFood()) {
+            GameEvents.publish(
+                    "The glowing zombie dropped a plant food; you have "
+                            + resources.getPlantFoodCount()
+                            + " plant foods now."
+            );
+            return;
+        }
+
+        GameEvents.publish(
+                "The glowing zombie dropped a plant food, "
+                        + "but the storage is full."
+        );
+    }
+
+    private void dropPersistentReward() {
+        switch (random.nextInt(3)) {
+            case 0 -> {
+                resources.battleWallet().addCoins(COIN_DROP_AMOUNT);
+                GameEvents.publish(
+                        "A zombie dropped 50 coins; you have collected "
+                                + resources.battleWallet()
+                                .getCollectedCoins()
+                                + " stage coins now."
+                );
+            }
+            case 1 -> {
+                resources.battleWallet().addDiamonds(1);
+                GameEvents.publish(
+                        "A zombie dropped a diamond; you have collected "
+                                + resources.battleWallet()
+                                .getCollectedDiamonds()
+                                + " stage diamonds now."
+                );
+            }
+            case 2 -> {
+                resources.addCollectedPot();
+                GameEvents.publish(
+                        "A zombie dropped a pot; you have collected "
+                                + resources.getCollectedPotCount()
+                                + " stage pots now."
+                );
+            }
+            default -> throw new IllegalStateException(
+                    "unsupported zombie reward roll"
+            );
+        }
     }
 
     public List<Zombie> getZombies() {
@@ -276,6 +364,16 @@ public final class World {
     public void activateLawnMower(int row) {
         requireValidLawnMowerRow(row);
         lawnMowers.get(row - 1).activate();
+    }
+
+    public int eliminateAllZombies() {
+        List<Zombie> zombies = getZombies();
+
+        for (Zombie zombie : zombies) {
+            zombie.takeDirectDamage(Double.MAX_VALUE);
+        }
+
+        return zombies.size();
     }
 
     public boolean isLawnMowerAvailable(int row) {

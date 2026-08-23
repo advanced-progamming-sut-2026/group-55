@@ -68,7 +68,7 @@ public final class GameSessionFactory {
                 new BattleResources(config.startingSun(), config.startingPlantFood());
 
         World world =
-                new World(game, board, resources);
+                new World(game, board, resources, random);
 
 
         game.register(board);
