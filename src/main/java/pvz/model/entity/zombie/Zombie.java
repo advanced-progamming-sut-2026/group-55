@@ -21,6 +21,7 @@ public final class Zombie extends LivingEntity {
     private final double damagePerSecond;
     private final ArmorSet armorSet;
     private final ZombieSpec spec;
+    private final ZombieRuntimeStats runtimeStats;
     private final List<ZombieBehavior> behaviors;
 
     private World world;
@@ -44,14 +45,32 @@ public final class Zombie extends LivingEntity {
             ArmorSet armorSet,
             List<ZombieBehavior> behaviors
     ) {
+        this(
+                spec,
+                ZombieRuntimeStats.from(spec, 3),
+                armorSet,
+                behaviors
+        );
+    }
+
+    public Zombie(
+            ZombieSpec spec,
+            ZombieRuntimeStats runtimeStats,
+            ArmorSet armorSet,
+            List<ZombieBehavior> behaviors
+    ) {
         this.spec = Objects.requireNonNull(
                 spec,
                 "zombie spec cannot be null"
         );
+        this.runtimeStats = Objects.requireNonNull(
+                runtimeStats,
+                "zombie runtime stats cannot be null"
+        );
         this.name = spec.getName();
-        this.health = spec.getHitpoints();
-        this.tilesPerSecond = spec.getSpeed();
-        this.damagePerSecond = spec.getEatDps();
+        this.health = runtimeStats.maxHealth();
+        this.tilesPerSecond = runtimeStats.tilesPerSecond();
+        this.damagePerSecond = runtimeStats.eatDamagePerSecond();
         this.armorSet = Objects.requireNonNull(
                 armorSet,
                 "armor set cannot be null"
@@ -100,6 +119,10 @@ public final class Zombie extends LivingEntity {
 
     public ZombieSpec getSpec() {
         return spec;
+    }
+
+    public ZombieRuntimeStats getRuntimeStats() {
+        return runtimeStats;
     }
 
     public ArmorSet getArmorSet() {

@@ -6,6 +6,7 @@ public class AppState {
     private MenuName currentMenu = MenuName.REGISTER;
     private User currentUser;
     private String selectedChapter;
+    private String selectedLevelId;
     private boolean running = true;
 
     public MenuName getCurrentMenu() {
@@ -38,5 +39,13 @@ public class AppState {
 
     public void setSelectedChapter(String selectedChapter) {
         this.selectedChapter = selectedChapter;
+    }
+
+    public String getSelectedLevelId() {
+        return selectedLevelId;
+    }
+
+    public void setSelectedLevelId(String selectedLevelId) {
+        this.selectedLevelId = selectedLevelId;
     }
 }

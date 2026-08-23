@@ -73,6 +73,7 @@ public class User implements CurrencyWallet {
     private DailyOffer dailyOffer;
 
     private List<String> unlockedChapters;
+    private AdventureProgress adventureProgress;
     private int difficultyLevel = 3;
 
     private List<NewsItem> newsList;
@@ -95,6 +96,7 @@ public class User implements CurrencyWallet {
 
         this.unlockedChapters = new ArrayList<>();
         this.unlockedChapters.add(DEFAULT_CHAPTER);
+        this.adventureProgress = new AdventureProgress();
 
         this.unlockedPlants = createDefaultUnlockedPlants();
 
@@ -327,6 +329,13 @@ public class User implements CurrencyWallet {
         if (!getUnlockedChapters().contains(chapterName)) {
             getUnlockedChapters().add(chapterName);
         }
+    }
+
+    public AdventureProgress getAdventureProgress() {
+        if (adventureProgress == null) {
+            adventureProgress = new AdventureProgress();
+        }
+        return adventureProgress;
     }
 
     public int getDifficultyLevel() {

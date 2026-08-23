@@ -423,6 +423,13 @@ public final class GameController {
         StringBuilder output = new StringBuilder();
         output.append("tick: ")
                 .append(game.getCurrentTick())
+                .append(" | wave: ")
+                .append(session.waveManager().getCurrentWaveNumber())
+                .append("/")
+                .append(session.waveManager().getTotalWaves())
+                .append(" (")
+                .append(session.waveManager().getState())
+                .append(")")
                 .append(" | sun: ")
                 .append(world.sunBank().getBalance())
                 .append(" | plant food: ")

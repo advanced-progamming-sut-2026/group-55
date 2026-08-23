@@ -16,6 +16,8 @@ import pvz.model.entity.plant.Plant;
 import pvz.model.entity.plant.PlantFactory;
 import pvz.model.entity.zombie.Zombie;
 import pvz.model.entity.zombie.ZombieFactory;
+import pvz.model.session.condition.WinConditionContext;
+import pvz.model.wave.WaveManager;
 
 public final class GameSession {
     private final GameSessionConfig config;
@@ -24,6 +26,7 @@ public final class GameSession {
     private final World world;
     private final PlantFactory plantFactory;
     private final ZombieFactory zombieFactory;
+    private final WaveManager waveManager;
     private final Map<String, Long> lastPlantedTicks = new HashMap<>();
 
     private GameSessionStatus status = GameSessionStatus.CREATED;
@@ -32,7 +35,8 @@ public final class GameSession {
             GameSessionConfig config,
             World world,
             PlantFactory plantFactory,
-            ZombieFactory zombieFactory
+            ZombieFactory zombieFactory,
+            WaveManager waveManager
     ) {
         this.config = Objects.requireNonNull(
                 config,
@@ -50,6 +54,10 @@ public final class GameSession {
                 zombieFactory,
                 "zombie factory cannot be null"
         );
+        this.waveManager = Objects.requireNonNull(
+                waveManager,
+                "wave manager cannot be null"
+        );
         this.game = world.game();
         this.board = world.board();
     }
@@ -62,6 +70,7 @@ public final class GameSession {
         }
 
         status = GameSessionStatus.RUNNING;
+        waveManager.start(game.getCurrentTick());
     }
 
     public void advance(long ticks) {
@@ -77,7 +86,10 @@ public final class GameSession {
 
     public Zombie createZombie(String zombieName) {
         requireRunning();
-        return zombieFactory.create(normalizeName(zombieName));
+        return zombieFactory.create(
+                normalizeName(zombieName),
+                config.difficultyLevel()
+        );
     }
 
     public boolean isPlantSelected(String plantName) {
@@ -171,6 +183,18 @@ public final class GameSession {
             return;
         }
 
+        if (gameStatus == GameStatus.PLAYING
+                && config.winCondition().isSatisfied(
+                        new WinConditionContext(
+                                world,
+                                waveManager,
+                                game.getCurrentTick()
+                        )
+                )) {
+            game.getStateManager().win();
+            gameStatus = GameStatus.WON;
+        }
+
         if (gameStatus == GameStatus.WON) {
             markWon();
             GameEvents.publish(
@@ -231,5 +255,9 @@ public final class GameSession {
 
     public GameSessionStatus status() {
         return status;
+    }
+
+    public WaveManager waveManager() {
+        return waveManager;
     }
 }

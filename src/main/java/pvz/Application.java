@@ -3,6 +3,7 @@ package pvz;
 import pvz.controller.*;
 import pvz.data.ZombieCsvLoader;
 import pvz.data.ZombieData;
+import pvz.data.AdventureCsvLoader;
 import pvz.model.account.User;
 import pvz.model.account.UserManager;
 import pvz.model.entity.zombie.ZombieFactory;
@@ -22,6 +23,10 @@ import pvz.view.MenuView;
 import pvz.model.entity.plant.PlantFactory;
 import pvz.model.session.GameRuntime;
 import pvz.model.session.GameSessionFactory;
+import pvz.model.session.GameSessionConfigFactory;
+import pvz.model.session.GameSessionStatus;
+import pvz.model.adventure.AdventureData;
+import pvz.model.adventure.LevelProgressService;
 import pvz.model.core.BattleWallet;
 
 public class Application {
@@ -30,6 +35,7 @@ public class Application {
     private PlantData plantData;
     private ZombieData zombieData;
     private GameRuntime gameRuntime;
+    private LevelProgressService levelProgressService;
 
     private final UserManager userManager = new UserManager("save.json");
 
@@ -42,6 +48,7 @@ public class Application {
     private final NewsMenuParser newsMenuParser = new NewsMenuParser();
     private final CollectionMenuParser collectionParser = new CollectionMenuParser();
     private final PlantSelectionMenuParser plantSelectionParser = new PlantSelectionMenuParser();
+    private final ChapterMenuParser chapterParser = new ChapterMenuParser();
     private final GreenhouseParser greenhouseParser = new GreenhouseParser();
     private final ShopParser shopParser = new ShopParser();
     private final AuthService authService = new AuthService(userManager);
@@ -50,13 +57,13 @@ public class Application {
     private final RegisterController registerController = new RegisterController(appState, userManager, view);
     private final LoginController loginController = new LoginController(appState, userManager, authService, view);
     private final MainMenuController mainMenuController = new MainMenuController(appState, userManager, view);
-    private final GameMenuController gameMenuController = new GameMenuController(appState, userManager, view);
+    private GameMenuController gameMenuController;
     private final SettingsController settingsController = new SettingsController(appState, userManager, view);
     private final ProfileController profileController = new ProfileController(appState, userManager, authService, view);
     private final NewsController newsController = new NewsController(appState, userManager, view);
     private final TravelLogController travelLogController = new TravelLogController(appState, userManager, view);
     private final LeaderboardController leaderboardController = new LeaderboardController(appState, userManager, view);
-    private final ChapterController chapterController = new ChapterController(appState, userManager, view);
+    private ChapterController chapterController;
     private GreenhouseController greenhouseController;
     private CollectionController collectionController;
     private PlantSelectionController plantSelectionController;
@@ -100,10 +107,35 @@ public class Application {
         try {
             this.plantData = PlantCsvLoader.load("assets/Data/plants.csv");
             this.zombieData = ZombieCsvLoader.load("assets/Data/zombies.csv");
+            AdventureData adventureData = AdventureCsvLoader.load(
+                    "assets/Data/chapters.csv",
+                    "assets/Data/levels.csv",
+                    "assets/Data/level_zombies.csv",
+                    "assets/Data/waves.csv",
+                    zombieData
+            );
             PlantFactory plantFactory = new PlantFactory(plantData.byName());
             ZombieFactory zombieFactory = new ZombieFactory(zombieData);
             GameSessionFactory sessionFactory = new GameSessionFactory(plantFactory, zombieFactory);
+            GameSessionConfigFactory configFactory =
+                    new GameSessionConfigFactory(adventureData);
+            this.levelProgressService = new LevelProgressService(
+                    adventureData.catalog()
+            );
             this.gameRuntime = new GameRuntime(sessionFactory);
+            this.gameMenuController = new GameMenuController(
+                    appState,
+                    userManager,
+                    view,
+                    adventureData.catalog()
+            );
+            this.chapterController = new ChapterController(
+                    appState,
+                    userManager,
+                    view,
+                    adventureData.catalog(),
+                    levelProgressService
+            );
             this.collectionController =
                     new CollectionController(
                             appState,
@@ -118,7 +150,8 @@ public class Application {
                             userManager,
                             view,
                             plantData,
-                            gameRuntime
+                            gameRuntime,
+                            configFactory
                     );
             this.shopController =
                     new ShopController(
@@ -135,8 +168,9 @@ public class Application {
                     );
 
             return true;
-        } catch (IOException e) {
+        } catch (IOException | IllegalArgumentException e) {
             view.showError(SystemMessage.LOADING_DATA_FAILED.getMessage());
+            view.showError(e.getMessage());
             return false;
         }
     }
@@ -157,39 +191,91 @@ public class Application {
     }
 
     private void finishGameSession() {
+        LevelProgressService.CompletionResult completion =
+                recordLevelProgress();
+
         view.showMessage(
                 "Game ended with status: " + gameRuntime.status()
         );
 
-        transferBattleCurrency(
+        boolean saved = transferBattleCurrency(
                 gameRuntime.session().battleWallet()
         );
+        if (saved) {
+            showProgressResult(completion);
+        }
 
         gameRuntime.clear();
         clearStagePreparation();
         appState.setCurrentMenu(MenuName.GAME);
     }
 
-    private void transferBattleCurrency(BattleWallet battleWallet) {
+    private LevelProgressService.CompletionResult recordLevelProgress() {
+        if (gameRuntime.status() != GameSessionStatus.WON) {
+            return new LevelProgressService.CompletionResult(
+                    false,
+                    null,
+                    null
+            );
+        }
+
+        User currentUser = appState.getCurrentUser();
+        if (currentUser == null) {
+            return new LevelProgressService.CompletionResult(
+                    false,
+                    null,
+                    null
+            );
+        }
+
+        return levelProgressService.completeLevel(
+                currentUser,
+                gameRuntime.session().config().levelId()
+        );
+    }
+
+    private void showProgressResult(
+            LevelProgressService.CompletionResult completion
+    ) {
+        if (!completion.newlyCompleted()) {
+            return;
+        }
+        view.showSuccess("Level completion saved.");
+        if (completion.unlockedChapterId() != null) {
+            view.showSuccess(
+                    "Chapter unlocked: "
+                            + completion.unlockedChapterId()
+            );
+        }
+        if (completion.unlockedLevelId() != null) {
+            view.showSuccess(
+                    "Next level available: "
+                            + completion.unlockedLevelId()
+            );
+        }
+    }
+
+    private boolean transferBattleCurrency(BattleWallet battleWallet) {
         User currentUser = appState.getCurrentUser();
 
         if (currentUser == null) {
             view.showError(
                     "Cannot transfer battle currency without a logged-in user."
             );
-            return;
+            return false;
         }
 
         battleWallet.transferTo(currentUser);
 
         if (!userManager.save()) {
             view.showError("Failed to save collected battle currency.");
-            return;
+            return false;
         }
 
         if (battleWallet.hasCollectedCurrency()) {
             showBattleCurrencySummary(battleWallet, currentUser);
         }
+        return true;
     }
 
     private void showBattleCurrencySummary(
@@ -212,6 +298,7 @@ public class Application {
     private void clearStagePreparation(){
         plantSelectionController.resetSelection();
         appState.setSelectedChapter(null);
+        appState.setSelectedLevelId(null);
     }
 
     private Command parseCommand(String input) {
@@ -241,6 +328,7 @@ public class Application {
             case PLANT_SELECTION -> plantSelectionParser.parse(input);
             case GREENHOUSE -> greenhouseParser.parse(input);
             case SHOP -> shopParser.parse(input);
+            case CHAPTER -> chapterParser.parse(input);
             default -> null;
         };
     }

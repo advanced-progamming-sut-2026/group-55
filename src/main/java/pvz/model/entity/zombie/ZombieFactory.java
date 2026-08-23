@@ -33,6 +33,10 @@ public final class ZombieFactory {
     }
 
     public Zombie create(String type) {
+        return create(type, 3);
+    }
+
+    public Zombie create(String type, int difficultyLevel) {
         Objects.requireNonNull(type, "zombie type cannot be null");
         String key = type.strip().toLowerCase(Locale.ROOT);
         if (key.isEmpty()) {
@@ -52,8 +56,19 @@ public final class ZombieFactory {
             );
         }
 
+        ZombieRuntimeStats runtimeStats = ZombieRuntimeStats.from(
+                spec,
+                difficultyLevel
+        );
+        double healthMultiplier = difficultyLevel / 3.0;
         List<ArmorSpec> armors = spec.getArmorIds().stream()
                 .map(armorSpecs::get)
+                .map(armor -> new ArmorSpec(
+                        armor.id(),
+                        armor.name(),
+                        armor.maxHealth() * healthMultiplier,
+                        armor.metallic()
+                ))
                 .toList();
         List<ZombieBehavior> behaviors = behaviorDefinitions
                 .getOrDefault(keyOf(spec.getId()), List.of())
@@ -61,7 +76,17 @@ public final class ZombieFactory {
                 .map(behaviorFactory::create)
                 .toList();
 
-        return new Zombie(spec, new ArmorSet(armors), behaviors);
+        return new Zombie(
+                spec,
+                runtimeStats,
+                new ArmorSet(armors),
+                behaviors
+        );
+    }
+
+    public ZombieSpec getSpecById(String id) {
+        Objects.requireNonNull(id, "zombie id cannot be null");
+        return specsById.get(keyOf(id.strip()));
     }
 
     private String keyOf(String value) {

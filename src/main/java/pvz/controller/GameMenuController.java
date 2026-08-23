@@ -6,11 +6,24 @@ import pvz.model.command.Command;
 import pvz.model.command.GameMenuCommand;
 import pvz.model.utils.*;
 import pvz.view.MenuView;
+import pvz.model.adventure.LevelCatalog;
+
+import java.util.Objects;
 
 public class GameMenuController extends BaseController {
+    private final LevelCatalog levelCatalog;
 
-    public GameMenuController(AppState appState, UserManager userManager, MenuView view) {
+    public GameMenuController(
+            AppState appState,
+            UserManager userManager,
+            MenuView view,
+            LevelCatalog levelCatalog
+    ) {
         super(appState, userManager, view);
+        this.levelCatalog = Objects.requireNonNull(
+                levelCatalog,
+                "level catalog cannot be null"
+        );
     }
 
     @Override
@@ -39,12 +52,17 @@ public class GameMenuController extends BaseController {
                 }
 
                 appState.setSelectedChapter(chapterName);
-                appState.setCurrentMenu(MenuName.PLANT_SELECTION);
+                appState.setSelectedLevelId(null);
+                appState.setCurrentMenu(MenuName.CHAPTER);
 
                 view.showSuccess(
                         SystemMessage.ENTERED_CHAPTER.getMessage()
                                 + " "
                                 + chapterName
+                );
+                view.showMessage(
+                        "Use 'show levels', then "
+                                + "'select level -l <id-or-number>'."
                 );
             }
 
@@ -110,7 +128,6 @@ public class GameMenuController extends BaseController {
     }
 
     private boolean isValidChapterName(String name) {
-        return name.equals("ancient-egypt") || name.equals("frostbite-caves") ||
-                name.equals("big-wave-beach") || name.equals("dark-ages");
+        return levelCatalog.findChapter(name) != null;
     }
 }
