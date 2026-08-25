@@ -11,6 +11,18 @@ public interface ZombieBehavior {
 
     default void onTick(Zombie zombie, World world, long currentTick) {}
 
+    default void onHardStopTick(
+            Zombie zombie,
+            World world,
+            long currentTick
+    ) {}
+
+    default void onPositionChanged(
+            Zombie zombie,
+            World world,
+            long currentTick
+    ) {}
+
     default boolean onPlantEncounter(
             Zombie zombie,
             Plant plant,
@@ -27,6 +39,11 @@ public interface ZombieBehavior {
         return context;
     }
 
+    default void onAcceptedHit(
+            Zombie zombie,
+            DamageContext context
+    ) {}
+
     default void onArmorBroken(
             Zombie zombie,
             ArmorInstance armor,
@@ -34,4 +51,26 @@ public interface ZombieBehavior {
     ) {}
 
     default void onDeath(Zombie zombie, World world, long currentTick) {}
+
+    default double modifyMovementMultiplier(
+            Zombie zombie,
+            World world,
+            long currentTick,
+            double multiplier
+    ) {
+        return multiplier;
+    }
+
+    default double modifyBiteDamage(
+            Zombie zombie,
+            Plant plant,
+            long currentTick,
+            double damage
+    ) {
+        return damage;
+    }
+
+    default boolean convertsFreezeToChill() {
+        return false;
+    }
 }

@@ -301,7 +301,7 @@ public class PlantSelectionController extends BaseController {
     private void handleStartGame(User currentUser) {
         String selectedLevelId = appState.getSelectedLevelId();
 
-        if (!canStartGame(selectedLevelId)) {
+        if (!canStartGame(selectedLevelId, currentUser)) {
             return;
         }
 
@@ -327,7 +327,14 @@ public class PlantSelectionController extends BaseController {
             return;
         }
 
-        gameRuntime.start(config);
+        gameRuntime.start(
+                config,
+                zombieSpec -> {
+                    if (currentUser.addSeenZombie(zombieSpec.getId())) {
+                        userManager.save();
+                    }
+                }
+        );
         appState.setCurrentMenu(MenuName.PLAYING);
 
         view.showSuccess(SystemMessage.PLANT_SELECTION_START_GAME.getMessage());
@@ -341,7 +348,10 @@ public class PlantSelectionController extends BaseController {
         );
     }
 
-    private boolean canStartGame(String selectedLevelId) {
+    private boolean canStartGame(
+            String selectedLevelId,
+            User currentUser
+    ) {
         if (selectedPlants.isEmpty()) {
             view.showError(
                     SystemMessage.PLANT_SELECTION_EMPTY_START.getMessage()
@@ -356,7 +366,7 @@ public class PlantSelectionController extends BaseController {
         }
 
         List<String> missingBoostedPlants =
-                findBoostedButNotSelectedPlants();
+                findBoostedButNotSelectedPlants(currentUser);
 
         if (missingBoostedPlants.isEmpty()) {
             return true;
@@ -414,8 +424,11 @@ public class PlantSelectionController extends BaseController {
         );
     }
 
-    private List<String> findBoostedButNotSelectedPlants() {
-        return boostedPlants.stream()
+    private List<String> findBoostedButNotSelectedPlants(User user) {
+        Set<String> allBoostedPlants = new HashSet<>(boostedPlants);
+        allBoostedPlants.addAll(user.getStoredBoosts());
+
+        return allBoostedPlants.stream()
                 .filter(plant ->
                         !selectedPlants.contains(plant)
                 )

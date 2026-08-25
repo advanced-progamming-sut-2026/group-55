@@ -9,6 +9,7 @@ import java.util.random.RandomGenerator;
 import pvz.model.core.BattleResources;
 import pvz.model.core.Game;
 import pvz.model.core.World;
+import pvz.model.core.ZombieDiscoveryListener;
 import pvz.model.core.board.Board;
 import pvz.model.entity.collectible.sun.SkySunSpawner;
 import pvz.model.entity.plant.PlantFactory;
@@ -53,7 +54,18 @@ public final class GameSessionFactory {
 
 
     public GameSession create(GameSessionConfig config) {
+        return create(config, ZombieDiscoveryListener.none());
+    }
+
+    public GameSession create(
+            GameSessionConfig config,
+            ZombieDiscoveryListener discoveryListener
+    ) {
         Objects.requireNonNull(config, "config cannot be null");
+        Objects.requireNonNull(
+                discoveryListener,
+                "zombie discovery listener cannot be null"
+        );
 
         Game game = new Game();
 
@@ -70,12 +82,23 @@ public final class GameSessionFactory {
         World world =
                 new World(game, board, resources, random);
 
+        world.setZombieCreator(
+                id -> zombieFactory.create(
+                        id,
+                        config.difficultyLevel()
+                )
+        );
+        world.setZombieDiscoveryListener(discoveryListener);
+
 
         game.register(board);
 
 
         if (config.skySunEnabled()) {
-            game.register(new SkySunSpawner(world));
+            game.register(new SkySunSpawner(
+                    world,
+                    config.difficultyLevel()
+            ));
         }
 
         List<Wave> waves = new WaveGenerator(

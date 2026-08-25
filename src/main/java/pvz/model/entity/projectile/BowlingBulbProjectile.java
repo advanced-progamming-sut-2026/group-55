@@ -7,7 +7,9 @@ import java.util.Set;
 import pvz.model.core.Game;
 import pvz.model.core.World;
 import pvz.model.entity.Entity;
+import pvz.model.entity.zombie.PushedObstacle;
 import pvz.model.entity.zombie.Zombie;
+import pvz.model.entity.zombie.DamageContext;
 
 public final class BowlingBulbProjectile
         extends Entity {
@@ -18,6 +20,8 @@ public final class BowlingBulbProjectile
     private final double damage;
     private final ProjectileType type;
     private final Set<Zombie> hitZombies =
+            new HashSet<>();
+    private final Set<PushedObstacle> hitObstacles =
             new HashSet<>();
     private final int explosionRadius;
 
@@ -147,6 +151,13 @@ public final class BowlingBulbProjectile
                         nextX
                 );
 
+        PushedObstacle obstacle = world.findHitPushedObstacle(
+                currentRow,
+                previousX,
+                nextX,
+                hitObstacles
+        );
+
         Zombie zombie = world.findHitZombie(
                         currentRow,
                         previousX,
@@ -156,6 +167,7 @@ public final class BowlingBulbProjectile
 
         if (isBlockingTileFirst(
                 blockingTileColumn,
+                obstacle,
                 zombie,
                 previousX
         )) {
@@ -164,6 +176,12 @@ public final class BowlingBulbProjectile
                     currentRow,
                     tick
             );
+            world.game().unregister(this);
+            return;
+        }
+
+        if (isObstacleFirst(obstacle, zombie, previousX)) {
+            hitObstacle(obstacle, tick);
             world.game().unregister(this);
             return;
         }
@@ -188,10 +206,11 @@ public final class BowlingBulbProjectile
             return;
         }
 
-        world.board().damageTerrain(
+        world.board().damageTerrainWithProjectile(
                 column,
                 row,
-                type.damageAgainstTerrain(damage)
+                damage,
+                type
         );
     }
 
@@ -213,6 +232,22 @@ public final class BowlingBulbProjectile
         type.hitZombie(zombie, damage, currentTick);
     }
 
+    private void hitObstacle(
+            PushedObstacle obstacle,
+            long currentTick
+    ) {
+        hitObstacles.add(obstacle);
+        if (isExplosive()) {
+            explodeAt(
+                    obstacle.getTileX(),
+                    obstacle.getTileY(),
+                    currentTick
+            );
+            return;
+        }
+        obstacle.takeProjectileDamage(type, damage);
+    }
+
     private void explodeAt(
             int centerColumn,
             int centerRow,
@@ -225,14 +260,24 @@ public final class BowlingBulbProjectile
                 explosionRadius,
                 damage,
                 type,
+                DamageContext.AttackDelivery.STRAIGHT,
                 currentTick
         );
 
-        world.board().damageTilesInArea(
+        world.board().damageTilesWithProjectileInArea(
                 centerColumn,
                 centerRow,
                 explosionRadius,
-                type.damageAgainstTerrain(damage)
+                damage,
+                type
+        );
+
+        world.damagePushedObstaclesWithProjectileInArea(
+                centerColumn,
+                centerRow,
+                explosionRadius,
+                damage,
+                type
         );
     }
 
@@ -242,15 +287,12 @@ public final class BowlingBulbProjectile
 
     private boolean isBlockingTileFirst(
             Integer blockingTileColumn,
+            PushedObstacle obstacle,
             Zombie zombie,
             double previousX
     ) {
         if (blockingTileColumn == null) {
             return false;
-        }
-
-        if (zombie == null) {
-            return true;
         }
 
         double tileHitX =
@@ -259,10 +301,29 @@ public final class BowlingBulbProjectile
         double tileDistance =
                 Math.abs(tileHitX - previousX);
 
-        double zombieDistance =
-                Math.abs(zombie.getX() - previousX);
+        double obstacleDistance = obstacle == null
+                ? Double.POSITIVE_INFINITY
+                : Math.abs(obstacle.getX() - previousX);
 
-        return tileDistance <= zombieDistance;
+        double zombieDistance = zombie == null
+                ? Double.POSITIVE_INFINITY
+                : Math.abs(zombie.getX() - previousX);
+
+        return tileDistance <= obstacleDistance
+                && tileDistance <= zombieDistance;
+    }
+
+    private boolean isObstacleFirst(
+            PushedObstacle obstacle,
+            Zombie zombie,
+            double previousX
+    ) {
+        if (obstacle == null) {
+            return false;
+        }
+        return zombie == null
+                || Math.abs(obstacle.getX() - previousX)
+                <= Math.abs(zombie.getX() - previousX);
     }
 
     private void bounceToNextLane(int currentRow) {

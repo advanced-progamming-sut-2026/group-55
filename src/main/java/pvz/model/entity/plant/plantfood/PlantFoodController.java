@@ -16,6 +16,8 @@ public final class PlantFoodController {
 
     private final BooleanSupplier ownerPresentInWorld;
 
+    private final BooleanSupplier activationAllowed;
+
     private final PlantFoodPreparation preparation;
 
     public PlantFoodController(
@@ -23,6 +25,7 @@ public final class PlantFoodController {
             PlantLifecycle lifecycle,
             PlantFoodCapability capability,
             BooleanSupplier ownerPresentInWorld,
+            BooleanSupplier activationAllowed,
             PlantFoodPreparation preparation
     ) {
         this.plantName = Objects.requireNonNull(
@@ -49,6 +52,11 @@ public final class PlantFoodController {
                         "owner presence check cannot be null"
                 );
 
+        this.activationAllowed = Objects.requireNonNull(
+                        activationAllowed,
+                        "plant food activation check cannot be null"
+                );
+
         this.preparation = Objects.requireNonNull(
                         preparation,
                         "plant food preparation cannot be null"
@@ -66,6 +74,10 @@ public final class PlantFoodController {
             throw new IllegalStateException(
                     plantName + " must be present in the world before plant food can be applied"
             );
+        }
+
+        if (!activationAllowed.getAsBoolean()) {
+            return false;
         }
 
         long durationTicks = PlantFoodRules
@@ -87,6 +99,16 @@ public final class PlantFoodController {
         supportedCapability.applyPlantFood(currentTick, durationTicks);
 
         return true;
+    }
+
+    public boolean canActivate(long currentTick) {
+        if (capability == null
+                || !ownerPresentInWorld.getAsBoolean()
+                || !activationAllowed.getAsBoolean()) {
+            return false;
+        }
+
+        return !lifecycle.isPlantFoodActive(currentTick);
     }
 
     public boolean isActive(long currentTick) {

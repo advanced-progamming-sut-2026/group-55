@@ -57,6 +57,13 @@ final class ExplodeONutBehavior extends ArmoredWallBehavior {
                 explosionDamage
         );
 
+        world().damagePushedObstaclesDirectlyInArea(
+                column(),
+                row(),
+                EXPLOSION_RADIUS,
+                explosionDamage
+        );
+
         GameEvents.publish(
                 owner().getName()
                         + " at ("

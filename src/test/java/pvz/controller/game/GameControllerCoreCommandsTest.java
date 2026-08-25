@@ -1,6 +1,7 @@
 package pvz.controller.game;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -13,8 +14,10 @@ import pvz.data.PlantCsvLoader;
 import pvz.data.ZombieCsvLoader;
 import pvz.data.ZombieData;
 import pvz.model.entity.plant.PlantFactory;
+import pvz.model.entity.plant.Plant;
 import pvz.model.entity.zombie.Zombie;
 import pvz.model.entity.zombie.ZombieFactory;
+import pvz.model.entity.projectile.ProjectileType;
 import pvz.model.adventure.AdventureData;
 import pvz.model.session.GameSession;
 import pvz.model.session.GameSessionConfig;
@@ -100,5 +103,42 @@ class GameControllerCoreCommandsTest {
 
         assertTrue(result.contains("nuke released; killed 2 zombie(s)."));
         assertEquals(0, session.world().getZombies().size());
+    }
+
+    @Test
+    void brokenArmorIsNotReportedAsAnActiveArmorLayer() {
+        Zombie cone = session.createZombie("cone head");
+        cone.spawn(session.world(), 9, 1);
+        ProjectileType.NORMAL.hitZombie(
+                cone,
+                cone.getArmorHealth(),
+                session.game().getCurrentTick()
+        );
+
+        String zombieInfo = controller.handle("zombies info");
+
+        assertTrue(zombieInfo.contains("\t\tnone"));
+        assertFalse(zombieInfo.contains("\t\tcone:"));
+    }
+
+    @Test
+    void feedingFrozenPlantDoesNotConsumePlantFood() {
+        session.world().sunBank().add(100);
+        String planted = controller.handle(
+                "plant plant -t Peashooter -l (1, 1)"
+        );
+        assertTrue(planted.startsWith("planted Peashooter"));
+        Plant plant = session.board().getTopPlant(1, 1);
+        assertTrue(session.board().addPlantFreezeLevel(
+                plant,
+                Plant.FULL_FREEZE_LEVEL
+        ));
+        assertTrue(session.resources().tryAddPlantFood());
+
+        String result = controller.handle("feed plant -l (1, 1)");
+
+        assertTrue(result.contains("plant food cannot be applied"));
+        assertEquals(1, session.resources().getPlantFoodCount());
+        assertFalse(plant.isPlantFoodActive(session.game().getCurrentTick()));
     }
 }

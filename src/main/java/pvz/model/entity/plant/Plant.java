@@ -1,6 +1,8 @@
 package pvz.model.entity.plant;
 
 import java.util.Objects;
+import java.util.HashSet;
+import java.util.Set;
 
 import pvz.model.core.Game;
 import pvz.model.core.GameEvents;
@@ -20,6 +22,8 @@ import pvz.model.entity.plant.behavior.capability.SunProductionCapability;
 import pvz.model.entity.plant.behavior.capability.VaultBlockingCapability;
 
 public class Plant extends LivingEntity {
+    public static final int FULL_FREEZE_LEVEL = 3;
+
     private final PlantSpec spec;
 
     private final PlantFoodController plantFoodController;
@@ -41,6 +45,8 @@ public class Plant extends LivingEntity {
     private final PlantLifetimeController lifetimeController;
 
     private boolean removedFromWorld;
+    private final Set<Object> actionBlockers = new HashSet<>();
+    private int freezeLevel;
 
     public Plant(PlantSpec spec) {
         this.spec = Objects.requireNonNull(spec, "plant spec cannot be null");
@@ -64,6 +70,7 @@ public class Plant extends LivingEntity {
                         lifecycle,
                         plantFoodCapability,
                         () -> world != null && !removedFromWorld,
+                        this::isPlantFoodActivationAllowed,
                         this::prepareForPlantFood
                 );
     }
@@ -147,6 +154,12 @@ public class Plant extends LivingEntity {
             return false;
         }
 
+        if (!actionBlockers.isEmpty()
+                && (threat == PlantThreat.DAMAGE
+                || threat == PlantThreat.INSTANT_DESTROY)) {
+            return false;
+        }
+
         if (world == null) {
             return true;
         }
@@ -156,6 +169,10 @@ public class Plant extends LivingEntity {
 
     public boolean isPlantFoodActive(long currentTick) {
         return plantFoodController.isActive(currentTick);
+    }
+
+    public boolean canApplyPlantFood(long currentTick) {
+        return plantFoodController.canActivate(currentTick);
     }
 
     public boolean tryApplyPlantFood(long currentTick) {
@@ -171,6 +188,12 @@ public class Plant extends LivingEntity {
         activatePlantFoodForMatchingPlants(currentTick);
 
         return true;
+    }
+
+    private boolean isPlantFoodActivationAllowed() {
+        return freezeLevel == 0
+                && world != null
+                && !world.board().isPlantCovered(this);
     }
 
     private void activatePlantFoodForMatchingPlants(
@@ -246,6 +269,72 @@ public class Plant extends LivingEntity {
     // remove damage death
     public boolean isRemovedFromWorld() {
         return removedFromWorld;
+    }
+
+    public boolean isZombieTargetable() {
+        return !removedFromWorld && actionBlockers.isEmpty();
+    }
+
+    public boolean isActionBlocked() {
+        return !actionBlockers.isEmpty();
+    }
+
+    public boolean addActionBlocker(Object source) {
+        Objects.requireNonNull(source, "action blocker source cannot be null");
+        if (!canBeAffectedBy(PlantThreat.ACTION_BLOCK)) {
+            return false;
+        }
+        return actionBlockers.add(source);
+    }
+
+    public void removeActionBlocker(Object source) {
+        actionBlockers.remove(Objects.requireNonNull(source));
+    }
+
+    public boolean addFreezeLevel(int fullFreezeLevel) {
+        if (fullFreezeLevel <= 0) {
+            throw new IllegalArgumentException(
+                    "full freeze level must be positive"
+            );
+        }
+
+        if (removedFromWorld
+                || hasTag(PlantTag.FIRE)
+                || freezeLevel >= fullFreezeLevel
+                || !canBeAffectedBy(PlantThreat.FREEZE)) {
+            return false;
+        }
+
+        freezeLevel++;
+        return true;
+    }
+
+    public int getFreezeLevel() {
+        return freezeLevel;
+    }
+
+    public void clearFreezeLevels() {
+        freezeLevel = 0;
+    }
+
+    public boolean tryRelocate(int newColumn, int newRow) {
+        if (world == null
+                || removedFromWorld
+                || !canBeAffectedBy(PlantThreat.FORCED_RELOCATION)) {
+            return false;
+        }
+        if (!world.board().movePlant(
+                column,
+                row,
+                newColumn,
+                newRow,
+                this
+        )) {
+            return false;
+        }
+        column = newColumn;
+        row = newRow;
+        return true;
     }
 
     public PlantRemovalResult tryRemove(PlantThreat threat) {
@@ -329,6 +418,11 @@ public class Plant extends LivingEntity {
         }
 
         if (removeIfExpired(tick)) {
+            return;
+        }
+
+        if (isActionBlocked()
+                || world.board().isPlantCovered(this)) {
             return;
         }
 

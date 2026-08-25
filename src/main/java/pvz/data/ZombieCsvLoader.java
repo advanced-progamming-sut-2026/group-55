@@ -76,17 +76,6 @@ public final class ZombieCsvLoader {
             if (byId.putIfAbsent(normalizedId, spec) != null) {
                 throw dataError(row, "duplicate zombie id: " + spec.getId());
             }
-
-            Map<String, Map<String, String>> zombieParameters =
-                    parameters.getOrDefault(normalizedId, Map.of());
-            for (String behaviorType : behaviorTypes) {
-                if (!zombieParameters.containsKey(behaviorType)) {
-                    throw dataError(
-                            row,
-                            "missing parameter rows for behavior " + behaviorType
-                    );
-                }
-            }
         }
 
         Map<String, List<ZombieBehaviorDefinition>> behaviorDefinitions =
@@ -141,6 +130,7 @@ public final class ZombieCsvLoader {
                     Map<String, ZombieSpec> specs,
                     Map<String, Map<String, Map<String, String>>> parameters
             ) {
+        validateBehaviorParameterOwners(specs, parameters);
         Map<String, List<ZombieBehaviorDefinition>> result = new HashMap<>();
         for (Map.Entry<String, ZombieSpec> entry : specs.entrySet()) {
             List<ZombieBehaviorDefinition> definitions = new ArrayList<>();
@@ -148,12 +138,37 @@ public final class ZombieCsvLoader {
                     parameters.getOrDefault(entry.getKey(), Map.of());
             for (String type : entry.getValue().getBehaviorTypes()) {
                 definitions.add(new ZombieBehaviorDefinition(
-                        type, zombieParameters.get(type)
+                        type, zombieParameters.getOrDefault(type, Map.of())
                 ));
             }
             result.put(entry.getKey(), List.copyOf(definitions));
         }
         return result;
+    }
+
+    private static void validateBehaviorParameterOwners(
+            Map<String, ZombieSpec> specs,
+            Map<String, Map<String, Map<String, String>>> parameters
+    ) {
+        for (Map.Entry<String, Map<String, Map<String, String>>> entry
+                : parameters.entrySet()) {
+            ZombieSpec spec = specs.get(entry.getKey());
+            if (spec == null) {
+                throw new IllegalArgumentException(
+                        "behavior parameters reference unknown zombie: "
+                                + entry.getKey()
+                );
+            }
+            for (String behavior : entry.getValue().keySet()) {
+                if (!spec.getBehaviorTypes().contains(behavior)) {
+                    throw new IllegalArgumentException(
+                            "behavior parameters for " + spec.getId()
+                                    + " reference undeclared behavior: "
+                                    + behavior
+                    );
+                }
+            }
+        }
     }
 
     private static List<Row> readRows(Path path, int expectedColumns)

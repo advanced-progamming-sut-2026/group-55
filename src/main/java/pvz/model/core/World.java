@@ -1,11 +1,13 @@
 package pvz.model.core;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
 import java.util.random.RandomGenerator;
+import java.util.function.Function;
 
 import pvz.model.core.board.Board;
 import pvz.model.core.board.HorizontalDirection;
@@ -16,6 +18,8 @@ import pvz.model.entity.collectible.sun.Sun;
 import pvz.model.entity.collectible.sun.SunCollectionOutcome;
 import pvz.model.entity.plant.Plant;
 import pvz.model.entity.plant.attack.ShotVector;
+import pvz.model.entity.projectile.ProjectileType;
+import pvz.model.entity.zombie.PushedObstacle;
 import pvz.model.entity.zombie.Zombie;
 
 public final class World {
@@ -31,9 +35,13 @@ public final class World {
     private final Board board;
     private final BattleResources resources;
     private final ZombieRegistry zombieRegistry = new ZombieRegistry();
+    private final List<PushedObstacle> pushedObstacles = new ArrayList<>();
     private final List<LawnMower> lawnMowers = new ArrayList<>();
     private final List<Collectible> collectibles = new ArrayList<>();
     private final RandomGenerator random;
+    private Function<String, Zombie> zombieCreator;
+    private ZombieDiscoveryListener zombieDiscoveryListener =
+            ZombieDiscoveryListener.none();
 
     public World(Game game, Board board, BattleResources resources) {
         this(game, board, resources, new Random());
@@ -56,6 +64,7 @@ public final class World {
                 "random generator cannot be null"
         );
 
+        board.setGroundOccupancy(this::hasPushedObstacleInTile);
         createLawnMowers();
     }
 
@@ -105,6 +114,9 @@ public final class World {
                 random.nextDouble() < GLOWING_ZOMBIE_CHANCE
         );
         zombieRegistry.add(checkedZombie);
+        zombieDiscoveryListener.onZombieDiscovered(
+                checkedZombie.getSpec()
+        );
     }
 
     public void removeZombie(Zombie zombie) {
@@ -177,14 +189,121 @@ public final class World {
         return zombieRegistry.snapshot();
     }
 
+    public void addPushedObstacle(PushedObstacle obstacle) {
+        PushedObstacle checkedObstacle = Objects.requireNonNull(
+                obstacle,
+                "pushed obstacle cannot be null"
+        );
+        if (!pushedObstacles.contains(checkedObstacle)) {
+            pushedObstacles.add(checkedObstacle);
+        }
+    }
+
+    public void removePushedObstacle(PushedObstacle obstacle) {
+        pushedObstacles.remove(obstacle);
+    }
+
+    public List<PushedObstacle> getPushedObstacles() {
+        return List.copyOf(pushedObstacles);
+    }
+
+    public boolean hasPushedObstacleInTile(int column, int row) {
+        return pushedObstacles.stream()
+                .filter(obstacle -> !obstacle.isDead())
+                .anyMatch(obstacle -> obstacle.getTileX() == column
+                        && obstacle.getTileY() == row);
+    }
+
+    public PushedObstacle findHitPushedObstacle(
+            int row,
+            double fromX,
+            double toX,
+            Set<PushedObstacle> ignoredObstacles
+    ) {
+        Objects.requireNonNull(
+                ignoredObstacles,
+                "ignored obstacles cannot be null"
+        );
+        PushedObstacle nearest = null;
+        for (PushedObstacle obstacle : pushedObstacles) {
+            if (ignoredObstacles.contains(obstacle)
+                    || obstacle.isDead()
+                    || !obstacle.blocksStraightProjectiles()
+                    || obstacle.getTileY() != row
+                    || !isObstacleInsideSegment(obstacle, fromX, toX)) {
+                continue;
+            }
+            if (nearest == null
+                    || Math.abs(obstacle.getX() - fromX)
+                    < Math.abs(nearest.getX() - fromX)) {
+                nearest = obstacle;
+            }
+        }
+        return nearest;
+    }
+
+    public PushedObstacle findPushedObstacleInTile(
+            int column,
+            int row,
+            Set<PushedObstacle> ignoredObstacles
+    ) {
+        Objects.requireNonNull(
+                ignoredObstacles,
+                "ignored obstacles cannot be null"
+        );
+        board.getTile(column, row);
+        return pushedObstacles.stream()
+                .filter(obstacle -> !ignoredObstacles.contains(obstacle))
+                .filter(obstacle -> !obstacle.isDead())
+                .filter(PushedObstacle::blocksStraightProjectiles)
+                .filter(obstacle -> obstacle.getTileX() == column)
+                .filter(obstacle -> obstacle.getTileY() == row)
+                .findFirst()
+                .orElse(null);
+    }
+
+    public void damagePushedObstaclesWithProjectileInArea(
+            int centerColumn,
+            int centerRow,
+            int radius,
+            double baseDamage,
+            ProjectileType projectileType
+    ) {
+        Objects.requireNonNull(
+                projectileType,
+                "projectile type cannot be null"
+        );
+        validateObstacleArea(centerColumn, centerRow, radius, baseDamage);
+        for (PushedObstacle obstacle : List.copyOf(pushedObstacles)) {
+            if (isInsideSquare(obstacle, centerColumn, centerRow, radius)) {
+                obstacle.takeProjectileDamage(projectileType, baseDamage);
+            }
+        }
+    }
+
+    public void damagePushedObstaclesDirectlyInArea(
+            int centerColumn,
+            int centerRow,
+            int radius,
+            double damage
+    ) {
+        validateObstacleArea(centerColumn, centerRow, radius, damage);
+        for (PushedObstacle obstacle : List.copyOf(pushedObstacles)) {
+            if (isInsideSquare(obstacle, centerColumn, centerRow, radius)) {
+                obstacle.takeDirectDamage(damage);
+            }
+        }
+    }
+
     public boolean hasStraightTargetAhead(
             int row,
             double fromX
     ) {
-        return board.hasStraightTargetAhead(
-                zombieRegistry.view(),
+        return hasStraightTarget(
                 row,
-                fromX
+                fromX,
+                Integer.MAX_VALUE,
+                HorizontalDirection.RIGHT
         );
     }
 
@@ -193,11 +312,11 @@ public final class World {
             double fromX,
             int rangeTiles
     ) {
-        return board.hasStraightTargetAhead(
-                zombieRegistry.view(),
+        return hasStraightTarget(
                 row,
                 fromX,
-                rangeTiles
+                rangeTiles,
+                HorizontalDirection.RIGHT
         );
     }
 
@@ -207,8 +326,14 @@ public final class World {
             int rangeTiles,
             HorizontalDirection direction
     ) {
-        return board.hasStraightTarget(
+        boolean boardTarget = board.hasStraightTarget(
                 zombieRegistry.view(),
+                row,
+                fromX,
+                rangeTiles,
+                direction
+        );
+        return boardTarget || hasPushedObstacleOnStraightPath(
                 row,
                 fromX,
                 rangeTiles,
@@ -222,8 +347,14 @@ public final class World {
             int rangeTiles,
             ShotVector vector
     ) {
-        return board.hasDirectionalTarget(
+        boolean boardTarget = board.hasDirectionalTarget(
                 zombieRegistry.view(),
+                startColumn,
+                startRow,
+                rangeTiles,
+                vector
+        );
+        return boardTarget || hasPushedObstacleOnDirectionalPath(
                 startColumn,
                 startRow,
                 rangeTiles,
@@ -304,6 +435,154 @@ public final class World {
         return List.copyOf(plants);
     }
 
+    public List<Plant> getTopPlants() {
+        List<Plant> plants = new ArrayList<>();
+
+        for (int column = 1; column <= board.getCols(); column++) {
+            for (int row = 1; row <= board.getRows(); row++) {
+                Plant topPlant = board.getTopPlant(column, row);
+                if (topPlant != null) {
+                    plants.add(topPlant);
+                }
+            }
+        }
+
+        return List.copyOf(plants);
+    }
+
+    public void setZombieCreator(Function<String, Zombie> zombieCreator) {
+        if (this.zombieCreator != null) {
+            throw new IllegalStateException("zombie creator is already configured");
+        }
+        this.zombieCreator = Objects.requireNonNull(
+                zombieCreator,
+                "zombie creator cannot be null"
+        );
+    }
+
+    public void setZombieDiscoveryListener(
+            ZombieDiscoveryListener listener
+    ) {
+        zombieDiscoveryListener = Objects.requireNonNull(
+                listener,
+                "zombie discovery listener cannot be null"
+        );
+    }
+
+    public Zombie spawnZombie(
+            String zombieId,
+            int column,
+            int row
+    ) {
+        if (zombieCreator == null) {
+            throw new IllegalStateException("zombie creator is not configured");
+        }
+        Zombie zombie = zombieCreator.apply(zombieId);
+        if (zombie == null) {
+            throw new IllegalArgumentException("unknown zombie: " + zombieId);
+        }
+        zombie.spawn(this, column, row);
+        return zombie;
+    }
+
+    public int randomInt(int bound) {
+        if (bound <= 0) {
+            throw new IllegalArgumentException("random bound must be positive");
+        }
+        return random.nextInt(bound);
+    }
+
+    public Plant findNearestPlantInRow(
+            int row,
+            double fromX,
+            int maximumDistance
+    ) {
+        return getTopPlants().stream()
+                .filter(Plant::isZombieTargetable)
+                .filter(plant -> plant.getTileY() == row)
+                .filter(plant -> Math.abs(plant.getX() - fromX)
+                        <= maximumDistance)
+                .min(Comparator.comparingDouble(
+                        plant -> Math.abs(plant.getX() - fromX)
+                ))
+                .orElse(null);
+    }
+
+    public Plant findNearestPlantAhead(
+            Zombie zombie,
+            int maximumDistance
+    ) {
+        return getTopPlants().stream()
+                .filter(Plant::isZombieTargetable)
+                .filter(plant -> plant.getTileY() == zombie.getRow())
+                .filter(plant -> plant.getX() <= zombie.getX())
+                .filter(plant -> zombie.getX() - plant.getX()
+                        <= maximumDistance)
+                .max(Comparator.comparingDouble(Plant::getX))
+                .orElse(null);
+    }
+
+    public boolean hasTargetablePlantInRadius(
+            int centerColumn,
+            int centerRow,
+            int radius
+    ) {
+        board.getTile(centerColumn, centerRow);
+        if (radius < 0) {
+            throw new IllegalArgumentException(
+                    "plant detection radius cannot be negative"
+            );
+        }
+        return getTopPlants().stream()
+                .filter(Plant::isZombieTargetable)
+                .anyMatch(plant -> Math.max(
+                        Math.abs(plant.getTileX() - centerColumn),
+                        Math.abs(plant.getTileY() - centerRow)
+                ) <= radius);
+    }
+
+    public Plant findNearestUncoveredPlantAhead(
+            Zombie zombie,
+            int maximumDistance
+    ) {
+        return getTopPlants().stream()
+                .filter(Plant::isZombieTargetable)
+                .filter(plant -> !board.isPlantCovered(plant))
+                .filter(plant -> plant.getTileY() == zombie.getRow())
+                .filter(plant -> plant.getX() <= zombie.getX())
+                .filter(plant -> zombie.getX() - plant.getX()
+                        <= maximumDistance)
+                .max(Comparator.comparingDouble(Plant::getX))
+                .orElse(null);
+    }
+
+    public Plant findNearestPlantForProjectileAhead(
+            Zombie zombie,
+            int maximumDistance
+    ) {
+        return getTopPlants().stream()
+                .filter(plant -> !plant.isRemovedFromWorld())
+                .filter(plant -> plant.getTileY() == zombie.getRow())
+                .filter(plant -> plant.getX() <= zombie.getX())
+                .filter(plant -> zombie.getX() - plant.getX()
+                        <= maximumDistance)
+                .max(Comparator.comparingDouble(Plant::getX))
+                .orElse(null);
+    }
+
+    public void dropRecoveredSun(
+            int value,
+            double x,
+            double y
+    ) {
+        if (value <= 0) {
+            return;
+        }
+        Sun sun = Sun.recovered(this, x, y, value);
+        addCollectible(sun);
+        game.register(sun);
+    }
+
     public SunCollectionOutcome collectSun(Sun sun) {
         Objects.requireNonNull(sun, "sun cannot be null");
 
@@ -330,6 +609,13 @@ public final class World {
             );
 
             board.damageTilesInArea(
+                    sun.getTileX(),
+                    sun.getTileY(),
+                    RADIOACTIVE_ZOMBIE_RADIUS,
+                    RADIOACTIVE_ZOMBIE_DAMAGE
+            );
+
+            damagePushedObstaclesDirectlyInArea(
                     sun.getTileX(),
                     sun.getTileY(),
                     RADIOACTIVE_ZOMBIE_RADIUS,
@@ -388,6 +674,110 @@ public final class World {
         for (int row = 1; row <= board.getRows(); row++) {
             lawnMowers.add(new LawnMower(this, row));
         }
+    }
+
+    private boolean isObstacleInsideSegment(
+            PushedObstacle obstacle,
+            double fromX,
+            double toX
+    ) {
+        if (toX > fromX) {
+            return obstacle.getX() > fromX && obstacle.getX() <= toX;
+        }
+        if (toX < fromX) {
+            return obstacle.getX() < fromX && obstacle.getX() >= toX;
+        }
+        return false;
+    }
+
+    private boolean hasPushedObstacleOnStraightPath(
+            int row,
+            double fromX,
+            int rangeTiles,
+            HorizontalDirection direction
+    ) {
+        return pushedObstacles.stream()
+                .filter(obstacle -> !obstacle.isDead())
+                .filter(PushedObstacle::blocksStraightProjectiles)
+                .filter(obstacle -> obstacle.getTileY() == row)
+                .anyMatch(obstacle -> isObstacleInDirection(
+                        obstacle,
+                        fromX,
+                        rangeTiles,
+                        direction
+                ));
+    }
+
+    private boolean isObstacleInDirection(
+            PushedObstacle obstacle,
+            double fromX,
+            int rangeTiles,
+            HorizontalDirection direction
+    ) {
+        double distance = (obstacle.getX() - fromX) * direction.sign();
+        return distance >= 0
+                && (rangeTiles == Integer.MAX_VALUE
+                || distance <= rangeTiles);
+    }
+
+    private boolean hasPushedObstacleOnDirectionalPath(
+            int startColumn,
+            int startRow,
+            int rangeTiles,
+            ShotVector vector
+    ) {
+        return pushedObstacles.stream()
+                .filter(obstacle -> !obstacle.isDead())
+                .filter(PushedObstacle::blocksStraightProjectiles)
+                .anyMatch(obstacle -> isObstacleOnDirectionalPath(
+                        obstacle,
+                        startColumn,
+                        startRow,
+                        rangeTiles,
+                        vector
+                ));
+    }
+
+    private boolean isObstacleOnDirectionalPath(
+            PushedObstacle obstacle,
+            int startColumn,
+            int startRow,
+            int rangeTiles,
+            ShotVector vector
+    ) {
+        int columnDifference = obstacle.getTileX() - startColumn;
+        int rowDifference = obstacle.getTileY() - startRow;
+        return vector.reachesTile(columnDifference, rowDifference)
+                && (rangeTiles == Integer.MAX_VALUE
+                || Math.hypot(columnDifference, rowDifference)
+                <= rangeTiles);
+    }
+
+    private void validateObstacleArea(
+            int centerColumn,
+            int centerRow,
+            int radius,
+            double damage
+    ) {
+        board.getTile(centerColumn, centerRow);
+        if (radius < 0) {
+            throw new IllegalArgumentException("area radius cannot be negative");
+        }
+        if (!Double.isFinite(damage) || damage < 0) {
+            throw new IllegalArgumentException(
+                    "area damage must be finite and non-negative"
+            );
+        }
+    }
+
+    private boolean isInsideSquare(
+            PushedObstacle obstacle,
+            int centerColumn,
+            int centerRow,
+            int radius
+    ) {
+        return Math.abs(obstacle.getTileX() - centerColumn) <= radius
+                && Math.abs(obstacle.getTileY() - centerRow) <= radius;
     }
 
     private void requireValidLawnMowerRow(int row) {

@@ -8,6 +8,7 @@ import pvz.model.entity.Entity;
 import pvz.model.entity.plant.category.lobber.LobberShot;
 import pvz.model.entity.plant.category.lobber.LobberTarget;
 import pvz.model.entity.zombie.Zombie;
+import pvz.model.entity.zombie.DamageContext;
 
 public final class LobbedProjectile extends Entity {
     private static final double TILES_PER_SECOND = 2;
@@ -144,11 +145,11 @@ public final class LobbedProjectile extends Entity {
             return;
         }
 
-        world.board().damageTerrain(
+        world.board().damageTerrainWithProjectile(
                 impactColumn,
                 impactRow,
+                shot.damage(),
                 shot.projectileType()
-                        .damageAgainstTerrain(shot.damage())
         );
     }
 
@@ -172,13 +173,16 @@ public final class LobbedProjectile extends Entity {
             return;
         }
 
-        shot.projectileType().hitZombie(
+        boolean accepted = shot.projectileType().hitZombie(
                 zombie,
                 shot.damage(),
-                currentTick
+                currentTick,
+                DamageContext.AttackDelivery.LOBBED
         );
 
-        applyButterIfNeeded(zombie, currentTick);
+        if (accepted) {
+            applyButterIfNeeded(zombie, currentTick);
+        }
     }
 
     private void damageArea(
@@ -193,15 +197,24 @@ public final class LobbedProjectile extends Entity {
                 shot.splashRadius(),
                 shot.damage(),
                 shot.projectileType(),
+                DamageContext.AttackDelivery.LOBBED,
                 currentTick
         );
 
-        world.board().damageTilesInArea(
+        world.board().damageTilesWithProjectileInArea(
                 impactColumn,
                 impactRow,
                 shot.splashRadius(),
+                shot.damage(),
                 shot.projectileType()
-                        .damageAgainstTerrain(shot.damage())
+        );
+
+        world.damagePushedObstaclesWithProjectileInArea(
+                impactColumn,
+                impactRow,
+                shot.splashRadius(),
+                shot.damage(),
+                shot.projectileType()
         );
     }
 

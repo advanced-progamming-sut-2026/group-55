@@ -3,7 +3,10 @@ package pvz.model.core.board;
 import java.util.Objects;
 
 import pvz.model.core.Game;
+import pvz.model.entity.plant.Plant;
 import pvz.model.entity.plant.PlantTag;
+import pvz.model.entity.plant.lifecycle.PlantThreat;
+import pvz.model.entity.projectile.ProjectileType;
 
 final class TerrainManager {
 
@@ -41,6 +44,76 @@ final class TerrainManager {
         return grid.getTile(x, y).takeDamage(damage);
     }
 
+    boolean damageTerrainWithProjectile(
+            int x,
+            int y,
+            double baseDamage,
+            ProjectileType projectileType
+    ) {
+        return ElementInteractionResolver.damageTile(
+                grid.getTile(x, y),
+                projectileType,
+                baseDamage
+        );
+    }
+
+    boolean addPlantFreezeLevel(Plant plant, int fullFreezeLevel) {
+        Tile tile = requirePlantTile(plant);
+
+        if (tile.hasOverlay(TileOverlayType.FROZEN, plant)
+                || !plant.addFreezeLevel(fullFreezeLevel)) {
+            return false;
+        }
+
+        if (plant.getFreezeLevel() >= fullFreezeLevel) {
+            tile.addOverlay(TileOverlayType.FROZEN, plant);
+        }
+
+        return true;
+    }
+
+    boolean coverPlantWithOctopus(Plant plant) {
+        if (!plant.canBeAffectedBy(PlantThreat.OCTOPUS)) {
+            return false;
+        }
+        return requirePlantTile(plant).addOverlay(
+                TileOverlayType.OCTOPUS,
+                plant
+        );
+    }
+
+    boolean isPlantCovered(Plant plant) {
+        return requirePlantTile(plant).blocksActionsFor(plant);
+    }
+
+    void hitPlantWithReflectedProjectile(
+            Plant plant,
+            ProjectileType projectileType,
+            double calculatedDamage
+    ) {
+        Tile tile = requirePlantTile(plant);
+
+        if (tile.hasBlockingOverlay()) {
+            ElementInteractionResolver.damageTileWithCalculatedDamage(
+                    tile,
+                    projectileType,
+                    calculatedDamage
+            );
+            return;
+        }
+
+        plant.takeDamage(calculatedDamage);
+        if (plant.isRemovedFromWorld()) {
+            return;
+        }
+
+        if (projectileType == ProjectileType.ICE) {
+            addPlantFreezeLevel(plant, Plant.FULL_FREEZE_LEVEL);
+        } else if (projectileType == ProjectileType.FIRE) {
+            plant.clearFreezeLevels();
+        }
+    }
+
     int shiftRowForSlipperyTile(int x, int y, int currentRow) {
         int shiftedRow = currentRow
                 + grid.getTile(x, y).getType().getLaneShift();
@@ -67,17 +140,29 @@ final class TerrainManager {
     private void damageFrozenTileNearFirePlants(int x, int y) {
         Tile tile = grid.getTile(x, y);
 
-        if (tile.getType() != TileType.FROZEN) {
+        if (!tile.hasOverlay(TileOverlayType.FROZEN)) {
             return;
         }
 
         int firePlantCount = countAdjacentFirePlants(x, y);
 
         if (firePlantCount > 0) {
-            tile.applyFireDamage(
+            tile.damageOverlay(
+                    TileOverlayType.FROZEN,
                     ADJACENT_FIRE_DAMAGE_PER_SECOND * firePlantCount
             );
         }
+    }
+
+    private Tile requirePlantTile(Plant plant) {
+        Objects.requireNonNull(plant, "plant cannot be null");
+        Tile tile = grid.getTile(plant.getTileX(), plant.getTileY());
+        if (!tile.getPlants().contains(plant)) {
+            throw new IllegalArgumentException(
+                    "plant is not placed on its reported tile"
+            );
+        }
+        return tile;
     }
 
     private int countAdjacentFirePlants(int centerX, int centerY) {

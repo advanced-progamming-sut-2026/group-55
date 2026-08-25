@@ -1,6 +1,7 @@
 package pvz.model.core.board;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 import pvz.model.core.Updatable;
@@ -8,6 +9,7 @@ import pvz.model.entity.plant.Plant;
 import pvz.model.entity.plant.attack.ShotVector;
 import pvz.model.entity.projectile.ProjectileType;
 import pvz.model.entity.zombie.Zombie;
+import pvz.model.entity.zombie.DamageContext;
 
 public final class Board implements Updatable {
 
@@ -18,6 +20,7 @@ public final class Board implements Updatable {
     private final TerrainManager terrainManager;
     private final AreaDamageResolver areaDamageResolver;
     private final AreaStatusEffectResolver areaStatusEffectResolver;
+    private GroundOccupancy groundOccupancy = GroundOccupancy.none();
 
     public Board(int columns, int rows) {
         grid = new BoardGrid(columns, rows);
@@ -50,6 +53,10 @@ public final class Board implements Updatable {
     }
 
     public String plant(int x, int y, Plant plant) {
+        if (inBounds(x, y) && groundOccupancy.isOccupied(x, y)) {
+            return "tile (" + x + ", " + y
+                    + ") is occupied by a ground obstacle!";
+        }
         return plantPlacementManager.plant(x, y, plant);
     }
 
@@ -59,6 +66,22 @@ public final class Board implements Updatable {
 
     public boolean detachPlant(int x, int y, Plant plant) {
         return plantPlacementManager.detachPlant(x, y, plant);
+    }
+
+    public boolean movePlant(
+            int fromX,
+            int fromY,
+            int toX,
+            int toY,
+            Plant plant
+    ) {
+        if (inBounds(toX, toY)
+                && groundOccupancy.isOccupied(toX, toY)) {
+            return false;
+        }
+        return plantPlacementManager.movePlant(
+                fromX, fromY, toX, toY, plant
+        );
     }
 
     public boolean hasStraightTargetAhead(List<Zombie> zombies, int row, double fromX) {
@@ -151,6 +174,7 @@ public final class Board implements Updatable {
             int radius,
             double damage,
             ProjectileType projectileType,
+            DamageContext.AttackDelivery delivery,
             long currentTick
     ) {
         areaDamageResolver.damageZombiesWithProjectile(
@@ -160,6 +184,7 @@ public final class Board implements Updatable {
                 radius,
                 damage,
                 projectileType,
+                delivery,
                 currentTick
         );
     }
@@ -170,6 +195,22 @@ public final class Board implements Updatable {
 
     public void damageTilesInArea(int centerX, int centerY, int radius, double damage) {
         areaDamageResolver.damageTiles(centerX, centerY, radius, damage);
+    }
+
+    public void damageTilesWithProjectileInArea(
+            int centerX,
+            int centerY,
+            int radius,
+            double baseDamage,
+            ProjectileType projectileType
+    ) {
+        areaDamageResolver.damageTilesWithProjectile(
+                centerX,
+                centerY,
+                radius,
+                baseDamage,
+                projectileType
+        );
     }
 
     public void chillZombiesInArea(
@@ -223,11 +264,60 @@ public final class Board implements Updatable {
     }
 
     public boolean placeTombstone(int column, int row) {
+        if (inBounds(column, row)
+                && groundOccupancy.isOccupied(column, row)) {
+            return false;
+        }
         return terrainManager.placeTombstone(column, row);
+    }
+
+    public void setGroundOccupancy(GroundOccupancy groundOccupancy) {
+        this.groundOccupancy = Objects.requireNonNull(
+                groundOccupancy,
+                "ground occupancy cannot be null"
+        );
     }
 
     public boolean damageTerrain(int x, int y, double damage) {
         return terrainManager.damageTerrain(x, y, damage);
+    }
+
+    public boolean damageTerrainWithProjectile(
+            int x,
+            int y,
+            double baseDamage,
+            ProjectileType projectileType
+    ) {
+        return terrainManager.damageTerrainWithProjectile(
+                x,
+                y,
+                baseDamage,
+                projectileType
+        );
+    }
+
+    public boolean addPlantFreezeLevel(Plant plant, int fullFreezeLevel) {
+        return terrainManager.addPlantFreezeLevel(plant, fullFreezeLevel);
+    }
+
+    public boolean coverPlantWithOctopus(Plant plant) {
+        return terrainManager.coverPlantWithOctopus(plant);
+    }
+
+    public boolean isPlantCovered(Plant plant) {
+        return terrainManager.isPlantCovered(plant);
+    }
+
+    public void hitPlantWithReflectedProjectile(
+            Plant plant,
+            ProjectileType projectileType,
+            double calculatedDamage
+    ) {
+        terrainManager.hitPlantWithReflectedProjectile(
+                plant,
+                projectileType,
+                calculatedDamage
+        );
     }
 
     public int shiftRowForSlipperyTile(int x, int y, int currentRow) {

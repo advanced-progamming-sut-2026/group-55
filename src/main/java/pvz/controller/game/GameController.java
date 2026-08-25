@@ -9,6 +9,7 @@ import pvz.model.core.board.Board;
 import pvz.model.core.Game;
 import pvz.model.core.GameEvents;
 import pvz.model.core.board.Tile;
+import pvz.model.core.board.TileOverlay;
 import pvz.model.core.board.TileType;
 import pvz.model.core.World;
 import pvz.model.entity.collectible.Collectible;
@@ -16,6 +17,7 @@ import pvz.model.entity.collectible.sun.Sun;
 import pvz.model.entity.collectible.plantfood.PlantFood;
 import pvz.model.entity.collectible.sun.SunCollectionOutcome;
 import pvz.model.entity.plant.Plant;
+import pvz.model.entity.zombie.PushedObstacle;
 import pvz.model.entity.zombie.Zombie;
 import pvz.model.entity.zombie.ArmorInstance;
 import pvz.model.session.GameSession;
@@ -366,6 +368,11 @@ public final class GameController {
             if (plant.isPlantFoodActive(currentTick)) {
                 return plant.getName() + " is already using plant food!";
             }
+            if (!plant.canApplyPlantFood(currentTick)) {
+                return "plant food cannot be applied to "
+                        + plant.getName()
+                        + " while it is frozen or covered by an octopus!";
+            }
         }
 
         if (!session.resources().tryConsumePlantFood()) {
@@ -466,7 +473,8 @@ public final class GameController {
             output.append('\n');
         }
 
-        output.append("Z = zombie, capital letter = plant's first, ")
+        output.append("Z = zombie, O = pushed obstacle, ")
+                .append("capital letter = plant's first, ")
                 .append("lowercase letter = non-normal tile's first, ")
                 .append(". = normal tile");
 
@@ -537,7 +545,29 @@ public final class GameController {
                 .append(tile.getType().name().toLowerCase(Locale.ROOT))
                 .append("\n\thealth: ")
                 .append(formatNumber(tile.getHealth()))
-                .append("\n\tplants:\n");
+                .append("\n\toverlays:\n");
+
+        List<TileOverlay> overlays = tile.getOverlays();
+        if (overlays.isEmpty()) {
+            output.append("\t\tnone\n");
+        } else {
+            for (TileOverlay overlay : overlays) {
+                output.append("\t\t")
+                        .append(overlay.getType().name()
+                                .toLowerCase(Locale.ROOT))
+                        .append(": health=")
+                        .append(formatNumber(overlay.getRemainingHealth()))
+                        .append('/')
+                        .append(formatNumber(
+                                overlay.getType().getInitialHealth()
+                        ))
+                        .append(", plant=")
+                        .append(overlay.getCoveredPlant().getName())
+                        .append("\n");
+            }
+        }
+
+        output.append("\tplants:\n");
 
         List<Plant> plants = tile.getPlants();
         if (plants.isEmpty()) {
@@ -553,6 +583,8 @@ public final class GameController {
                         .append(", category=")
                         .append(plant.getSpec().getCategory().name()
                                 .toLowerCase(Locale.ROOT))
+                        .append(", freezeLevel=")
+                        .append(plant.getFreezeLevel())
                         .append("\n");
             }
         }
@@ -561,6 +593,24 @@ public final class GameController {
                 .filter(zombie -> zombie.getTileX() == x
                         && zombie.getTileY() == y)
                 .toList();
+        List<PushedObstacle> obstacles = world.getPushedObstacles().stream()
+                .filter(obstacle -> obstacle.getTileX() == x
+                        && obstacle.getTileY() == y)
+                .toList();
+        output.append("\tpushed obstacles:\n");
+        if (obstacles.isEmpty()) {
+            output.append("\t\tnone\n");
+        } else {
+            for (PushedObstacle obstacle : obstacles) {
+                output.append("\t\t")
+                        .append(obstacle.getName())
+                        .append(": health=")
+                        .append(formatNumber(obstacle.getHealth()))
+                        .append('/')
+                        .append(formatNumber(obstacle.getMaximumHealth()))
+                        .append("\n");
+            }
+        }
         output.append("\tzombies:\n");
         if (zombies.isEmpty()) {
             output.append("\t\tnone");
@@ -617,11 +667,17 @@ public final class GameController {
 
             output.append("\tarmor:\n");
 
-            if (zombie.getArmorSet().layers().isEmpty()) {
+            List<ArmorInstance> intactArmors = zombie.getArmorSet()
+                    .layers()
+                    .stream()
+                    .filter(armor -> !armor.isBroken())
+                    .toList();
+
+            if (intactArmors.isEmpty()) {
                 output.append("\t\tnone\n");
             }
 
-            for (ArmorInstance armor : zombie.getArmorSet().layers()) {
+            for (ArmorInstance armor : intactArmors) {
                 output.append("\t\t")
                         .append(armor.spec().name().toLowerCase())
                         .append(": ")
@@ -729,12 +785,24 @@ public final class GameController {
             }
         }
 
-        List<Plant> plants = board.getTile(x, y).getPlants();
+        for (PushedObstacle obstacle : world.getPushedObstacles()) {
+            if (obstacle.getTileY() == y && obstacle.getTileX() == x) {
+                return 'O';
+            }
+        }
+
+        Tile tile = board.getTile(x, y);
+        List<TileOverlay> overlays = tile.getOverlays();
+        if (!overlays.isEmpty()) {
+            return overlays.getLast().getType().name()
+                    .toLowerCase(Locale.ROOT).charAt(0);
+        }
+
+        List<Plant> plants = tile.getPlants();
         if (!plants.isEmpty()) {
             return Character.toUpperCase(plants.getFirst().getName().charAt(0));
         }
 
-        Tile tile = board.getTile(x, y);
         if (tile.getType() != TileType.NORMAL) {
             return tile.getType().name().toLowerCase(Locale.ROOT).charAt(0);
         }

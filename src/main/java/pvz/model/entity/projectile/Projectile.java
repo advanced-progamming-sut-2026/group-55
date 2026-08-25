@@ -8,6 +8,7 @@ import pvz.model.core.Game;
 import pvz.model.core.board.HorizontalDirection;
 import pvz.model.core.World;
 import pvz.model.entity.Entity;
+import pvz.model.entity.zombie.PushedObstacle;
 import pvz.model.entity.zombie.Zombie;
 
 public class Projectile extends Entity {
@@ -18,6 +19,8 @@ public class Projectile extends Entity {
     private final ProjectileType type;
     private final ProjectileHitLimit hitLimit;
     private final Set<Zombie> hitZombies =
+            new HashSet<>();
+    private final Set<PushedObstacle> hitObstacles =
             new HashSet<>();
     private final Set<Integer> hitTerrainColumns =
             new HashSet<>();
@@ -201,23 +204,46 @@ public class Projectile extends Entity {
         return Math.max(candidateX, terminalX);
     }
 
-    private boolean isBlockingTileFirst(Integer blockingTileColumn, Zombie zombie, double previousX) {
+    private boolean isBlockingTileFirst(
+            Integer blockingTileColumn,
+            PushedObstacle obstacle,
+            Zombie zombie,
+            double previousX
+    ) {
         if (blockingTileColumn == null) {
             return false;
         }
-
-        if (zombie == null) {
-            return true;
-        }
-
-        double tileHitX =
-                direction == HorizontalDirection.RIGHT ? blockingTileColumn - 1.0 : blockingTileColumn;
-
+        double tileHitX = direction == HorizontalDirection.RIGHT
+                ? blockingTileColumn - 1.0
+                : blockingTileColumn;
         double tileDistance = Math.abs(tileHitX - previousX);
+        double obstacleDistance = obstacle == null
+                ? Double.POSITIVE_INFINITY
+                : Math.abs(obstacle.getX() - previousX);
+        double zombieDistance = zombie == null
+                ? Double.POSITIVE_INFINITY
+                : Math.abs(zombie.getX() - previousX);
+        return tileDistance <= obstacleDistance
+                && tileDistance <= zombieDistance;
+    }
 
-        double zombieDistance = Math.abs(zombie.getX() - previousX);
+    private boolean isObstacleFirst(
+            PushedObstacle obstacle,
+            Zombie zombie,
+            double previousX
+    ) {
+        if (obstacle == null) {
+            return false;
+        }
+        return zombie == null
+                || Math.abs(obstacle.getX() - previousX)
+                <= Math.abs(zombie.getX() - previousX);
+    }
 
-        return tileDistance <= zombieDistance;
+    private int hitCount() {
+        return hitZombies.size()
+                + hitTerrainColumns.size()
+                + hitObstacles.size();
     }
 
     private boolean hasReachedTerminal() {
@@ -256,14 +282,40 @@ public class Projectile extends Entity {
         while (true) {
             Integer blockingTileColumn = world.board().findHitBlockingTile(row, previousX, nextX);
 
+            PushedObstacle obstacle = world.findHitPushedObstacle(
+                    row,
+                    previousX,
+                    nextX,
+                    hitObstacles
+            );
+
             Zombie zombie = world.findHitZombie(row, previousX, nextX, hitZombies);
 
-            if (isBlockingTileFirst(blockingTileColumn, zombie, previousX)
+            if (isBlockingTileFirst(
+                    blockingTileColumn,
+                    obstacle,
+                    zombie,
+                    previousX
+            )
                     && hitTerrainColumns.add(blockingTileColumn)) {
 
-                world.board().damageTerrain(blockingTileColumn, row, type.damageAgainstTerrain(damage));
+                world.board().damageTerrainWithProjectile(
+                        blockingTileColumn,
+                        row,
+                        damage,
+                        type
+                );
 
-                if (hitLimit.isReachedBy(hitZombies.size() + hitTerrainColumns.size())) {
+                if (hitLimit.isReachedBy(hitCount())) {
+                    world.game().unregister(this);
+                    return;
+                }
+            }
+
+            if (isObstacleFirst(obstacle, zombie, previousX)) {
+                obstacle.takeProjectileDamage(type, damage);
+                hitObstacles.add(obstacle);
+                if (hitLimit.isReachedBy(hitCount())) {
                     world.game().unregister(this);
                     return;
                 }
@@ -276,7 +328,7 @@ public class Projectile extends Entity {
             type.hitZombie(zombie, damage, tick);
             hitZombies.add(zombie);
 
-            if (hitLimit.isReachedBy(hitZombies.size() + hitTerrainColumns.size())) {
+            if (hitLimit.isReachedBy(hitCount())) {
                 world.game().unregister(this);
                 return;
             }

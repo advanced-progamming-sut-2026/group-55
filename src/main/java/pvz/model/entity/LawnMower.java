@@ -6,6 +6,7 @@ import java.util.Objects;
 
 import pvz.model.core.GameEvents;
 import pvz.model.core.World;
+import pvz.model.entity.zombie.PushedObstacle;
 import pvz.model.entity.zombie.Zombie;
 
 public final class LawnMower {
@@ -34,6 +35,17 @@ public final class LawnMower {
         }
 
         List<String> killedZombies = new ArrayList<>();
+        List<String> destroyedObstacles = new ArrayList<>();
+
+        for (PushedObstacle obstacle
+                : new ArrayList<>(world.getPushedObstacles())) {
+            if (obstacle.getTileY() != row) {
+                continue;
+            }
+
+            destroyedObstacles.add(obstacle.getName());
+            obstacle.takeDirectDamage(Double.MAX_VALUE);
+        }
 
         for (Zombie zombie : new ArrayList<>(world.getZombies())) {
             if (zombie.getTileY() != row) {
@@ -51,6 +63,8 @@ public final class LawnMower {
                         + row
                         + " is triggered and killed these zombies: "
                         + killedZombies
+                        + "; destroyed these ground obstacles: "
+                        + destroyedObstacles
         );
     }
 
