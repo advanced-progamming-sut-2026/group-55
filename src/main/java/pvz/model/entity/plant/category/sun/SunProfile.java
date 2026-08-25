@@ -10,4 +10,20 @@ public interface SunProfile {
 
     default void applyPlantFoodEffect() {
     }
+
+    default SunProductionMode getProductionMode() {
+        return SunProductionMode.PERIODIC;
+    }
+
+    default boolean activatesImmediatelyAfterPlacement() {
+        return getProductionMode() == SunProductionMode.SINGLE_USE_ON_PLACEMENT;
+    }
+
+    default boolean removesProducerAfterProduction() {
+        return getProductionMode() == SunProductionMode.SINGLE_USE_ON_PLACEMENT;
+    }
+
+    default boolean supportsPlantFood() {
+        return true;
+    }
 }

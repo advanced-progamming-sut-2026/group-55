@@ -17,9 +17,10 @@ import pvz.model.entity.plant.lifecycle.PlantRemovalResult;
 import pvz.model.entity.plant.behavior.PlantBehaviorFactory;
 import pvz.model.entity.plant.behavior.PlantPlacementContext;
 import pvz.model.entity.plant.behavior.capability.PlantFoodCapability;
-import pvz.model.entity.plant.behavior.capability.DamageModifierCapability;
 import pvz.model.entity.plant.behavior.capability.SunProductionCapability;
-import pvz.model.entity.plant.behavior.capability.VaultBlockingCapability;
+import pvz.model.entity.plant.hit.PlantHitContext;
+import pvz.model.entity.plant.hit.PlantHitSource;
+import pvz.model.entity.zombie.Zombie;
 
 public class Plant extends LivingEntity {
     public static final int FULL_FREEZE_LEVEL = 3;
@@ -48,6 +49,9 @@ public class Plant extends LivingEntity {
     private final Set<Object> actionBlockers = new HashSet<>();
     private int freezeLevel;
 
+    private boolean hitInProgress;
+    private double armorAbsorbedInHit;
+
     public Plant(PlantSpec spec) {
         this.spec = Objects.requireNonNull(spec, "plant spec cannot be null");
 
@@ -60,9 +64,10 @@ public class Plant extends LivingEntity {
 
         this.behavior = PlantBehaviorFactory.create(this, spec);
 
-        this.plantFoodCapability = resolvePlantFoodCapability(behavior);
+        this.plantFoodCapability = PlantCapabilities.plantFood(behavior);
 
-        this.sunProductionCapability = resolveSunProductionCapability(behavior);
+        this.sunProductionCapability =
+                PlantCapabilities.sunProduction(behavior);
 
         this.plantFoodController =
                 new PlantFoodController(
@@ -119,30 +124,7 @@ public class Plant extends LivingEntity {
         sunProductionCapability.onProducedSunRemoved();
     }
 
-    private static SunProductionCapability
-    resolveSunProductionCapability(PlantBehavior behavior) {
-        if (behavior instanceof SunProductionCapability capability) {
-            return capability;
-        }
-
-        return null;
-    }
-
     //plantfood
-    private static PlantFoodCapability
-    resolvePlantFoodCapability(PlantBehavior behavior) {
-        if (!(behavior
-                instanceof PlantFoodCapability capability)) {
-            return null;
-        }
-
-        if (!capability.supportsPlantFood()) {
-            return null;
-        }
-
-        return capability;
-    }
-
     public boolean supportsPlantFood() {
         return plantFoodController.supportsPlantFood();
     }
@@ -263,8 +245,7 @@ public class Plant extends LivingEntity {
     }
 
     public boolean blocksVaulting() {
-        return behavior instanceof VaultBlockingCapability capability
-                && capability.blocksVaulting();
+        return PlantCapabilities.blocksVaulting(behavior);
     }
     // remove damage death
     public boolean isRemovedFromWorld() {
@@ -385,12 +366,69 @@ public class Plant extends LivingEntity {
 
     @Override
     protected double modifyIncomingDamage(double damage) {
-        if (behavior
-                instanceof DamageModifierCapability modifier) {
-            return modifier.modifyIncomingDamage(damage);
+        double remainingDamage = PlantCapabilities.modifyIncomingDamage(
+                behavior,
+                damage
+        );
+
+        if (hitInProgress) {
+            armorAbsorbedInHit += Math.max(0, damage - remainingDamage);
         }
 
-        return damage;
+        return remainingDamage;
+    }
+
+    public boolean receiveHit(
+            PlantHitSource source,
+            Zombie attacker,
+            double damage
+    ) {
+        Objects.requireNonNull(source, "plant hit source cannot be null");
+
+        if (!(damage > 0)
+                || removedFromWorld
+                || !canBeAffectedBy(PlantThreat.DAMAGE)) {
+            return false;
+        }
+
+        double healthBeforeHit = health;
+
+        armorAbsorbedInHit = 0;
+        hitInProgress = true;
+
+        try {
+            takeDamage(damage);
+        } finally {
+            hitInProgress = false;
+        }
+
+        PlantCapabilities.notifyHit(behavior, new PlantHitContext(
+                source,
+                attacker,
+                damage,
+                armorAbsorbedInHit,
+                healthBeforeHit - health,
+                currentTick(),
+                true
+        ));
+
+        return true;
+    }
+
+    public double getArmorHealth() {
+        return PlantCapabilities.armorHealth(behavior);
+    }
+
+    public double getArmorCapacity() {
+        return PlantCapabilities.armorCapacity(behavior);
+    }
+
+    public boolean hasIntactArmor() {
+        return getArmorHealth() > 0;
+    }
+
+    private long currentTick() {
+        return world == null ? 0 : world.game().getCurrentTick();
     }
 
     @Override
@@ -409,7 +447,7 @@ public class Plant extends LivingEntity {
     //update
     @Override
     public void update(long tick) {
-        if (world == null) {
+        if (world == null || removedFromWorld) {
             return;
         }
 

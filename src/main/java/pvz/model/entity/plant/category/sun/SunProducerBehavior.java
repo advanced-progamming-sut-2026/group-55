@@ -4,10 +4,10 @@ import java.util.List;
 import java.util.Objects;
 
 import pvz.model.core.GameEvents;
-import pvz.model.entity.collectible.sun.Sun;
 import pvz.model.entity.plant.Plant;
 import pvz.model.entity.plant.PlantSpec;
 import pvz.model.entity.plant.behavior.AbstractPlantBehavior;
+import pvz.model.entity.plant.lifecycle.PlantThreat;
 import pvz.model.entity.plant.plantfood.PlantFoodVolley;
 import pvz.model.entity.plant.behavior.capability.PlantFoodCapability;
 import pvz.model.entity.plant.behavior.capability.SunProductionCapability;
@@ -21,6 +21,7 @@ public final class SunProducerBehavior
 
     private SunProfile profile;
     private int pendingSuns;
+    private boolean singleUseProductionDone;
 
     public SunProducerBehavior(Plant owner, PlantSpec spec) {
         super(owner);
@@ -30,12 +31,16 @@ public final class SunProducerBehavior
 
     @Override
     public boolean supportsPlantFood() {
-        return SunProfiles.hasProfileFor(spec);
+        return SunProfiles.supportsPlantFood(spec);
     }
 
     @Override
     protected void afterPlaced() {
         profile = SunProfiles.from(spec, placedTick());
+
+        if (profile.activatesImmediatelyAfterPlacement()) {
+            produceCycle(placedTick());
+        }
     }
 
     @Override
@@ -51,30 +56,18 @@ public final class SunProducerBehavior
     public boolean canStartAction(long currentTick) {
         ensurePlaced();
 
-        return pendingSuns == 0;
+        return pendingSuns == 0 && !singleUseProductionDone;
     }
 
     @Override
     public void startAction(long currentTick) {
         ensurePlaced();
 
-        List<Integer> drops = profile.getCycleDrops(currentTick);
+        if (singleUseProductionDone) {
+            return;
+        }
 
-        spawnProducedSuns(drops);
-
-        GameEvents.publish(
-                "plant "
-                        + owner().getName()
-                        + " produced "
-                        + drops.size()
-                        + " sun(value: "
-                        + drops.getLast()
-                        + ") at ("
-                        + column()
-                        + ", "
-                        + row()
-                        + ")"
-        );
+        produceCycle(currentTick);
     }
 
     @Override
@@ -96,6 +89,38 @@ public final class SunProducerBehavior
         if (pendingSuns > 0) {
             pendingSuns--;
         }
+    }
+
+    private void produceCycle(long currentTick) {
+        List<Integer> drops = profile.getCycleDrops(currentTick);
+
+        if (drops.isEmpty()) {
+            return;
+        }
+
+        spawnProducedSuns(drops);
+
+        GameEvents.publish(
+                "plant "
+                        + owner().getName()
+                        + " produced "
+                        + drops.size()
+                        + " sun(value: "
+                        + drops.getLast()
+                        + ") at ("
+                        + column()
+                        + ", "
+                        + row()
+                        + ")"
+        );
+
+        if (!profile.removesProducerAfterProduction()) {
+            return;
+        }
+
+        singleUseProductionDone = true;
+
+        owner().tryRemove(PlantThreat.FORCED_REMOVAL);
     }
 
     private void schedulePlantFoodSuns(
@@ -154,16 +179,11 @@ public final class SunProducerBehavior
     }
 
     private void spawnProducedSun(int value) {
-        Sun sun = Sun.fromPlant(
+        ProducedSunSpawner.spawnAtProducer(
                 world(),
                 owner(),
-                owner().getX(),
-                owner().getY(),
                 value
         );
-
-        world().addCollectible(sun);
-        world().game().register(sun);
 
         pendingSuns++;
     }

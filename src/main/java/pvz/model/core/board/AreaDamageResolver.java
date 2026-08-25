@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Objects;
 
 import pvz.model.entity.plant.Plant;
+import pvz.model.entity.plant.hit.PlantHitSource;
 import pvz.model.entity.projectile.ProjectileType;
 import pvz.model.entity.zombie.DamageContext;
 import pvz.model.entity.zombie.Zombie;
@@ -181,7 +182,11 @@ final class AreaDamageResolver {
             return;
         }
 
-        plants.getLast().takeDamage(damage);
+        plants.getLast().receiveHit(
+                PlantHitSource.AREA_DAMAGE,
+                null,
+                damage
+        );
     }
 
     private void validateArea(

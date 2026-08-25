@@ -5,6 +5,7 @@ import java.util.Objects;
 import pvz.model.core.Game;
 import pvz.model.entity.plant.Plant;
 import pvz.model.entity.plant.PlantTag;
+import pvz.model.entity.plant.hit.PlantHitSource;
 import pvz.model.entity.plant.lifecycle.PlantThreat;
 import pvz.model.entity.projectile.ProjectileType;
 
@@ -102,7 +103,11 @@ final class TerrainManager {
             return;
         }
 
-        plant.takeDamage(calculatedDamage);
+        plant.receiveHit(
+                PlantHitSource.PROJECTILE,
+                null,
+                calculatedDamage
+        );
         if (plant.isRemovedFromWorld()) {
             return;
         }

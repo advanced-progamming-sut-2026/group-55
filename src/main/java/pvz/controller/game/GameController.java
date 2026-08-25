@@ -146,7 +146,10 @@ public final class GameController {
         world.sunBank().spend(cost);
         session.recordPlanting(type);
         plant.place(world, x, y, game.getCurrentTick());
-        game.register(plant);
+
+        if (!plant.isRemovedFromWorld()) {
+            game.register(plant);
+        }
 
         if (boosted) {
             boolean activated = plant.tryApplyPlantFood(game.getCurrentTick());
@@ -584,8 +587,16 @@ public final class GameController {
                         .append(plant.getSpec().getCategory().name()
                                 .toLowerCase(Locale.ROOT))
                         .append(", freezeLevel=")
-                        .append(plant.getFreezeLevel())
-                        .append("\n");
+                        .append(plant.getFreezeLevel());
+
+                if (plant.getArmorCapacity() > 0) {
+                    output.append(", armor=")
+                            .append(formatNumber(plant.getArmorHealth()))
+                            .append('/')
+                            .append(formatNumber(plant.getArmorCapacity()));
+                }
+
+                output.append("\n");
             }
         }
 

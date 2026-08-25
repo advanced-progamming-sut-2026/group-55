@@ -7,6 +7,7 @@ import pvz.model.core.GameEvents;
 import pvz.model.core.World;
 import pvz.model.entity.LivingEntity;
 import pvz.model.entity.plant.Plant;
+import pvz.model.entity.plant.hit.PlantHitSource;
 import pvz.model.entity.zombie.behavior.ZombieBehavior;
 
 public final class Zombie extends LivingEntity {
@@ -712,7 +713,7 @@ public final class Zombie extends LivingEntity {
                     damage
             );
         }
-        plant.takeDamage(damage);
+        plant.receiveHit(PlantHitSource.BITE, this, damage);
     }
 
     private void resetBiteTarget() {

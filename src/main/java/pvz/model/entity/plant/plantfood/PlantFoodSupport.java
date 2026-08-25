@@ -24,7 +24,7 @@ public final class PlantFoodSupport {
                             || ShooterPlantFoodProfiles.from(spec) != null;
 
             case SUN_PRODUCER ->
-                    SunProfiles.hasProfileFor(spec);
+                    SunProfiles.supportsPlantFood(spec);
 
             case LOBBER ->
                     LobberBehaviorFactory.supportsPlantFood(spec);

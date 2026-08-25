@@ -30,33 +30,7 @@ class GameControllerCoreCommandsTest {
 
     @BeforeEach
     void setUp() throws IOException {
-        ZombieData zombieData = ZombieCsvLoader.load(
-                "assets/Data/zombies.csv"
-        );
-        AdventureData adventureData = AdventureCsvLoader.load(
-                "assets/Data/chapters.csv",
-                "assets/Data/levels.csv",
-                "assets/Data/level_zombies.csv",
-                "assets/Data/waves.csv",
-                zombieData
-        );
-        GameSessionConfig config = new GameSessionConfigFactory(
-                adventureData
-        ).create(
-                "egypt-1",
-                List.of("Peashooter"),
-                Set.of(),
-                0,
-                3
-        );
-        session = new GameSessionFactory(
-                new PlantFactory(
-                        PlantCsvLoader.load(
-                                "assets/Data/plants.csv"
-                        ).byName()
-                ),
-                new ZombieFactory(zombieData)
-        ).create(config);
+        session = createSession(List.of("Peashooter"));
         session.start();
         controller = new GameController(session);
     }
@@ -140,5 +114,67 @@ class GameControllerCoreCommandsTest {
         assertTrue(result.contains("plant food cannot be applied"));
         assertEquals(1, session.resources().getPlantFoodCount());
         assertFalse(plant.isPlantFoodActive(session.game().getCurrentTick()));
+    }
+
+    @Test
+    void removedGoldBloomIsNotRegisteredAfterPlanting() throws IOException {
+        GameSession goldBloomSession = createSession(
+                List.of("Gold Bloom")
+        );
+        goldBloomSession.start();
+        GameController goldBloomController = new GameController(
+                goldBloomSession
+        );
+        int registeredBeforePlanting = goldBloomSession.game()
+                .getRegisteredObjectCount();
+
+        String result = goldBloomController.handle(
+                "plant plant -t Gold Bloom -l (3, 2)"
+        );
+
+        assertTrue(result.startsWith("planted Gold Bloom"));
+        assertTrue(
+                goldBloomSession.board().getTile(3, 2)
+                        .getPlants()
+                        .isEmpty()
+        );
+        assertEquals(5, goldBloomSession.world().getCollectibles().size());
+        assertEquals(
+                registeredBeforePlanting + 5,
+                goldBloomSession.game().getRegisteredObjectCount()
+        );
+    }
+
+    private GameSession createSession(
+            List<String> selectedPlants
+    ) throws IOException {
+        ZombieData zombieData = ZombieCsvLoader.load(
+                "assets/Data/zombies.csv"
+        );
+        AdventureData adventureData = AdventureCsvLoader.load(
+                "assets/Data/chapters.csv",
+                "assets/Data/levels.csv",
+                "assets/Data/level_zombies.csv",
+                "assets/Data/waves.csv",
+                zombieData
+        );
+        GameSessionConfig config = new GameSessionConfigFactory(
+                adventureData
+        ).create(
+                "egypt-1",
+                selectedPlants,
+                Set.of(),
+                0,
+                3
+        );
+
+        return new GameSessionFactory(
+                new PlantFactory(
+                        PlantCsvLoader.load(
+                                "assets/Data/plants.csv"
+                        ).byName()
+                ),
+                new ZombieFactory(zombieData)
+        ).create(config);
     }
 }
