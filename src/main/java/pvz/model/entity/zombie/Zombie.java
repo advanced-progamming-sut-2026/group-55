@@ -6,13 +6,11 @@ import pvz.model.core.Game;
 import pvz.model.core.GameEvents;
 import pvz.model.core.World;
 import pvz.model.entity.LivingEntity;
-import pvz.model.entity.collectible.plantfood.PlantFood;
 import pvz.model.entity.plant.Plant;
 import pvz.model.entity.zombie.behavior.ZombieBehavior;
 
 public final class Zombie extends LivingEntity {
     private static final double CHILLED_SPEED_MULTIPLIER = 0.5;
-    private static final double PLANT_FOOD_DROP_CHANCE = 0.05;
 
     protected double x;
     protected double y;
@@ -27,6 +25,8 @@ public final class Zombie extends LivingEntity {
     private World world;
     private DamageContext incomingDamage;
     private boolean reachedHouse;
+    private boolean exitedWorld;
+    private boolean glowing;
 
     private Plant biteTarget;
     private long nextBiteTick = Long.MAX_VALUE;
@@ -117,6 +117,22 @@ public final class Zombie extends LivingEntity {
         return getTileY();
     }
 
+    public World getWorld() {
+        return world;
+    }
+
+    public double getMaximumHealth() {
+        return runtimeStats.maxHealth();
+    }
+
+    public double getHealthRatio() {
+        return health / runtimeStats.maxHealth();
+    }
+
+    public boolean isEating() {
+        return biteTarget != null && !biteTarget.isRemovedFromWorld();
+    }
+
     public ZombieSpec getSpec() {
         return spec;
     }
@@ -129,10 +145,67 @@ public final class Zombie extends LivingEntity {
         return armorSet;
     }
 
+    public boolean isGlowing() {
+        return glowing;
+    }
+
+    public void setGlowing(boolean glowing) {
+        if (world != null) {
+            throw new IllegalStateException(
+                    "glowing state cannot change after spawn"
+            );
+        }
+
+        this.glowing = glowing;
+    }
+
     public double getArmorHealth() {
         return armorSet.layers().stream()
                 .mapToDouble(ArmorInstance::remainingHealth)
                 .sum();
+    }
+
+    public void addArmor(ArmorSpec armorSpec) {
+        armorSet.add(Objects.requireNonNull(armorSpec));
+    }
+
+    public void moveToColumn(int column) {
+        requireSpawned();
+        if (!world.board().inBounds(column, getRow())) {
+            throw new IllegalArgumentException("zombie column is out of bounds");
+        }
+        x = tileCenter(column);
+        resetBiteTarget();
+        notifyPositionChanged();
+    }
+
+    public void moveToRow(int row) {
+        requireSpawned();
+        if (!world.board().inBounds(getTileX(), row)) {
+            throw new IllegalArgumentException("zombie row is out of bounds");
+        }
+        y = tileCenter(row);
+        resetBiteTarget();
+        notifyPositionChanged();
+    }
+
+    public void moveByTiles(double deltaX) {
+        requireSpawned();
+        if (!Double.isFinite(deltaX)) {
+            throw new IllegalArgumentException("movement must be finite");
+        }
+        double nextX = x + deltaX;
+        if (nextX >= world.board().getCols()) {
+            x = world.board().getCols();
+            resetBiteTarget();
+            notifyPositionChanged();
+            handleExitedWorld();
+            return;
+        }
+
+        x = Math.max(0, nextX);
+        resetBiteTarget();
+        notifyPositionChanged();
     }
 
     @Override
@@ -156,15 +229,23 @@ public final class Zombie extends LivingEntity {
     public void update(long tick) {
         updatePoison(tick);
 
-        if (reachedHouse
-                || isDead()
-                || isFrozen(tick)
-                || isButtered(tick)) {
+        if (reachedHouse || exitedWorld || isDead()) {
+            return;
+        }
+
+        if (isFrozen(tick) || isButtered(tick)) {
+            for (ZombieBehavior behavior : behaviors) {
+                behavior.onHardStopTick(this, world, tick);
+            }
             return;
         }
 
         for (ZombieBehavior behavior : behaviors) {
             behavior.onTick(this, world, tick);
+        }
+
+        if (reachedHouse || exitedWorld || isDead()) {
+            return;
         }
 
         Plant target = frontPlant();
@@ -187,9 +268,28 @@ public final class Zombie extends LivingEntity {
                         ? CHILLED_SPEED_MULTIPLIER
                         : 1;
 
-        x -= tilesPerSecond
+        for (ZombieBehavior behavior : behaviors) {
+            speedMultiplier = behavior.modifyMovementMultiplier(
+                    this,
+                    world,
+                    tick,
+                    speedMultiplier
+            );
+        }
+
+        double nextX = x - tilesPerSecond
                 * speedMultiplier
                 / Game.TICKS_PER_SECOND;
+
+        if (nextX >= world.board().getCols()) {
+            x = world.board().getCols();
+            notifyPositionChanged();
+            handleExitedWorld();
+            return;
+        }
+
+        x = nextX;
+        notifyPositionChanged();
 
         if (x <= 0) {
             x = 0;
@@ -212,12 +312,28 @@ public final class Zombie extends LivingEntity {
                 .lose();
     }
 
+    private void handleExitedWorld() {
+        if (exitedWorld || world == null) {
+            return;
+        }
+
+        exitedWorld = true;
+        resetBiteTarget();
+        world.removeZombie(this);
+        world.game().unregister(this);
+        GameEvents.publish(
+                "Zombie of type " + name
+                        + " exited the lawn from the right side."
+        );
+    }
+
     public void takeProjectileDamage(double damage) {
         receiveHit(new DamageContext(
                 damage,
                 DamageContext.DamageSource.PROJECTILE,
                 null,
-                DamageContext.AttackPath.UNKNOWN,
+                DamageContext.AttackDelivery.UNKNOWN,
+                DamageContext.ImpactMode.SINGLE_TARGET,
                 false,
                 currentTick()
         ));
@@ -228,13 +344,14 @@ public final class Zombie extends LivingEntity {
                 damage,
                 DamageContext.DamageSource.DIRECT,
                 null,
-                DamageContext.AttackPath.UNKNOWN,
+                DamageContext.AttackDelivery.UNKNOWN,
+                DamageContext.ImpactMode.SINGLE_TARGET,
                 true,
                 currentTick()
         ));
     }
 
-    public void receiveHit(DamageContext context) {
+    public boolean receiveHit(DamageContext context) {
         Objects.requireNonNull(context, "damage context cannot be null");
         DamageContext processed = context;
         for (ZombieBehavior behavior : behaviors) {
@@ -243,12 +360,22 @@ public final class Zombie extends LivingEntity {
                     "behavior cannot return a null damage context"
             );
         }
+        if (processed.damage() <= 0) {
+            return false;
+        }
         incomingDamage = processed;
         try {
             takeDamage(processed.damage());
         } finally {
             incomingDamage = null;
         }
+
+        if (!isDead()) {
+            for (ZombieBehavior behavior : behaviors) {
+                behavior.onAcceptedHit(this, processed);
+            }
+        }
+        return true;
     }
 
     private long currentTick() {
@@ -316,6 +443,13 @@ public final class Zombie extends LivingEntity {
             throw new IllegalArgumentException(
                     "freeze duration must be positive"
             );
+        }
+
+        if (behaviors.stream().anyMatch(
+                ZombieBehavior::convertsFreezeToChill
+        )) {
+            applyChill(currentTick, durationTicks);
+            return;
         }
 
         frozenUntilTick = Math.max(
@@ -437,6 +571,30 @@ public final class Zombie extends LivingEntity {
         return poisonStacks > 0 && currentTick <= poisonUntilTick;
     }
 
+    public long getRemainingChillTicks(long currentTick) {
+        return remainingTicks(chilledUntilTick, currentTick);
+    }
+
+    public long getRemainingFreezeTicks(long currentTick) {
+        return remainingTicks(frozenUntilTick, currentTick);
+    }
+
+    public long getRemainingButterTicks(long currentTick) {
+        return remainingTicks(butteredUntilTick, currentTick);
+    }
+
+    public long getRemainingPoisonTicks(long currentTick) {
+        if (!isPoisoned(currentTick)) {
+            return 0;
+        }
+
+        return remainingTicks(poisonUntilTick, currentTick);
+    }
+
+    private long remainingTicks(long endTick, long currentTick) {
+        return Math.max(0, endTick - currentTick);
+    }
+
     private void updateBiting(
             Plant target,
             long currentTick
@@ -505,7 +663,8 @@ public final class Zombie extends LivingEntity {
                     poisonStacks * poisonDamagePerStack,
                     DamageContext.DamageSource.POISON,
                     null,
-                    DamageContext.AttackPath.UNKNOWN,
+                    DamageContext.AttackDelivery.UNKNOWN,
+                    DamageContext.ImpactMode.SINGLE_TARGET,
                     true,
                     currentTick
             ));
@@ -533,31 +692,50 @@ public final class Zombie extends LivingEntity {
             return null;
         }
         List<Plant> plants = world.board().getTile(column, row).getPlants();
-        return plants.isEmpty() ? null : plants.get(plants.size() - 1);
+        for (int index = plants.size() - 1; index >= 0; index--) {
+            Plant plant = plants.get(index);
+            if (plant.isZombieTargetable()) {
+                return plant;
+            }
+        }
+        return null;
     }
 
     private void bite(Plant plant) {
-        plant.takeDamage(damagePerSecond);
+        double damage = damagePerSecond;
+        long tick = currentTick();
+        for (ZombieBehavior behavior : behaviors) {
+            damage = behavior.modifyBiteDamage(
+                    this,
+                    plant,
+                    tick,
+                    damage
+            );
+        }
+        plant.takeDamage(damage);
     }
 
-    private void tryDropPlantFood() {
-        if (Math.random() > PLANT_FOOD_DROP_CHANCE) {
-            return;
+    private void resetBiteTarget() {
+        biteTarget = null;
+        nextBiteTick = Long.MAX_VALUE;
+    }
+
+    private void notifyPositionChanged() {
+        long tick = currentTick();
+        for (ZombieBehavior behavior : behaviors) {
+            behavior.onPositionChanged(this, world, tick);
         }
+    }
 
-        PlantFood plantFood = PlantFood.fromZombie(
-                world,
-                getX(),
-                getY()
-        );
-
-        world.addCollectible(plantFood);
-        world.game().register(plantFood);
+    private void requireSpawned() {
+        if (world == null) {
+            throw new IllegalStateException("zombie is not spawned");
+        }
     }
 
     @Override
     protected void onDeath() {
-        if (world == null) {
+        if (world == null || exitedWorld) {
             return;
         }
 
@@ -571,7 +749,7 @@ public final class Zombie extends LivingEntity {
                         + getTileY() + ")"
         );
 
-        tryDropPlantFood();
+        world.resolveZombieDeathDrops(this);
         world.removeZombie(this);
         world.game().unregister(this);
     }

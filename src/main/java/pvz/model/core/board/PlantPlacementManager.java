@@ -47,4 +47,27 @@ final class PlantPlacementManager {
 
         return grid.getTile(x, y).removePlant(plant);
     }
+
+    boolean movePlant(
+            int fromX,
+            int fromY,
+            int toX,
+            int toY,
+            Plant plant
+    ) {
+        Objects.requireNonNull(plant, "plant cannot be null");
+        if (!grid.inBounds(fromX, fromY) || !grid.inBounds(toX, toY)) {
+            return false;
+        }
+        Tile source = grid.getTile(fromX, fromY);
+        Tile target = grid.getTile(toX, toY);
+        if (!source.getPlants().contains(plant)
+                || !target.isPlantableFor(plant)
+                || !target.canStack(plant)) {
+            return false;
+        }
+        source.removePlant(plant);
+        target.addPlant(plant);
+        return true;
+    }
 }

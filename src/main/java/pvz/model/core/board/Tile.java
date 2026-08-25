@@ -17,6 +17,7 @@ public final class Tile {
     private final int y;
     private double health;
     private final List<Plant> plants = new ArrayList<>();
+    private final List<TileOverlay> overlays = new ArrayList<>();
 
     public Tile(TileType type, int x, int y) {
         setType(type);
@@ -36,6 +37,10 @@ public final class Tile {
         return List.copyOf(plants);
     }
 
+    public List<TileOverlay> getOverlays() {
+        return List.copyOf(overlays);
+    }
+
     void setType(TileType newType) {
         type = Objects.requireNonNull(
                 newType,
@@ -46,6 +51,10 @@ public final class Tile {
 
     boolean isPlantableFor(Plant plant) {
         Objects.requireNonNull(plant, "plant cannot be null");
+
+        if (hasBlockingOverlay()) {
+            return false;
+        }
 
         if (type == TileType.WATER) {
             return plant.hasTag(PlantTag.WATER)
@@ -85,7 +94,11 @@ public final class Tile {
     }
 
     boolean removePlant(Plant plant) {
-        return plants.remove(plant);
+        boolean removed = plants.remove(plant);
+        if (removed) {
+            removeOverlaysFor(plant);
+        }
+        return removed;
     }
 
     int countPlantsWithTag(PlantTag tag) {
@@ -97,11 +110,25 @@ public final class Tile {
     }
 
     public boolean blocksStraightProjectiles() {
-        return type.blocksStraightProjectiles();
+        return type.blocksStraightProjectiles()
+                || overlays.stream().anyMatch(
+                overlay -> overlay.getType().blocksStraightProjectiles()
+        );
     }
 
     boolean takeDamage(double damage) {
-        if (damage <= 0 || !type.isDestructible()) {
+        if (!Double.isFinite(damage) || damage < 0) {
+            throw new IllegalArgumentException(
+                    "tile damage must be finite and non-negative"
+            );
+        }
+
+        TileOverlay blockingOverlay = getTopBlockingOverlay();
+        if (blockingOverlay != null) {
+            return damageOverlay(blockingOverlay, damage);
+        }
+
+        if (damage == 0 || !type.isDestructible()) {
             return false;
         }
 
@@ -116,12 +143,124 @@ public final class Tile {
         return false;
     }
 
-    boolean applyFireDamage(double damage) {
-        if (type != TileType.FROZEN) {
+    boolean addOverlay(TileOverlayType overlayType, Plant coveredPlant) {
+        Objects.requireNonNull(overlayType, "overlay type cannot be null");
+        Objects.requireNonNull(coveredPlant, "covered plant cannot be null");
+
+        if (!plants.contains(coveredPlant)
+                || hasOverlay(overlayType, coveredPlant)) {
             return false;
         }
 
-        return takeDamage(damage);
+        overlays.add(new TileOverlay(overlayType, coveredPlant));
+        return true;
+    }
+
+    boolean damageOverlay(TileOverlayType overlayType, double damage) {
+        TileOverlay overlay = getTopOverlay(overlayType);
+        if (overlay == null) {
+            return false;
+        }
+
+        return damageOverlay(overlay, damage);
+    }
+
+    boolean destroyOverlay(TileOverlayType overlayType) {
+        TileOverlay overlay = getTopOverlay(overlayType);
+        if (overlay == null) {
+            return false;
+        }
+
+        removeOverlay(overlay);
+        return true;
+    }
+
+    public boolean hasOverlay(TileOverlayType overlayType) {
+        Objects.requireNonNull(overlayType, "overlay type cannot be null");
+        return overlays.stream().anyMatch(
+                overlay -> overlay.getType() == overlayType
+        );
+    }
+
+    public boolean hasOverlay(
+            TileOverlayType overlayType,
+            Plant coveredPlant
+    ) {
+        Objects.requireNonNull(overlayType, "overlay type cannot be null");
+        Objects.requireNonNull(coveredPlant, "covered plant cannot be null");
+        return overlays.stream().anyMatch(
+                overlay -> overlay.getType() == overlayType
+                        && overlay.getCoveredPlant() == coveredPlant
+        );
+    }
+
+    public boolean hasDestructibleContent() {
+        return type.isDestructible() || !overlays.isEmpty();
+    }
+
+    public boolean blocksActionsFor(Plant plant) {
+        Objects.requireNonNull(plant, "plant cannot be null");
+        return overlays.stream().anyMatch(
+                overlay -> overlay.getCoveredPlant() == plant
+                        && overlay.getType().blocksPlantActions()
+        );
+    }
+
+    boolean hasBlockingOverlay() {
+        return getTopBlockingOverlay() != null;
+    }
+
+    boolean topBlockingOverlayIs(TileOverlayType overlayType) {
+        Objects.requireNonNull(overlayType, "overlay type cannot be null");
+        TileOverlay overlay = getTopBlockingOverlay();
+        return overlay != null && overlay.getType() == overlayType;
+    }
+
+    private TileOverlay getTopBlockingOverlay() {
+        for (int index = overlays.size() - 1; index >= 0; index--) {
+            TileOverlay overlay = overlays.get(index);
+            if (overlay.getType().blocksStraightProjectiles()) {
+                return overlay;
+            }
+        }
+        return null;
+    }
+
+    private TileOverlay getTopOverlay(TileOverlayType overlayType) {
+        for (int index = overlays.size() - 1; index >= 0; index--) {
+            TileOverlay overlay = overlays.get(index);
+            if (overlay.getType() == overlayType) {
+                return overlay;
+            }
+        }
+        return null;
+    }
+
+    private boolean damageOverlay(TileOverlay overlay, double damage) {
+        if (!overlay.takeDamage(damage)) {
+            return false;
+        }
+
+        removeOverlay(overlay);
+        return true;
+    }
+
+    private void removeOverlay(TileOverlay overlay) {
+        overlays.remove(overlay);
+        if (overlay.getType() == TileOverlayType.FROZEN) {
+            overlay.getCoveredPlant().clearFreezeLevels();
+        }
+        publishOverlayDestroyedMessage(overlay.getType());
+    }
+
+    private void removeOverlaysFor(Plant plant) {
+        List<TileOverlay> removedOverlays = overlays.stream()
+                .filter(overlay -> overlay.getCoveredPlant() == plant)
+                .toList();
+
+        for (TileOverlay overlay : removedOverlays) {
+            removeOverlay(overlay);
+        }
     }
 
     private boolean canAddSelfStackingPlant(Plant newPlant) {
@@ -191,12 +330,18 @@ public final class Tile {
     }
 
     private void publishDestroyedMessage() {
-        String message = switch (type) {
-            case TOMBSTONE -> "the tombstone at ("
-                    + x + ", " + y + ") is destroyed";
-            case FROZEN -> "the frozen tile at ("
+        String message = type == TileType.TOMBSTONE
+                ? "the tombstone at (" + x + ", " + y + ") is destroyed"
+                : "tile at (" + x + ", " + y + ") is destroyed";
+
+        GameEvents.publish(message);
+    }
+
+    private void publishOverlayDestroyedMessage(TileOverlayType overlayType) {
+        String message = switch (overlayType) {
+            case FROZEN -> "the ice covering the plant at ("
                     + x + ", " + y + ") melted";
-            default -> "tile at ("
+            case OCTOPUS -> "the octopus at ("
                     + x + ", " + y + ") is destroyed";
         };
 

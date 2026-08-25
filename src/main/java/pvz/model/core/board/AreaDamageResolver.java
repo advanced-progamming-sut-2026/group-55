@@ -5,6 +5,7 @@ import java.util.Objects;
 
 import pvz.model.entity.plant.Plant;
 import pvz.model.entity.projectile.ProjectileType;
+import pvz.model.entity.zombie.DamageContext;
 import pvz.model.entity.zombie.Zombie;
 
 final class AreaDamageResolver {
@@ -42,12 +43,14 @@ final class AreaDamageResolver {
             int radius,
             double damage,
             ProjectileType projectileType,
+            DamageContext.AttackDelivery delivery,
             long currentTick
     ) {
         Objects.requireNonNull(
                 projectileType,
                 "projectile type cannot be null"
         );
+        Objects.requireNonNull(delivery, "attack delivery cannot be null");
 
         if (currentTick < 0) {
             throw new IllegalArgumentException(
@@ -64,9 +67,39 @@ final class AreaDamageResolver {
                 zombie -> projectileType.hitZombie(
                         zombie,
                         damage,
-                        currentTick
+                        currentTick,
+                        delivery,
+                        DamageContext.ImpactMode.AREA
                 )
         );
+    }
+
+    void damageTilesWithProjectile(
+            int centerX,
+            int centerY,
+            int radius,
+            double baseDamage,
+            ProjectileType projectileType
+    ) {
+        Objects.requireNonNull(
+                projectileType,
+                "projectile type cannot be null"
+        );
+        validateArea(centerX, centerY, radius, baseDamage);
+
+        for (int x = minimumX(centerX, radius);
+             x <= maximumX(centerX, radius);
+             x++) {
+            for (int y = minimumY(centerY, radius);
+                 y <= maximumY(centerY, radius);
+                 y++) {
+                ElementInteractionResolver.damageTile(
+                        grid.getTile(x, y),
+                        projectileType,
+                        baseDamage
+                );
+            }
+        }
     }
 
     void damagePlants(
@@ -143,9 +176,12 @@ final class AreaDamageResolver {
             int y,
             double damage
     ) {
-        for (Plant plant : grid.getTile(x, y).getPlants()) {
-            plant.takeDamage(damage);
+        List<Plant> plants = grid.getTile(x, y).getPlants();
+        if (plants.isEmpty()) {
+            return;
         }
+
+        plants.getLast().takeDamage(damage);
     }
 
     private void validateArea(

@@ -7,7 +7,9 @@ public final class ArmorSet {
     private final List<ArmorInstance> layers;
 
     public ArmorSet(List<ArmorSpec> specs) {
-        layers = specs.stream().map(ArmorInstance::new).toList();
+        layers = new ArrayList<>(
+                specs.stream().map(ArmorInstance::new).toList()
+        );
     }
 
     public ArmorDamageResult absorb(double damage) {
@@ -33,6 +35,23 @@ public final class ArmorSet {
 
     public boolean hasIntactArmor() {
         return layers.stream().anyMatch(layer -> !layer.isBroken());
+    }
+
+    public boolean hasArmor(String id) {
+        return layers.stream().anyMatch(
+                layer -> layer.spec().id().equalsIgnoreCase(id)
+        );
+    }
+
+    public boolean hasIntactArmor(String id) {
+        return layers.stream().anyMatch(
+                layer -> !layer.isBroken()
+                        && layer.spec().id().equalsIgnoreCase(id)
+        );
+    }
+
+    public void add(ArmorSpec spec) {
+        layers.add(new ArmorInstance(spec));
     }
 
     public record ArmorDamageResult(

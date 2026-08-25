@@ -152,8 +152,9 @@ public final class WaveManager implements Updatable {
     }
 
     private double remainingWaveVitality() {
+        List<Zombie> activeZombies = world.getZombies();
         return currentWaveZombies.stream()
-                .filter(zombie -> !zombie.isDead())
+                .filter(activeZombies::contains)
                 .mapToDouble(this::vitalityOf)
                 .sum();
     }

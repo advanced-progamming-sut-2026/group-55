@@ -73,7 +73,10 @@ public final class ZombieFactory {
         List<ZombieBehavior> behaviors = behaviorDefinitions
                 .getOrDefault(keyOf(spec.getId()), List.of())
                 .stream()
-                .map(behaviorFactory::create)
+                .map(definition -> behaviorFactory.create(
+                        definition,
+                        healthMultiplier
+                ))
                 .toList();
 
         return new Zombie(

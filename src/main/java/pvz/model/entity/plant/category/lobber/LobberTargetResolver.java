@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Objects;
 
 import pvz.model.core.World;
-import pvz.model.core.board.TileType;
 import pvz.model.entity.zombie.Zombie;
 
 final class LobberTargetResolver {
@@ -56,11 +55,9 @@ final class LobberTargetResolver {
             for (int column = 1;
                  column <= world.board().getCols();
                  column++) {
-                TileType type = world.board()
+                if (world.board()
                         .getTile(column, row)
-                        .getType();
-
-                if (type.isDestructible()) {
+                        .hasDestructibleContent()) {
                     targets.add(
                             LobberTarget.terrain(column, row)
                     );
@@ -86,12 +83,9 @@ final class LobberTargetResolver {
         for (int column = sourceColumn + 1;
              column <= world.board().getCols();
              column++) {
-            TileType type = world.board()
+            if (world.board()
                     .getTile(column, sourceRow)
-                    .getType();
-
-            if (type == TileType.TOMBSTONE
-                    || type == TileType.FROZEN) {
+                    .hasDestructibleContent()) {
                 return LobberTarget.terrain(
                         column,
                         sourceRow

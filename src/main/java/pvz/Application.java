@@ -28,6 +28,8 @@ import pvz.model.session.GameSessionStatus;
 import pvz.model.adventure.AdventureData;
 import pvz.model.adventure.LevelProgressService;
 import pvz.model.core.BattleWallet;
+import pvz.model.core.BattleResources;
+import pvz.model.session.BattleRewardSettlement;
 
 public class Application {
 
@@ -36,6 +38,8 @@ public class Application {
     private ZombieData zombieData;
     private GameRuntime gameRuntime;
     private LevelProgressService levelProgressService;
+    private final BattleRewardSettlement battleRewardSettlement =
+            new BattleRewardSettlement();
 
     private final UserManager userManager = new UserManager("save.json");
 
@@ -198,8 +202,8 @@ public class Application {
                 "Game ended with status: " + gameRuntime.status()
         );
 
-        boolean saved = transferBattleCurrency(
-                gameRuntime.session().battleWallet()
+        boolean saved = transferBattleRewards(
+                gameRuntime.session().resources()
         );
         if (saved) {
             showProgressResult(completion);
@@ -255,7 +259,7 @@ public class Application {
         }
     }
 
-    private boolean transferBattleCurrency(BattleWallet battleWallet) {
+    private boolean transferBattleRewards(BattleResources resources) {
         User currentUser = appState.getCurrentUser();
 
         if (currentUser == null) {
@@ -265,17 +269,58 @@ public class Application {
             return false;
         }
 
-        battleWallet.transferTo(currentUser);
+        BattleRewardSettlement.Result settlement;
+        try {
+            settlement = battleRewardSettlement.settle(
+                    resources,
+                    currentUser
+            );
+        } catch (ArithmeticException | IllegalStateException exception) {
+            view.showError(
+                    "Failed to settle stage rewards: "
+                            + exception.getMessage()
+            );
+            return false;
+        }
 
         if (!userManager.save()) {
             view.showError("Failed to save collected battle currency.");
             return false;
         }
 
-        if (battleWallet.hasCollectedCurrency()) {
-            showBattleCurrencySummary(battleWallet, currentUser);
+        if (resources.battleWallet().hasCollectedCurrency()) {
+            showBattleCurrencySummary(
+                    resources.battleWallet(),
+                    currentUser
+            );
         }
+        showBattleItemSummary(settlement, currentUser);
         return true;
+    }
+
+    private void showBattleItemSummary(
+            BattleRewardSettlement.Result settlement,
+            User currentUser
+    ) {
+        if (settlement.collectedPots() > 0) {
+            view.showMessage(
+                    "Collected this stage: "
+                            + settlement.collectedPots()
+                            + " pot(s); "
+                            + settlement.unlockedPots()
+                            + " greenhouse slot(s) unlocked."
+            );
+        }
+
+        if (settlement.returnedPlantFood() > 0) {
+            view.showMessage(
+                    "Returned "
+                            + settlement.returnedPlantFood()
+                            + " unused plant food(s); total stored: "
+                            + currentUser.getPlantFoodCount()
+                            + "."
+            );
+        }
     }
 
     private void showBattleCurrencySummary(

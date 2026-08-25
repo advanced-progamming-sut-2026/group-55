@@ -7,7 +7,8 @@ public record DamageContext(
         double damage,
         DamageSource source,
         ProjectileType projectileType,
-        AttackPath attackPath,
+        AttackDelivery delivery,
+        ImpactMode impactMode,
         boolean bypassArmor,
         long tick
 ) {
@@ -16,15 +17,23 @@ public record DamageContext(
             throw new IllegalArgumentException("damage cannot be negative");
         }
         Objects.requireNonNull(source, "damage source cannot be null");
-        Objects.requireNonNull(attackPath, "attack path cannot be null");
+        Objects.requireNonNull(delivery, "attack delivery cannot be null");
+        Objects.requireNonNull(impactMode, "impact mode cannot be null");
     }
 
     public DamageContext withDamage(double newDamage) {
         return new DamageContext(
-                newDamage, source, projectileType, attackPath, bypassArmor, tick
+                newDamage,
+                source,
+                projectileType,
+                delivery,
+                impactMode,
+                bypassArmor,
+                tick
         );
     }
 
     public enum DamageSource { PROJECTILE, DIRECT, POISON }
-    public enum AttackPath { STRAIGHT, LOBBED, AREA, CONTACT, UNKNOWN }
+    public enum AttackDelivery { STRAIGHT, LOBBED, CONTACT, UNKNOWN }
+    public enum ImpactMode { SINGLE_TARGET, AREA }
 }

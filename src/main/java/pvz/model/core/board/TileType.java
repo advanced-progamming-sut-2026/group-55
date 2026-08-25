@@ -5,7 +5,6 @@ public enum TileType {
     TOMBSTONE(false, 700, true),
     SLIPPERY_UP(false, 0, false),
     SLIPPERY_DOWN(false, 0, false),
-    FROZEN(false, 600, true),
     WATER(false, 0, false),
     LOW_BEACH(true, 0, false),
     NECROMANCY(true, 0, false);

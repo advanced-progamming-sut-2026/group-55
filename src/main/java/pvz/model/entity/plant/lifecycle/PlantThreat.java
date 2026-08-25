@@ -12,6 +12,14 @@ public enum PlantThreat {
 
     FORCED_REMOVAL(true, true),
 
+    FREEZE(true, false),
+
+    OCTOPUS(true, false),
+
+    ACTION_BLOCK(true, false),
+
+    FORCED_RELOCATION(true, false),
+
     SYSTEM_CLEANUP(false, false);
 
     private final boolean blockedByPlantFood;

@@ -6,6 +6,7 @@ public final class BattleResources {
     private final SunBank sunBank;
     private final BattleWallet battleWallet;
     private int plantFoodCount;
+    private int collectedPotCount;
     private boolean cooldownCheatEnabled;
 
     public BattleResources(int startingSun, int startingPlantFood) {
@@ -45,6 +46,14 @@ public final class BattleResources {
         }
 
         return false;
+    }
+
+    public void addCollectedPot() {
+        collectedPotCount = Math.addExact(collectedPotCount, 1);
+    }
+
+    public int getCollectedPotCount() {
+        return collectedPotCount;
     }
 
     public void enableCooldownCheat() {

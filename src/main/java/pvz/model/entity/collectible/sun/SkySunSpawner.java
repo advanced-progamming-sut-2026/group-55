@@ -19,16 +19,35 @@ public final class SkySunSpawner implements Updatable {
 
     private final World world;
     private final Random random;
+    private final double difficultyIntervalMultiplier;
 
     private long nextDropTick;
 
     public SkySunSpawner(World world) {
-        this(world, new Random());
+        this(world, new Random(), 3);
+    }
+
+    public SkySunSpawner(World world, int difficultyLevel) {
+        this(world, new Random(), difficultyLevel);
     }
 
     SkySunSpawner(World world, Random random) { // Used a fixed seed for reproducible random values (for testing)
+        this(world, random, 3);
+    }
+
+    SkySunSpawner(
+            World world,
+            Random random,
+            int difficultyLevel
+    ) {
         this.world = Objects.requireNonNull(world);
         this.random = Objects.requireNonNull(random);
+        if (difficultyLevel < 1 || difficultyLevel > 5) {
+            throw new IllegalArgumentException(
+                    "difficulty level must be between 1 and 5"
+            );
+        }
+        difficultyIntervalMultiplier = difficultyLevel / 3.0;
 
         nextDropTick = secondsToTicks(
                 calculateIntervalSeconds(0)
@@ -116,10 +135,12 @@ public final class SkySunSpawner implements Updatable {
     private double calculateIntervalSeconds(
             double elapsedSeconds
     ) {
-        return Math.max(
+        double baseInterval = Math.max(
                 BASE_INTERVAL_SECONDS + INTERVAL_GROWTH_PER_SECOND * elapsedSeconds,
                 MINIMUM_INTERVAL_SECONDS
         );
+
+        return baseInterval * difficultyIntervalMultiplier;
     }
 
     private long secondsToTicks(double seconds) {

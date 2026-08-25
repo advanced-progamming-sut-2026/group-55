@@ -7,6 +7,7 @@ import pvz.model.shop.DailyOffer;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 public class User implements CurrencyWallet {
@@ -224,6 +225,12 @@ public class User implements CurrencyWallet {
         this.gamesPlayed = gamesPlayed;
     }
 
+    public void incrementGamesPlayed() {
+        if (gamesPlayed < Integer.MAX_VALUE) {
+            gamesPlayed++;
+        }
+    }
+
     public int getClearedStages() {
         return clearedStages;
     }
@@ -379,10 +386,22 @@ public class User implements CurrencyWallet {
         return seenZombies;
     }
 
-    public void addSeenZombie(String zombieName) {
-        if (!getSeenZombies().contains(zombieName)) {
-            getSeenZombies().add(zombieName);
+    public boolean addSeenZombie(String zombieId) {
+        Objects.requireNonNull(zombieId, "zombie id cannot be null");
+        String checkedId = zombieId.strip();
+        if (checkedId.isEmpty()) {
+            throw new IllegalArgumentException("zombie id cannot be blank");
         }
+
+        boolean alreadySeen = getSeenZombies().stream().anyMatch(
+                seen -> seen.equalsIgnoreCase(checkedId)
+        );
+        if (alreadySeen) {
+            return false;
+        }
+
+        getSeenZombies().add(checkedId);
+        return true;
     }
 
     private List<String> getUnlockedChapters() {

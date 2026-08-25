@@ -8,6 +8,7 @@ import pvz.model.core.Game;
 import pvz.model.core.World;
 import pvz.model.entity.Entity;
 import pvz.model.entity.plant.attack.ShotVector;
+import pvz.model.entity.zombie.PushedObstacle;
 import pvz.model.entity.zombie.Zombie;
 
 public final class DirectionalProjectile extends Entity {
@@ -19,6 +20,7 @@ public final class DirectionalProjectile extends Entity {
     private final ShotVector vector;
     private final ProjectileHitLimit hitLimit;
     private final Set<Zombie> hitZombies = new HashSet<>();
+    private final Set<PushedObstacle> hitObstacles = new HashSet<>();
     private final Set<Long> hitTerrainTiles = new HashSet<>();
 
     private double remainingDistance;
@@ -185,14 +187,29 @@ public final class DirectionalProjectile extends Entity {
             long terrainKey = terrainKey(column, row);
 
             if (hitTerrainTiles.add(terrainKey)) {
-                world.board().damageTerrain(
+                world.board().damageTerrainWithProjectile(
                         column,
                         row,
-                        type.damageAgainstTerrain(damage)
+                        damage,
+                        type
                 );
             }
 
-            if (hitLimit.isReachedBy(hitZombies.size() + hitTerrainTiles.size())) {
+            if (hitLimit.isReachedBy(hitCount())) {
+                world.game().unregister(this);
+                return;
+            }
+        }
+
+        PushedObstacle obstacle = world.findPushedObstacleInTile(
+                column,
+                row,
+                hitObstacles
+        );
+        if (obstacle != null) {
+            obstacle.takeProjectileDamage(type, damage);
+            hitObstacles.add(obstacle);
+            if (hitLimit.isReachedBy(hitCount())) {
                 world.game().unregister(this);
                 return;
             }
@@ -208,7 +225,7 @@ public final class DirectionalProjectile extends Entity {
             type.hitZombie(zombie, damage, tick);
             hitZombies.add(zombie);
 
-            if (hitLimit.isReachedBy(hitZombies.size() + hitTerrainTiles.size())) {
+            if (hitLimit.isReachedBy(hitCount())) {
                 world.game().unregister(this);
                 return;
             }
@@ -222,6 +239,12 @@ public final class DirectionalProjectile extends Entity {
     private static long terrainKey(int column, int row) {
         return ((long) column << Integer.SIZE)
                 ^ Integer.toUnsignedLong(row);
+    }
+
+    private int hitCount() {
+        return hitZombies.size()
+                + hitTerrainTiles.size()
+                + hitObstacles.size();
     }
 
     private boolean isInsideBoard(

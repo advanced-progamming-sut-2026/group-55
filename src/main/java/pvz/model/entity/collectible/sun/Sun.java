@@ -18,7 +18,7 @@ public final class Sun extends Collectible {
     private final World world;
     private final SunSource source;
     private final Plant producer;
-    private final int value;
+    private int value;
 
     private final double targetX;
     private final double targetY;
@@ -100,6 +100,30 @@ public final class Sun extends Collectible {
                 spawnTick,
                 spawnTick + SKY_FALL_DURATION_TICKS,
                 SunState.FALLING
+        );
+    }
+
+    public static Sun recovered(
+            World world,
+            double x,
+            double y,
+            int value
+    ) {
+        if (value <= 0) {
+            throw new IllegalArgumentException("sun value must be positive");
+        }
+        long currentTick = world.game().getCurrentTick();
+        return new Sun(
+                world,
+                SunSource.ZOMBIE,
+                null,
+                SunType.NORMAL,
+                value,
+                x,
+                y,
+                currentTick,
+                currentTick,
+                SunState.AVAILABLE
         );
     }
 
@@ -195,6 +219,27 @@ public final class Sun extends Collectible {
 
     public int getValue() {
         return value;
+    }
+
+    public int consumeUpTo(int maximumValue) {
+        if (maximumValue < 0) {
+            throw new IllegalArgumentException(
+                    "maximum consumed sun cannot be negative"
+            );
+        }
+
+        if (maximumValue == 0 || state != SunState.AVAILABLE) {
+            return 0;
+        }
+
+        int consumed = Math.min(value, maximumValue);
+        value -= consumed;
+
+        if (value == 0) {
+            remove();
+        }
+
+        return consumed;
     }
 
     public double getTargetX() {

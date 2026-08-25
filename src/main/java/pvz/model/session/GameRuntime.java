@@ -2,6 +2,7 @@ package pvz.model.session;
 
 import java.util.Objects;
 import pvz.controller.game.GameController;
+import pvz.model.core.ZombieDiscoveryListener;
 
 public final class GameRuntime {
     private final GameSessionFactory sessionFactory;
@@ -17,7 +18,18 @@ public final class GameRuntime {
     }
 
     public void start(GameSessionConfig config) {
+        start(config, ZombieDiscoveryListener.none());
+    }
+
+    public void start(
+            GameSessionConfig config,
+            ZombieDiscoveryListener discoveryListener
+    ) {
         Objects.requireNonNull(config, "session config cannot be null");
+        Objects.requireNonNull(
+                discoveryListener,
+                "zombie discovery listener cannot be null"
+        );
 
         if (isActive()) {
             throw new IllegalStateException(
@@ -25,7 +37,7 @@ public final class GameRuntime {
             );
         }
 
-        session = sessionFactory.create(config);
+        session = sessionFactory.create(config, discoveryListener);
         session.start();
         controller = new GameController(session);
     }

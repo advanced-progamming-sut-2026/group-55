@@ -14,6 +14,7 @@ import pvz.model.utils.Message;
 import pvz.model.utils.SystemMessage;
 import pvz.view.MenuView;
 import java.util.Comparator;
+import java.util.Locale;
 
 public class CollectionController extends BaseController {
 
@@ -135,7 +136,18 @@ public class CollectionController extends BaseController {
         }
 
         user.getSeenZombies()
+                .stream()
+                .map(this::resolveSeenZombieName)
                 .forEach(view::showSuccess);
+    }
+
+    private String resolveSeenZombieName(String storedValue) {
+        String normalized = storedValue.strip().toLowerCase(Locale.ROOT);
+        ZombieSpec spec = zombieData.byId().get(normalized);
+        if (spec == null) {
+            spec = zombieData.byName().get(normalized);
+        }
+        return spec == null ? storedValue : spec.getName();
     }
 
     private void handleShowAllZombies() {

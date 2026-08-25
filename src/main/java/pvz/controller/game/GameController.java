@@ -9,6 +9,7 @@ import pvz.model.core.board.Board;
 import pvz.model.core.Game;
 import pvz.model.core.GameEvents;
 import pvz.model.core.board.Tile;
+import pvz.model.core.board.TileOverlay;
 import pvz.model.core.board.TileType;
 import pvz.model.core.World;
 import pvz.model.entity.collectible.Collectible;
@@ -16,6 +17,7 @@ import pvz.model.entity.collectible.sun.Sun;
 import pvz.model.entity.collectible.plantfood.PlantFood;
 import pvz.model.entity.collectible.sun.SunCollectionOutcome;
 import pvz.model.entity.plant.Plant;
+import pvz.model.entity.zombie.PushedObstacle;
 import pvz.model.entity.zombie.Zombie;
 import pvz.model.entity.zombie.ArmorInstance;
 import pvz.model.session.GameSession;
@@ -51,6 +53,12 @@ public final class GameController {
         if (GameCommand.SHOW_MAP.getMatcher(input) != null) {
             return handleShowMap();
         }
+        if (GameCommand.SHOW_PLANTS_STATUS.getMatcher(input) != null) {
+            return handleShowPlantsStatus();
+        }
+        if ((matcher = GameCommand.SHOW_TILE_STATUS.getMatcher(input)) != null) {
+            return handleShowTileStatus(matcher);
+        }
         if (GameCommand.SHOW_ZOMBIES.getMatcher(input) != null) {
             return handleShowZombies();
         }
@@ -80,6 +88,9 @@ public final class GameController {
         }
         if ((matcher = GameCommand.SPAWN_ZOMBIE.getMatcher(input)) != null) {
             return handleSpawnZombie(matcher);
+        }
+        if (GameCommand.RELEASE_NUKE.getMatcher(input) != null) {
+            return handleReleaseNuke();
         }
 
         return "invalid command!";
@@ -357,6 +368,11 @@ public final class GameController {
             if (plant.isPlantFoodActive(currentTick)) {
                 return plant.getName() + " is already using plant food!";
             }
+            if (!plant.canApplyPlantFood(currentTick)) {
+                return "plant food cannot be applied to "
+                        + plant.getName()
+                        + " while it is frozen or covered by an octopus!";
+            }
         }
 
         if (!session.resources().tryConsumePlantFood()) {
@@ -436,6 +452,20 @@ public final class GameController {
                 .append(session.resources().getPlantFoodCount())
                 .append('\n');
 
+        output.append("lawn mowers: ");
+        for (int row = 1; row <= board.getRows(); row++) {
+            if (row > 1) {
+                output.append(", ");
+            }
+            output.append("row ")
+                    .append(row)
+                    .append('=')
+                    .append(world.isLawnMowerAvailable(row)
+                            ? "ready"
+                            : "used");
+        }
+        output.append('\n');
+
         for (int y = 1; y <= board.getRows(); y++) {
             for (int x = 1; x <= board.getCols(); x++) {
                 output.append('[').append(cellSymbol(x, y)).append(']');
@@ -443,11 +473,170 @@ public final class GameController {
             output.append('\n');
         }
 
-        output.append("Z = zombie, capital letter = plant's first, ")
+        output.append("Z = zombie, O = pushed obstacle, ")
+                .append("capital letter = plant's first, ")
                 .append("lowercase letter = non-normal tile's first, ")
                 .append(". = normal tile");
 
         return output.toString();
+    }
+
+    private String handleShowPlantsStatus() {
+        List<String> selectedPlants = session.config().selectedPlants();
+
+        if (selectedPlants.isEmpty()) {
+            return "there are no selected plants for this level!";
+        }
+
+        StringBuilder output = new StringBuilder();
+        long currentSun = world.sunBank().getBalance();
+
+        for (String selectedPlant : selectedPlants) {
+            Plant plant = session.createPlant(selectedPlant);
+            if (plant == null) {
+                output.append(selectedPlant)
+                        .append(": unavailable (unknown plant data)\n");
+                continue;
+            }
+
+            long rechargeTicks = (long) Math.ceil(
+                    plant.getSpec().getRecharge()
+                            * Game.TICKS_PER_SECOND
+            );
+            long remainingTicks = session.getRemainingRechargeTicks(
+                    selectedPlant,
+                    rechargeTicks
+            );
+            boolean affordable = currentSun >= plant.getSpec().getCost();
+
+            output.append(plant.getName())
+                    .append(": cost=")
+                    .append(plant.getSpec().getCost())
+                    .append(", recharge=")
+                    .append(formatDuration(remainingTicks))
+                    .append(", affordable=")
+                    .append(affordable ? "yes" : "no")
+                    .append(", status=")
+                    .append(remainingTicks == 0 && affordable
+                            ? "ready"
+                            : "unavailable")
+                    .append('\n');
+        }
+
+        return output.toString().stripTrailing();
+    }
+
+    private String handleShowTileStatus(Matcher matcher) {
+        int x = Integer.parseInt(matcher.group("x"));
+        int y = Integer.parseInt(matcher.group("y"));
+
+        if (!board.inBounds(x, y)) {
+            return "location (" + x + ", " + y + ") is out of bounds!";
+        }
+
+        Tile tile = board.getTile(x, y);
+        StringBuilder output = new StringBuilder();
+        output.append("tile (")
+                .append(x)
+                .append(", ")
+                .append(y)
+                .append("):\n")
+                .append("\ttype: ")
+                .append(tile.getType().name().toLowerCase(Locale.ROOT))
+                .append("\n\thealth: ")
+                .append(formatNumber(tile.getHealth()))
+                .append("\n\toverlays:\n");
+
+        List<TileOverlay> overlays = tile.getOverlays();
+        if (overlays.isEmpty()) {
+            output.append("\t\tnone\n");
+        } else {
+            for (TileOverlay overlay : overlays) {
+                output.append("\t\t")
+                        .append(overlay.getType().name()
+                                .toLowerCase(Locale.ROOT))
+                        .append(": health=")
+                        .append(formatNumber(overlay.getRemainingHealth()))
+                        .append('/')
+                        .append(formatNumber(
+                                overlay.getType().getInitialHealth()
+                        ))
+                        .append(", plant=")
+                        .append(overlay.getCoveredPlant().getName())
+                        .append("\n");
+            }
+        }
+
+        output.append("\tplants:\n");
+
+        List<Plant> plants = tile.getPlants();
+        if (plants.isEmpty()) {
+            output.append("\t\tnone\n");
+        } else {
+            for (Plant plant : plants) {
+                output.append("\t\t")
+                        .append(plant.getName())
+                        .append(": health=")
+                        .append(formatNumber(plant.getHealth()))
+                        .append('/')
+                        .append(plant.getSpec().getBaseHp())
+                        .append(", category=")
+                        .append(plant.getSpec().getCategory().name()
+                                .toLowerCase(Locale.ROOT))
+                        .append(", freezeLevel=")
+                        .append(plant.getFreezeLevel())
+                        .append("\n");
+            }
+        }
+
+        List<Zombie> zombies = world.getZombies().stream()
+                .filter(zombie -> zombie.getTileX() == x
+                        && zombie.getTileY() == y)
+                .toList();
+        List<PushedObstacle> obstacles = world.getPushedObstacles().stream()
+                .filter(obstacle -> obstacle.getTileX() == x
+                        && obstacle.getTileY() == y)
+                .toList();
+        output.append("\tpushed obstacles:\n");
+        if (obstacles.isEmpty()) {
+            output.append("\t\tnone\n");
+        } else {
+            for (PushedObstacle obstacle : obstacles) {
+                output.append("\t\t")
+                        .append(obstacle.getName())
+                        .append(": health=")
+                        .append(formatNumber(obstacle.getHealth()))
+                        .append('/')
+                        .append(formatNumber(obstacle.getMaximumHealth()))
+                        .append("\n");
+            }
+        }
+        output.append("\tzombies:\n");
+        if (zombies.isEmpty()) {
+            output.append("\t\tnone");
+        } else {
+            for (Zombie zombie : zombies) {
+                output.append("\t\t")
+                        .append(zombie.getName())
+                        .append(": position=")
+                        .append(formatNumber(zombie.getX()))
+                        .append(", ")
+                        .append(formatNumber(zombie.getY()))
+                        .append(", health=")
+                        .append(formatNumber(zombie.getHealth()))
+                        .append(", armor=")
+                        .append(formatNumber(zombie.getArmorHealth()))
+                        .append(", speed=")
+                        .append(formatNumber(zombie.getRuntimeStats()
+                                .tilesPerSecond()))
+                        .append(", eatDps=")
+                        .append(formatNumber(zombie.getRuntimeStats()
+                                .eatDamagePerSecond()))
+                        .append("\n");
+            }
+        }
+
+        return output.toString().stripTrailing();
     }
 
     private String handleShowZombies() {
@@ -478,11 +667,17 @@ public final class GameController {
 
             output.append("\tarmor:\n");
 
-            if (zombie.getArmorSet().layers().isEmpty()) {
+            List<ArmorInstance> intactArmors = zombie.getArmorSet()
+                    .layers()
+                    .stream()
+                    .filter(armor -> !armor.isBroken())
+                    .toList();
+
+            if (intactArmors.isEmpty()) {
                 output.append("\t\tnone\n");
             }
 
-            for (ArmorInstance armor : zombie.getArmorSet().layers()) {
+            for (ArmorInstance armor : intactArmors) {
                 output.append("\t\t")
                         .append(armor.spec().name().toLowerCase())
                         .append(": ")
@@ -494,26 +689,93 @@ public final class GameController {
 
             output.append("\teffects:\n");
 
+            if (zombie.isGlowing()) {
+                output.append("\t\tglowing: plant-food carrier\n");
+            }
+
             if (zombie.isChilled(currentTick)) {
-                output.append("\t\tchilled: active\n");
+                appendEffect(
+                        output,
+                        "chilled",
+                        zombie.getRemainingChillTicks(currentTick)
+                );
             }
 
             if (zombie.isFrozen(currentTick)) {
-                output.append("\t\tfrozen: active\n");
+                appendEffect(
+                        output,
+                        "frozen",
+                        zombie.getRemainingFreezeTicks(currentTick)
+                );
             }
 
             if (zombie.isButtered(currentTick)) {
-                output.append("\t\tbuttered: active\n");
+                appendEffect(
+                        output,
+                        "buttered",
+                        zombie.getRemainingButterTicks(currentTick)
+                );
             }
 
             if (zombie.isPoisoned(currentTick)) {
-                output.append("\t\tpoisoned: active\n");
+                appendEffect(
+                        output,
+                        "poisoned",
+                        zombie.getRemainingPoisonTicks(currentTick)
+                );
             }
 
             output.append("\n");
         }
 
         return output.toString();
+    }
+
+    private String handleReleaseNuke() {
+        int killedZombies = world.eliminateAllZombies();
+        session.advance(0);
+
+        StringBuilder output = new StringBuilder();
+        for (String event : GameEvents.drain()) {
+            output.append(event).append('\n');
+        }
+        output.append("nuke released; killed ")
+                .append(killedZombies)
+                .append(" zombie(s).");
+
+        return output.toString();
+    }
+
+    private void appendEffect(
+            StringBuilder output,
+            String effectName,
+            long remainingTicks
+    ) {
+        output.append("\t\t")
+                .append(effectName)
+                .append(": ")
+                .append(formatDuration(remainingTicks))
+                .append(" remaining\n");
+    }
+
+    private String formatDuration(long ticks) {
+        double seconds = ticks / (double) Game.TICKS_PER_SECOND;
+
+        if (seconds == Math.rint(seconds)) {
+            return (long) seconds + "s";
+        }
+
+        return String.format(Locale.ROOT, "%.1fs", seconds);
+    }
+
+    private String formatNumber(double value) {
+        if (value == Math.rint(value)) {
+            return Long.toString((long) value);
+        }
+
+        return String.format(Locale.ROOT, "%.2f", value)
+                .replaceAll("0+$", "")
+                .replaceAll("\\.$", "");
     }
 
     private char cellSymbol(int x, int y) {
@@ -523,12 +785,24 @@ public final class GameController {
             }
         }
 
-        List<Plant> plants = board.getTile(x, y).getPlants();
+        for (PushedObstacle obstacle : world.getPushedObstacles()) {
+            if (obstacle.getTileY() == y && obstacle.getTileX() == x) {
+                return 'O';
+            }
+        }
+
+        Tile tile = board.getTile(x, y);
+        List<TileOverlay> overlays = tile.getOverlays();
+        if (!overlays.isEmpty()) {
+            return overlays.getLast().getType().name()
+                    .toLowerCase(Locale.ROOT).charAt(0);
+        }
+
+        List<Plant> plants = tile.getPlants();
         if (!plants.isEmpty()) {
             return Character.toUpperCase(plants.getFirst().getName().charAt(0));
         }
 
-        Tile tile = board.getTile(x, y);
         if (tile.getType() != TileType.NORMAL) {
             return tile.getType().name().toLowerCase(Locale.ROOT).charAt(0);
         }
