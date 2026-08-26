@@ -4,6 +4,7 @@ import java.util.Objects;
 
 import pvz.model.entity.plant.Plant;
 import pvz.model.entity.plant.PlantSpec;
+import pvz.model.entity.plant.category.explosive.ExplosiveBehaviorFactory;
 import pvz.model.entity.plant.category.lobber.LobberBehaviorFactory;
 import pvz.model.entity.plant.category.shooter.ShooterBehaviorFactory;
 import pvz.model.entity.plant.category.strikethrough.StrikeThroughBehaviorFactory;
@@ -38,6 +39,12 @@ public final class PlantBehaviorFactory {
 
             case WALL ->
                     WallBehaviorFactory.create(
+                            owner,
+                            spec
+                    );
+
+            case EXPLOSIVE ->
+                    ExplosiveBehaviorFactory.create(
                             owner,
                             spec
                     );

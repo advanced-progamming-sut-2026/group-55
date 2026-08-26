@@ -20,6 +20,26 @@ final class AreaDamageResolver {
         );
     }
 
+    void damageZombiesWithAbility(
+            List<Zombie> zombies,
+            int centerX,
+            int centerY,
+            int radius,
+            double damage
+    ) {
+        applyToZombies(
+                zombies,
+                centerX,
+                centerY,
+                radius,
+                damage,
+                zombie -> zombie.takeAbilityDamage(
+                        damage,
+                        DamageContext.ImpactMode.AREA
+                )
+        );
+    }
+
     void damageZombiesDirectly(
             List<Zombie> zombies,
             int centerX,
@@ -136,7 +156,8 @@ final class AreaDamageResolver {
             for (int y = minimumY(centerY, radius);
                  y <= maximumY(centerY, radius);
                  y++) {
-                grid.getTile(x, y).takeDamage(damage);
+                grid.getTile(x, y)
+                        .damageAllDestructibleContent(damage);
             }
         }
     }

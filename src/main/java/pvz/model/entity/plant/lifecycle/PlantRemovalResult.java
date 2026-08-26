@@ -6,5 +6,7 @@ public enum PlantRemovalResult {
 
     BLOCKED_BY_PLANT_FOOD,
 
+    BLOCKED_BY_ACTIVATION,
+
     ALREADY_REMOVED
 }

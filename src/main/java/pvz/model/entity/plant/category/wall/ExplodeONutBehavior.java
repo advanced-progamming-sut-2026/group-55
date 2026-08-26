@@ -42,22 +42,7 @@ final class ExplodeONutBehavior extends ArmoredWallBehavior {
     }
 
     private void explode(boolean armorExplosion) {
-        world().board().damageZombiesDirectlyInArea(
-                world().getZombies(),
-                column(),
-                row(),
-                EXPLOSION_RADIUS,
-                explosionDamage
-        );
-
-        world().board().damageTilesInArea(
-                column(),
-                row(),
-                EXPLOSION_RADIUS,
-                explosionDamage
-        );
-
-        world().damagePushedObstaclesDirectlyInArea(
+        world().damageEnemyContentsInArea(
                 column(),
                 row(),
                 EXPLOSION_RADIUS,

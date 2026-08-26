@@ -20,6 +20,8 @@ public enum PlantThreat {
 
     FORCED_RELOCATION(true, false),
 
+    TRANSIENT_EFFECT_COMPLETION(false, true),
+
     SYSTEM_CLEANUP(false, false);
 
     private final boolean blockedByPlantFood;

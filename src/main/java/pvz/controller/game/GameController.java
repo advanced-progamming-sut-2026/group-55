@@ -216,6 +216,9 @@ public final class GameController {
             case BLOCKED_BY_PLANT_FOOD ->
                     plant.getName() + " cannot be plucked while plant food is active!";
 
+            case BLOCKED_BY_ACTIVATION ->
+                    plant.getName() + " cannot be plucked while it is activating!";
+
             case ALREADY_REMOVED ->
                     "the plant at ("
                             + x

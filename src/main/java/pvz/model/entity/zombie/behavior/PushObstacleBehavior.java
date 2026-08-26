@@ -69,12 +69,12 @@ public final class PushObstacleBehavior implements ZombieBehavior {
             obstacle.spawn(world, zombie.getX(), zombie.getY());
             obstacles.add(obstacle);
         }
-        synchronizeObstacles(zombie, world);
+        synchronizeObstacles(zombie, world, currentTick);
     }
 
     @Override
     public void onTick(Zombie zombie, World world, long currentTick) {
-        synchronizeObstacles(zombie, world);
+        synchronizeObstacles(zombie, world, currentTick);
     }
 
     @Override
@@ -83,10 +83,14 @@ public final class PushObstacleBehavior implements ZombieBehavior {
             World world,
             long currentTick
     ) {
-        synchronizeObstacles(zombie, world);
+        synchronizeObstacles(zombie, world, currentTick);
     }
 
-    private void synchronizeObstacles(Zombie zombie, World world) {
+    private void synchronizeObstacles(
+            Zombie zombie,
+            World world,
+            long currentTick
+    ) {
         for (int slotIndex = 0; slotIndex < obstacles.size(); slotIndex++) {
             PushedObstacle obstacle = obstacles.get(slotIndex);
             if (obstacle.isDead()) {
@@ -96,6 +100,17 @@ public final class PushObstacleBehavior implements ZombieBehavior {
                     zombie.getX() - spacingTiles * (slotIndex + 1),
                     zombie.getY()
             );
+
+            world.notifyHostilePresentAt(
+                    obstacle.getTileX(),
+                    obstacle.getTileY(),
+                    currentTick
+            );
+
+            if (obstacle.isDead()) {
+                continue;
+            }
+
             crushPlantAtObstacle(obstacle, world);
         }
     }

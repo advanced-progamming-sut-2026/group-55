@@ -7,21 +7,31 @@ import pvz.model.core.GameEvents;
 import pvz.model.entity.plant.Plant;
 import pvz.model.entity.plant.PlantSpec;
 import pvz.model.entity.plant.behavior.AbstractPlantBehavior;
+import pvz.model.entity.plant.category.explosive.TransientActionWindow;
 import pvz.model.entity.plant.lifecycle.PlantThreat;
 import pvz.model.entity.plant.plantfood.PlantFoodVolley;
 import pvz.model.entity.plant.behavior.capability.PlantFoodCapability;
 import pvz.model.entity.plant.behavior.capability.SunProductionCapability;
+import pvz.model.entity.plant.behavior.capability.TransientEffectCapability;
+import pvz.model.entity.plant.behavior.capability.ZombieEdibilityCapability;
 
 public final class SunProducerBehavior
         extends AbstractPlantBehavior
         implements PlantFoodCapability,
-        SunProductionCapability {
+        SunProductionCapability,
+        ZombieEdibilityCapability,
+        TransientEffectCapability {
+
+    private static final String SUN_BURST_BEHAVIOR = "SUN_BURST";
+
+    private static final long DEFAULT_EFFECT_DISPLAY_TICKS = 5;
 
     private final PlantSpec spec;
 
     private SunProfile profile;
     private int pendingSuns;
     private boolean singleUseProductionDone;
+    private TransientActionWindow effectWindow;
 
     public SunProducerBehavior(Plant owner, PlantSpec spec) {
         super(owner);
@@ -45,11 +55,36 @@ public final class SunProducerBehavior
 
     @Override
     public boolean hasOngoingAction() {
-        return false;
+        return effectWindow != null && effectWindow.isEffectActive();
     }
 
     @Override
     public void updateOngoingAction(long currentTick) {
+        updateTransientEffect(currentTick);
+    }
+
+    @Override
+    public boolean isTransientEffectActive() {
+        return effectWindow != null && effectWindow.isEffectActive();
+    }
+
+    @Override
+    public void updateTransientEffect(long currentTick) {
+        if (!isTransientEffectActive()) {
+            return;
+        }
+
+        if (effectWindow.shouldFinish(currentTick)) {
+            effectWindow.finish();
+            owner().tryRemove(
+                    PlantThreat.TRANSIENT_EFFECT_COMPLETION
+            );
+        }
+    }
+
+    @Override
+    public boolean canBeEatenByZombie() {
+        return effectWindow == null || !effectWindow.isEffectActive();
     }
 
     @Override
@@ -120,7 +155,17 @@ public final class SunProducerBehavior
 
         singleUseProductionDone = true;
 
-        owner().tryRemove(PlantThreat.FORCED_REMOVAL);
+        effectWindow = new TransientActionWindow(effectDisplayTicks());
+        effectWindow.start(currentTick);
+    }
+
+    private long effectDisplayTicks() {
+        return spec.behaviorParams(SUN_BURST_BEHAVIOR)
+                .getOrDefault(
+                        "effectDisplayTicks",
+                        (double) DEFAULT_EFFECT_DISPLAY_TICKS
+                )
+                .longValue();
     }
 
     private void schedulePlantFoodSuns(

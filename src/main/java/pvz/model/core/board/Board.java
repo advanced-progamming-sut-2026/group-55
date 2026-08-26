@@ -142,7 +142,7 @@ public final class Board implements Updatable {
             int radius,
             double damage
     ) {
-        damageZombiesDirectlyInArea(
+        areaDamageResolver.damageZombiesWithAbility(
                 zombies,
                 centerX,
                 centerY,
@@ -263,6 +263,18 @@ public final class Board implements Updatable {
         );
     }
 
+    public void clearColdEffectsFromZombiesInRow(
+            List<Zombie> zombies,
+            int row,
+            long currentTick
+    ) {
+        areaStatusEffectResolver.clearColdEffectsInRow(
+                zombies,
+                row,
+                currentTick
+        );
+    }
+
     public boolean placeTombstone(int column, int row) {
         if (inBounds(column, row)
                 && groundOccupancy.isOccupied(column, row)) {
@@ -278,8 +290,48 @@ public final class Board implements Updatable {
         );
     }
 
+    public void placeCrater(
+            int column,
+            int row,
+            long currentTick,
+            long durationTicks
+    ) {
+        terrainManager.placeCrater(column, row, currentTick, durationTicks);
+    }
+
+    public boolean hasCrater(int column, int row) {
+        return terrainManager.hasCrater(column, row);
+    }
+
+    public boolean destroyOverlay(
+            int column,
+            int row,
+            TileOverlayType overlayType
+    ) {
+        return terrainManager.destroyOverlay(column, row, overlayType);
+    }
+
+    public int destroyOverlaysInRow(
+            int row,
+            TileOverlayType overlayType
+    ) {
+        return terrainManager.destroyOverlaysInRow(row, overlayType);
+    }
+
     public boolean damageTerrain(int x, int y, double damage) {
         return terrainManager.damageTerrain(x, y, damage);
+    }
+
+    public boolean damageAllDestructibleContent(
+            int x,
+            int y,
+            double damage
+    ) {
+        return terrainManager.damageAllDestructibleContent(
+                x,
+                y,
+                damage
+        );
     }
 
     public boolean damageTerrainWithProjectile(

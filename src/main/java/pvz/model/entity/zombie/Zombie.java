@@ -352,6 +352,24 @@ public final class Zombie extends LivingEntity {
         ));
     }
 
+    public boolean takeAbilityDamage(
+            double damage,
+            DamageContext.ImpactMode impactMode
+    ) {
+        return receiveHit(new DamageContext(
+                damage,
+                DamageContext.DamageSource.ABILITY,
+                null,
+                DamageContext.AttackDelivery.UNKNOWN,
+                Objects.requireNonNull(
+                        impactMode,
+                        "impact mode cannot be null"
+                ),
+                false,
+                currentTick()
+        ));
+    }
+
     public boolean receiveHit(DamageContext context) {
         Objects.requireNonNull(context, "damage context cannot be null");
         DamageContext processed = context;
@@ -475,6 +493,24 @@ public final class Zombie extends LivingEntity {
                     nextBiteTick,
                     currentTick
                             + attackIntervalTicks(currentTick)
+            );
+        }
+    }
+
+    public void clearColdEffects(long currentTick) {
+        if (currentTick < 0) {
+            throw new IllegalArgumentException(
+                    "current tick cannot be negative"
+            );
+        }
+
+        chilledUntilTick = 0;
+        frozenUntilTick = 0;
+
+        if (biteTarget != null) {
+            nextBiteTick = Math.min(
+                    nextBiteTick,
+                    currentTick + Game.TICKS_PER_SECOND
             );
         }
     }
@@ -695,7 +731,8 @@ public final class Zombie extends LivingEntity {
         List<Plant> plants = world.board().getTile(column, row).getPlants();
         for (int index = plants.size() - 1; index >= 0; index--) {
             Plant plant = plants.get(index);
-            if (plant.isZombieTargetable()) {
+            if (plant.isZombieTargetable()
+                    && plant.canBeEatenByZombie()) {
                 return plant;
             }
         }
@@ -725,6 +762,14 @@ public final class Zombie extends LivingEntity {
         long tick = currentTick();
         for (ZombieBehavior behavior : behaviors) {
             behavior.onPositionChanged(this, world, tick);
+        }
+
+        if (world != null && !isDead()) {
+            world.notifyHostilePresentAt(
+                    getTileX(),
+                    getTileY(),
+                    tick
+            );
         }
     }
 

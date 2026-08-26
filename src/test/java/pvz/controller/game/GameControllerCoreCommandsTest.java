@@ -117,7 +117,8 @@ class GameControllerCoreCommandsTest {
     }
 
     @Test
-    void removedGoldBloomIsNotRegisteredAfterPlanting() throws IOException {
+    void goldBloomStaysFiveTicksAfterPlantingAndIsThenRemoved()
+            throws IOException {
         GameSession goldBloomSession = createSession(
                 List.of("Gold Bloom")
         );
@@ -133,6 +134,25 @@ class GameControllerCoreCommandsTest {
         );
 
         assertTrue(result.startsWith("planted Gold Bloom"));
+        assertEquals(
+                1,
+                goldBloomSession.board().getTile(3, 2).getPlants().size()
+        );
+        assertEquals(5, goldBloomSession.world().getCollectibles().size());
+        assertEquals(
+                registeredBeforePlanting + 6,
+                goldBloomSession.game().getRegisteredObjectCount()
+        );
+
+        goldBloomSession.advance(4);
+
+        assertEquals(
+                1,
+                goldBloomSession.board().getTile(3, 2).getPlants().size()
+        );
+
+        goldBloomSession.advance(1);
+
         assertTrue(
                 goldBloomSession.board().getTile(3, 2)
                         .getPlants()

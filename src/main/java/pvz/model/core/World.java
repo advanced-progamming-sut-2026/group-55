@@ -38,6 +38,8 @@ public final class World {
     private final List<PushedObstacle> pushedObstacles = new ArrayList<>();
     private final List<LawnMower> lawnMowers = new ArrayList<>();
     private final List<Collectible> collectibles = new ArrayList<>();
+    private final EnemyContentResolver enemyContentResolver =
+            new EnemyContentResolver(this);
     private final RandomGenerator random;
     private Function<String, Zombie> zombieCreator;
     private ZombieDiscoveryListener zombieDiscoveryListener =
@@ -293,6 +295,54 @@ public final class World {
                 obstacle.takeDirectDamage(damage);
             }
         }
+    }
+
+    public boolean hasEnemyContentAt(int column, int row) {
+        return enemyContentResolver.hasEnemyContentAt(column, row);
+    }
+
+    public void damageEnemyContentsInArea(
+            int column,
+            int row,
+            int radius,
+            double damage
+    ) {
+        enemyContentResolver.damageInArea(column, row, radius, damage);
+    }
+
+    public void damageEnemyContentsInRow(int row, double damage) {
+        enemyContentResolver.damageInRow(row, damage);
+    }
+
+    public void damageAllEnemyContents(double damage) {
+        enemyContentResolver.damageEverything(damage);
+    }
+
+    public void destroyFireVulnerableObstaclesInRow(int row) {
+        enemyContentResolver.destroyFireVulnerableObstaclesInRow(row);
+    }
+
+    public void clearZombieColdEffectsInRow(
+            int row,
+            long currentTick
+    ) {
+        board.clearColdEffectsFromZombiesInRow(
+                getZombies(),
+                row,
+                currentTick
+        );
+    }
+
+    public void notifyHostilePresentAt(
+            int column,
+            int row,
+            long currentTick
+    ) {
+        enemyContentResolver.notifyHostilePresentAt(
+                column,
+                row,
+                currentTick
+        );
     }
 
     public boolean hasStraightTargetAhead(

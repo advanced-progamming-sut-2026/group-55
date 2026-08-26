@@ -41,8 +41,57 @@ final class TerrainManager {
         return true;
     }
 
+    void placeCrater(
+            int column,
+            int row,
+            long currentTick,
+            long durationTicks
+    ) {
+        grid.requireInBounds(column, row);
+
+        grid.getTile(column, row).placeCrater(currentTick, durationTicks);
+    }
+
+    boolean hasCrater(int column, int row) {
+        grid.requireInBounds(column, row);
+
+        return grid.getTile(column, row).hasCrater();
+    }
+
+    boolean destroyOverlay(
+            int column,
+            int row,
+            TileOverlayType overlayType
+    ) {
+        grid.requireInBounds(column, row);
+
+        return grid.getTile(column, row).destroyOverlay(overlayType);
+    }
+
+    int destroyOverlaysInRow(int row, TileOverlayType overlayType) {
+        grid.requireInBounds(1, row);
+
+        int destroyed = 0;
+
+        for (int column = 1; column <= grid.columns(); column++) {
+            destroyed += grid.getTile(column, row)
+                    .destroyAllOverlays(overlayType);
+        }
+
+        return destroyed;
+    }
+
     boolean damageTerrain(int x, int y, double damage) {
         return grid.getTile(x, y).takeDamage(damage);
+    }
+
+    boolean damageAllDestructibleContent(
+            int x,
+            int y,
+            double damage
+    ) {
+        return grid.getTile(x, y)
+                .damageAllDestructibleContent(damage);
     }
 
     boolean damageTerrainWithProjectile(
@@ -127,11 +176,21 @@ final class TerrainManager {
     }
 
     void update(long tick) {
+        updateCraters(tick);
+
         if (tick % Game.TICKS_PER_SECOND != 0) {
             return;
         }
 
         damageFrozenTilesNearFirePlants();
+    }
+
+    private void updateCraters(long tick) {
+        for (int x = 1; x <= grid.columns(); x++) {
+            for (int y = 1; y <= grid.rows(); y++) {
+                grid.getTile(x, y).updateCrater(tick);
+            }
+        }
     }
 
     private void damageFrozenTilesNearFirePlants() {

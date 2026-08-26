@@ -3,7 +3,7 @@ id,name,category,tags,cost,baseHp,damage,baseAbility,plantFoodEffect,lvl2,lvl3,l
 2,Twin Sunflower,SUN_PRODUCER,DAY,125,300,0,Produces 100 sun per cycle.,Instantly produces 250 sun.,Prod. Time -2s,HP +150,Cost -25,24,15
 3,Sun-shroom,SUN_PRODUCER,SHROOM|RAMP_UP|NIGHT,25,300,0,"Grows in 3 stages, producing more sun (25/50/75). To Stg2: 24s | To Stg3: 72s",Instantly grows to full size and produces 225 sun.,Grow Time -5s,HP +150,Double Sun Chance,24,5
 4,Primal Sunflower,SUN_PRODUCER,,75,300,0,Produces large 75-sun drops right from the start.,Instantly produces 225 sun.,Prod. Time -2s,HP +150,Cost -25,24,5
-5,Gold Bloom,SUN_PRODUCER,,0,0,0,"Instantly bursts out a large amount of sun, then disappears. (375 sun)",None (single-use).,Cooldown -5s,Sun +50,Cost -25,0,75
+5,Gold Bloom,SUN_PRODUCER,,0,0,0,"Instantly bursts out 375 sun on the planting tick, stays visible for five ticks, then disappears.",None (single-use).,Cooldown -5s,Sun +50,Cost -25,0,75
 6,Peashooter,SHOOTER,PEA,100,300,20,Shoots straight peas.,Fires a rapid volley of peas for a few seconds.,Dmg +10,HP +150,Cost -25,1.5,5
 7,Repeater,SHOOTER,PEA,200,300,20x2,Shoots 2 straight peas in quick succession.,Fires a heavy volley plus 1 giant pea (20x damage).,Dmg +10,HP +200,Cost -25,1.5,5
 8,Threepeater,SHOOTER,PEA,300,300,20,Shoots peas across 3 parallel lanes at once.,Fires a fanned volley across every lane.,Cost -25,Dmg +10,HP +200,1.5,5
@@ -28,13 +28,13 @@ id,name,category,tags,cost,baseHp,damage,baseAbility,plantFoodEffect,lvl2,lvl3,l
 27,Melon-pult,LOBBER,AOE,325,300,80,Lobs heavy shots with area damage.,Hurls a giant melon at random zombies.,Cost -25,AoE Dmg +15,Dmg +30,2.9,5
 28,Winter Melon,LOBBER,ICE|AOE,500,300,80,Lobs heavy shots with area damage (slows zombies).,Hurls icy melons at random zombies.,Cost -50,AoE Dmg +15,Cost -25,2.9,5
 29,Pepper-pult,LOBBER,FIRE|AOE,200,300,30,Lobs shots with area damage (warms nearby tiles).,Hurls large peppers at 3 random zombies.,Dmg +15,Warmth Radius +1,Cost -25,2.9,5
-30,Potato Mine,EXPLOSIVE,TRAP|CHARGE,25,300,1800,Arms after a 15-second delay; explodes on contact.,Arms instantly and launches 2 extra mine clones.,Arm Time -3s,Cooldown -5s,Dmg +600,-,25
-31,Primal Potato Mine,EXPLOSIVE,TRAP|CHARGE,50,300,2400,Arms faster (5 seconds) with a 3x3 area explosion.,Arms instantly and launches 2 mines to other spots.,Arm Time -1s,Cooldown -3s,Dmg +400,-,5
-32,Cherry Bomb,EXPLOSIVE,,150,0,1800,Instantly explodes in a 3x3 area.,None (single-use).,Cooldown -5s,Dmg +600,Cost -25,-,35
-33,Squash,EXPLOSIVE,TRAP,50,300,1800,Squashes the first nearby zombie.,Squashes 2 random zombies on the lawn.,Cooldown -3s,Dmg +600,Can crush 2x,-,20
-34,Grapeshot,EXPLOSIVE,,150,0,1800,Explodes in a 3x3 area and launches ricocheting grapes that vanish after 5 seconds.,None (single-use).,Dmg +600,Bounces +1,Cost -25,-,35
-35,Jalapeno,EXPLOSIVE,FIRE,125,0,1800,Instantly ignites every zombie in the lane (melts ice).,None (single-use).,Cooldown -5s,Dmg +600,Cost -25,-,35
-36,Doom-shroom,EXPLOSIVE,SHROOM,125,0,1800,"Massive explosion across the whole lawn, leaving an unplantable crater.",None (single-use).,Cooldown -5s,Dmg +800,Cost -50,-,15
+30,Potato Mine,EXPLOSIVE,TRAP|CHARGE,25,300,1800,Arms after 150 ticks; on contact it damages every enemy content of its own tile.,Arms instantly and plants 2 extra armed mine clones.,Arm Time -3s,Cooldown -5s,Dmg +600,-,25
+31,Primal Potato Mine,EXPLOSIVE,TRAP|CHARGE,50,300,2400,Arms after 50 ticks; on contact it explodes in a 3x3 area of enemy content.,Arms instantly and plants 2 extra armed mine clones.,Arm Time -1s,Cooldown -3s,Dmg +400,-,5
+32,Cherry Bomb,EXPLOSIVE,,150,0,1800,Instantly damages every non-friendly content in a 3x3 area.,None (single-use).,Cooldown -5s,Dmg +600,Cost -25,-,35
+33,Squash,EXPLOSIVE,TRAP,50,300,1800,"Crushes every non-friendly content of its own tile, one tile forward or one tile backward.",Crushes 2 random zombies on the lawn.,Cooldown -3s,Dmg +600,Can crush 2x,-,20
+34,Grapeshot,EXPLOSIVE,,150,0,1800,Explodes in a 3x3 area and launches eight tile-based grapes that bounce five times.,None (single-use).,Dmg +600,Bounces +1,Cost -25,-,35
+35,Jalapeno,EXPLOSIVE,FIRE,125,0,1800,Damages every non-friendly content of its own row and melts the ice of that row.,None (single-use).,Cooldown -5s,Dmg +600,Cost -25,-,35
+36,Doom-shroom,EXPLOSIVE,SHROOM,125,0,1800,Damages every non-friendly content of the lawn and leaves an unplantable crater on its own tile.,None (single-use).,Cooldown -5s,Dmg +800,Cost -50,-,15
 37,Tangle Kelp,EXPLOSIVE,TRAP|WATER,25,300,Insta-kill,Drags the first water zombie underwater and destroys it (beach only).,Drags several random zombies in the water under the surface.,Cooldown -5s,Targets +1,Cost -25,-,15
 38,Iceberg Lettuce,EXPLOSIVE,TRAP|ICE,0,300,0,Freezes the first zombie that steps on it.,Freezes every zombie on the screen.,Cooldown -2s,Freeze Time +2s,Cost -0,-,20
 39,Bonk Choy,MELEE,,150,300,15,Punches zombies in the tiles ahead and behind.,Throws a flurry of punches in a 3x3 area around itself.,Dmg +5,Atk Speed +10%,HP +200,0.25,5

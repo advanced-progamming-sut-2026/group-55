@@ -62,9 +62,24 @@ class GoldBloomBehaviorTest {
     }
 
     @Test
-    void goldBloomIsRemovedExactlyOnceAndNeverProducesAgain() {
+    void goldBloomStaysVisibleForFiveTicksAndNeverProducesAgain() {
         Plant goldBloom = placePlant("Gold Bloom", 3, 2);
         game.register(goldBloom);
+
+        assertFalse(goldBloom.isRemovedFromWorld());
+        assertEquals(5, producedSuns().size());
+
+        game.advance(4);
+
+        assertFalse(goldBloom.isRemovedFromWorld());
+        assertTrue(
+                world.board().getTile(3, 2)
+                        .getPlants()
+                        .contains(goldBloom)
+        );
+        assertFalse(goldBloom.canBeEatenByZombie());
+
+        game.advance(1);
 
         assertTrue(goldBloom.isRemovedFromWorld());
         assertFalse(world.getPlants().contains(goldBloom));
@@ -74,9 +89,22 @@ class GoldBloomBehaviorTest {
                         .contains(goldBloom)
         );
 
-        game.advance(3L * Game.TICKS_PER_SECOND);
+        game.advance(2L * Game.TICKS_PER_SECOND);
 
         assertEquals(5, producedSuns().size());
+    }
+
+    @Test
+    void goldBloomEffectWindowFinishesWhileActionsAreBlocked() {
+        Plant goldBloom = placePlant("Gold Bloom", 3, 2);
+        goldBloom.addActionBlocker(new Object());
+        game.register(goldBloom);
+
+        game.advance(4);
+        assertFalse(goldBloom.isRemovedFromWorld());
+
+        game.advance(1);
+        assertTrue(goldBloom.isRemovedFromWorld());
     }
 
     @Test

@@ -68,6 +68,42 @@ final class AreaStatusEffectResolver {
             long durationTicks
     ) {
         validateTime(currentTick, durationTicks);
+        requireValidRow(zombies, row);
+
+        for (Zombie zombie : zombies) {
+            if (zombie.getRow() == row) {
+                zombie.applyFreeze(
+                        currentTick,
+                        durationTicks
+                );
+            }
+        }
+    }
+
+    void clearColdEffectsInRow(
+            List<Zombie> zombies,
+            int row,
+            long currentTick
+    ) {
+        if (currentTick < 0) {
+            throw new IllegalArgumentException(
+                    "current tick cannot be negative"
+            );
+        }
+
+        requireValidRow(zombies, row);
+
+        for (Zombie zombie : zombies) {
+            if (!zombie.isDead() && zombie.getRow() == row) {
+                zombie.clearColdEffects(currentTick);
+            }
+        }
+    }
+
+    private void requireValidRow(
+            List<Zombie> zombies,
+            int row
+    ) {
         Objects.requireNonNull(
                 zombies,
                 "zombies cannot be null"
@@ -77,15 +113,6 @@ final class AreaStatusEffectResolver {
             throw new IndexOutOfBoundsException(
                     "row " + row + " is out of bounds"
             );
-        }
-
-        for (Zombie zombie : zombies) {
-            if (zombie.getRow() == row) {
-                zombie.applyFreeze(
-                        currentTick,
-                        durationTicks
-                );
-            }
         }
     }
 

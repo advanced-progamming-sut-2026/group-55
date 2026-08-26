@@ -20,6 +20,7 @@ import pvz.model.entity.plant.behavior.capability.PlantFoodCapability;
 import pvz.model.entity.plant.behavior.capability.SunProductionCapability;
 import pvz.model.entity.plant.hit.PlantHitContext;
 import pvz.model.entity.plant.hit.PlantHitSource;
+import pvz.model.entity.plant.placement.PlantPlacementTarget;
 import pvz.model.entity.zombie.Zombie;
 
 public class Plant extends LivingEntity {
@@ -49,8 +50,7 @@ public class Plant extends LivingEntity {
     private final Set<Object> actionBlockers = new HashSet<>();
     private int freezeLevel;
 
-    private boolean hitInProgress;
-    private double armorAbsorbedInHit;
+    private final PlantHitPipeline hitPipeline;
 
     public Plant(PlantSpec spec) {
         this.spec = Objects.requireNonNull(spec, "plant spec cannot be null");
@@ -68,6 +68,8 @@ public class Plant extends LivingEntity {
 
         this.sunProductionCapability =
                 PlantCapabilities.sunProduction(behavior);
+
+        this.hitPipeline = new PlantHitPipeline(this, behavior);
 
         this.plantFoodController =
                 new PlantFoodController(
@@ -142,6 +144,13 @@ public class Plant extends LivingEntity {
             return false;
         }
 
+        if (PlantCapabilities.blocksThreatDuringActivation(
+                behavior,
+                threat
+        )) {
+            return false;
+        }
+
         if (world == null) {
             return true;
         }
@@ -175,7 +184,10 @@ public class Plant extends LivingEntity {
     private boolean isPlantFoodActivationAllowed() {
         return freezeLevel == 0
                 && world != null
-                && !world.board().isPlantCovered(this);
+                && !world.board().isPlantCovered(this)
+                && !PlantCapabilities.blocksPlantFoodDuringActivation(
+                        behavior
+                );
     }
 
     private void activatePlantFoodForMatchingPlants(
@@ -242,6 +254,40 @@ public class Plant extends LivingEntity {
 
     public PlantStackingRole getStackingRole() {
         return spec.getStackingRole();
+    }
+
+    public boolean canBeEatenByZombie() {
+        return PlantCapabilities.canBeEatenByZombie(behavior);
+    }
+
+    public boolean tryTriggerOnHostileContact(long currentTick) {
+        if (removedFromWorld) {
+            return false;
+        }
+
+        return PlantCapabilities.tryTriggerOnHostileContact(
+                behavior,
+                currentTick
+        );
+    }
+
+    public boolean requiresTargetTile() {
+        return PlantCapabilities.requiresTargetTile(behavior);
+    }
+
+    public boolean canTargetTile(PlantPlacementTarget target) {
+        return PlantCapabilities.canTargetTile(behavior, target);
+    }
+
+    public <T> T behaviorCapability(Class<T> capabilityType) {
+        Objects.requireNonNull(
+                capabilityType,
+                "capability type cannot be null"
+        );
+
+        return capabilityType.isInstance(behavior)
+                ? capabilityType.cast(behavior)
+                : null;
     }
 
     public boolean blocksVaulting() {
@@ -330,6 +376,13 @@ public class Plant extends LivingEntity {
         }
 
         if (!canBeAffectedBy(threat)) {
+            if (PlantCapabilities.blocksThreatDuringActivation(
+                    behavior,
+                    threat
+            )) {
+                return PlantRemovalResult.BLOCKED_BY_ACTIVATION;
+            }
+
             return PlantRemovalResult.BLOCKED_BY_PLANT_FOOD;
         }
 
@@ -366,16 +419,7 @@ public class Plant extends LivingEntity {
 
     @Override
     protected double modifyIncomingDamage(double damage) {
-        double remainingDamage = PlantCapabilities.modifyIncomingDamage(
-                behavior,
-                damage
-        );
-
-        if (hitInProgress) {
-            armorAbsorbedInHit += Math.max(0, damage - remainingDamage);
-        }
-
-        return remainingDamage;
+        return hitPipeline.modifyIncomingDamage(damage);
     }
 
     public boolean receiveHit(
@@ -383,36 +427,12 @@ public class Plant extends LivingEntity {
             Zombie attacker,
             double damage
     ) {
-        Objects.requireNonNull(source, "plant hit source cannot be null");
-
-        if (!(damage > 0)
-                || removedFromWorld
-                || !canBeAffectedBy(PlantThreat.DAMAGE)) {
-            return false;
-        }
-
-        double healthBeforeHit = health;
-
-        armorAbsorbedInHit = 0;
-        hitInProgress = true;
-
-        try {
-            takeDamage(damage);
-        } finally {
-            hitInProgress = false;
-        }
-
-        PlantCapabilities.notifyHit(behavior, new PlantHitContext(
+        return hitPipeline.receiveHit(
                 source,
                 attacker,
                 damage,
-                armorAbsorbedInHit,
-                healthBeforeHit - health,
-                currentTick(),
-                true
-        ));
-
-        return true;
+                currentTick()
+        );
     }
 
     public double getArmorHealth() {
@@ -448,6 +468,13 @@ public class Plant extends LivingEntity {
     @Override
     public void update(long tick) {
         if (world == null || removedFromWorld) {
+            return;
+        }
+
+        if (PlantCapabilities.updateTransientEffectIfActive(
+                behavior,
+                tick
+        )) {
             return;
         }
 
