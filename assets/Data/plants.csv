@@ -41,7 +41,7 @@ id,name,category,tags,cost,baseHp,damage,baseAbility,plantFoodEffect,lvl2,lvl3,l
 40,Phat Beet,MELEE,AOE,150,300,15,Sonic blast hitting a 3x3 area around itself.,Unleashes a devastating sonic blast on all nearby zombies.,Dmg +10,Atk Speed +10%,HP +200,2,5
 41,Chomper,MELEE,,150,300,Insta-kill,"Instantly swallows one zombie, then digests for 40 seconds.",Swallows 3 zombies at once from a distance.,Digest -2s,HP +200,Digest -3s,40,5
 42,Wasabi Whip,MELEE,FIRE,150,300,40,Whips the tiles ahead and behind (warms nearby tiles).,Spins its whip across a 3x3 area.,Dmg +10,Range +1 Tile,HP +200,2,5
-43,Kiwibeast,MELEE,AOE|RAMP_UP,175,300,15/30/45,"Area sonic wave; grows over time, dealing more damage. To Stg2: 24s | To Stg3: 72s","Leaps and slams the ground, dealing area damage.",HP +200,Dmg +15,Max Size +1,2,5
+43,Kiwibeast,MELEE,AOE|RAMP_UP,175,300,15/30/45,"Area sonic wave; grows over time, dealing more damage. To Stg2: 24s | To Stg3: 72s","Immediately grows to Stage 3, then leaps and slams the ground, dealing area damage.",HP +200,Dmg +15,Max Size +1,2,5
 44,Wall-nut,WALL,,50,4000,0,Tough defensive barrier that stops zombies.,Gains permanent armor worth 4000 extra HP.,HP +1000,Cooldown -5s,HP +1500,-,20
 45,Tall-nut,WALL,BLOCK_VAULT,125,8000,0,Tall barrier; stops zombies from vaulting over it.,Gains permanent armor worth 8000 HP.,HP +2000,Cooldown -5s,HP +3000,-,20
 46,Endurian,WALL,REFLECT_DAMAGE,100,3000,20,Defensive barrier that reflects damage back at attackers.,Gains metal armor and increased reflect damage.,Reflect Dmg +5,HP +1000,Cost -25,-,15

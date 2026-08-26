@@ -6,6 +6,7 @@ import pvz.model.entity.plant.behavior.capability.PlantArmorCapability;
 import pvz.model.entity.plant.behavior.capability.PlantActivationCapability;
 import pvz.model.entity.plant.behavior.capability.PlantFoodCapability;
 import pvz.model.entity.plant.behavior.capability.PlantHitReactionCapability;
+import pvz.model.entity.plant.behavior.capability.IntrinsicActionTimingCapability;
 import pvz.model.entity.plant.behavior.capability.ContactTriggerCapability;
 import pvz.model.entity.plant.behavior.capability.SunProductionCapability;
 import pvz.model.entity.plant.behavior.capability.TargetTilePlacementCapability;
@@ -57,6 +58,11 @@ final class PlantCapabilities {
         return behavior instanceof SunProductionCapability capability
                 ? capability
                 : null;
+    }
+
+    static boolean usesIntrinsicActionTiming(PlantBehavior behavior) {
+        return behavior instanceof IntrinsicActionTimingCapability capability
+                && capability.usesIntrinsicActionTiming();
     }
 
     static boolean blocksVaulting(PlantBehavior behavior) {

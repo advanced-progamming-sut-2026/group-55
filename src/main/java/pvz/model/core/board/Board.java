@@ -151,6 +151,24 @@ public final class Board implements Updatable {
         );
     }
 
+    public void damageZombiesInArea(
+            List<Zombie> zombies,
+            int centerX,
+            int centerY,
+            int radius,
+            double damage,
+            DamageContext.AttackDelivery delivery
+    ) {
+        areaDamageResolver.damageZombiesWithAbility(
+                zombies,
+                centerX,
+                centerY,
+                radius,
+                damage,
+                delivery
+        );
+    }
+
     public void damageZombiesDirectlyInArea(
             List<Zombie> zombies,
             int centerX,

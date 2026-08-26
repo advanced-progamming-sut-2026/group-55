@@ -27,6 +27,25 @@ final class AreaDamageResolver {
             int radius,
             double damage
     ) {
+        damageZombiesWithAbility(
+                zombies,
+                centerX,
+                centerY,
+                radius,
+                damage,
+                DamageContext.AttackDelivery.UNKNOWN
+        );
+    }
+
+    void damageZombiesWithAbility(
+            List<Zombie> zombies,
+            int centerX,
+            int centerY,
+            int radius,
+            double damage,
+            DamageContext.AttackDelivery delivery
+    ) {
+        Objects.requireNonNull(delivery, "attack delivery cannot be null");
         applyToZombies(
                 zombies,
                 centerX,
@@ -35,6 +54,7 @@ final class AreaDamageResolver {
                 damage,
                 zombie -> zombie.takeAbilityDamage(
                         damage,
+                        delivery,
                         DamageContext.ImpactMode.AREA
                 )
         );

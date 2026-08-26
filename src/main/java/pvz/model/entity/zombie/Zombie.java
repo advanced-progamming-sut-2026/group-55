@@ -356,11 +356,26 @@ public final class Zombie extends LivingEntity {
             double damage,
             DamageContext.ImpactMode impactMode
     ) {
+        return takeAbilityDamage(
+                damage,
+                DamageContext.AttackDelivery.UNKNOWN,
+                impactMode
+        );
+    }
+
+    public boolean takeAbilityDamage(
+            double damage,
+            DamageContext.AttackDelivery delivery,
+            DamageContext.ImpactMode impactMode
+    ) {
         return receiveHit(new DamageContext(
                 damage,
                 DamageContext.DamageSource.ABILITY,
                 null,
-                DamageContext.AttackDelivery.UNKNOWN,
+                Objects.requireNonNull(
+                        delivery,
+                        "attack delivery cannot be null"
+                ),
                 Objects.requireNonNull(
                         impactMode,
                         "impact mode cannot be null"

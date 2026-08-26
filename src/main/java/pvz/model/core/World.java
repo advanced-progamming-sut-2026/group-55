@@ -19,6 +19,7 @@ import pvz.model.entity.collectible.sun.SunCollectionOutcome;
 import pvz.model.entity.plant.Plant;
 import pvz.model.entity.plant.attack.ShotVector;
 import pvz.model.entity.projectile.ProjectileType;
+import pvz.model.entity.zombie.DamageContext;
 import pvz.model.entity.zombie.PushedObstacle;
 import pvz.model.entity.zombie.Zombie;
 
@@ -299,6 +300,23 @@ public final class World {
 
     public boolean hasEnemyContentAt(int column, int row) {
         return enemyContentResolver.hasEnemyContentAt(column, row);
+    }
+
+    public void damageZombiesInArea(
+            int column,
+            int row,
+            int radius,
+            double damage,
+            DamageContext.AttackDelivery delivery
+    ) {
+        board.damageZombiesInArea(
+                getZombies(),
+                column,
+                row,
+                radius,
+                damage,
+                delivery
+        );
     }
 
     public void damageEnemyContentsInArea(

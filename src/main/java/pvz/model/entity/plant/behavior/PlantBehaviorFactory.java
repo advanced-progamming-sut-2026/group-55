@@ -6,6 +6,7 @@ import pvz.model.entity.plant.Plant;
 import pvz.model.entity.plant.PlantSpec;
 import pvz.model.entity.plant.category.explosive.ExplosiveBehaviorFactory;
 import pvz.model.entity.plant.category.lobber.LobberBehaviorFactory;
+import pvz.model.entity.plant.category.melee.MeleeBehaviorFactory;
 import pvz.model.entity.plant.category.shooter.ShooterBehaviorFactory;
 import pvz.model.entity.plant.category.strikethrough.StrikeThroughBehaviorFactory;
 import pvz.model.entity.plant.category.sun.SunProducerBehavior;
@@ -51,6 +52,12 @@ public final class PlantBehaviorFactory {
 
             case LOBBER ->
                     LobberBehaviorFactory.create(
+                            owner,
+                            spec
+                    );
+
+            case MELEE ->
+                    MeleeBehaviorFactory.create(
                             owner,
                             spec
                     );

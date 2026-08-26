@@ -496,11 +496,15 @@ public class Plant extends LivingEntity {
             return;
         }
 
-        if (actionIntervalTicks <= 0) {
+        boolean intrinsicTiming =
+                PlantCapabilities.usesIntrinsicActionTiming(behavior);
+
+        if (!intrinsicTiming && actionIntervalTicks <= 0) {
             return;
         }
 
-        if (tick - lastActionTick < actionIntervalTicks) {
+        long minimumInterval = intrinsicTiming ? 1 : actionIntervalTicks;
+        if (tick - lastActionTick < minimumInterval) {
             return;
         }
 
