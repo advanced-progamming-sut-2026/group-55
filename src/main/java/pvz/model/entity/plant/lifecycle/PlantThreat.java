@@ -12,6 +12,8 @@ public enum PlantThreat {
 
     FORCED_REMOVAL(true, true),
 
+    SUPPORT_LOSS(false, true),
+
     FREEZE(true, false),
 
     OCTOPUS(true, false),

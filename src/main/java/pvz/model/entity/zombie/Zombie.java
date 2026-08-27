@@ -93,6 +93,38 @@ public final class Zombie extends LivingEntity {
             int row,
             ZombieAllegiance initialAllegiance
     ) {
+        spawnInternal(
+                world,
+                column,
+                row,
+                initialAllegiance,
+                null
+        );
+    }
+
+    public void spawnWithGlowingState(
+            World world,
+            int column,
+            int row,
+            ZombieAllegiance initialAllegiance,
+            boolean initialGlowing
+    ) {
+        spawnInternal(
+                world,
+                column,
+                row,
+                initialAllegiance,
+                initialGlowing
+        );
+    }
+
+    private void spawnInternal(
+            World world,
+            int column,
+            int row,
+            ZombieAllegiance initialAllegiance,
+            Boolean initialGlowing
+    ) {
         Objects.requireNonNull(world, "world cannot be null");
         Objects.requireNonNull(
                 initialAllegiance,
@@ -112,6 +144,9 @@ public final class Zombie extends LivingEntity {
         }
 
         allegiance = initialAllegiance;
+        glowing = initialGlowing != null
+                ? initialGlowing
+                : world.rollGlowingZombie();
         this.x = tileCenter(column);
         this.y = tileCenter(row);
         world.addZombie(this);
@@ -244,6 +279,40 @@ public final class Zombie extends LivingEntity {
 
     public void addArmor(ArmorSpec armorSpec) {
         armorSet.add(Objects.requireNonNull(armorSpec));
+    }
+
+    void detachForTransformation() {
+        requireSpawned();
+
+        World activeWorld = world;
+        resetBiteTarget();
+        zombieCombat.reset();
+        activeWorld.removeZombie(this);
+        activeWorld.game().unregister(this);
+        world = null;
+    }
+
+    void restorePositionAfterTransformation(double targetX, double targetY) {
+        requireSpawned();
+
+        if (!Double.isFinite(targetX) || !Double.isFinite(targetY)) {
+            throw new IllegalArgumentException(
+                    "transformation position must be finite"
+            );
+        }
+
+        if (targetX < 0
+                || targetX >= world.board().getCols()
+                || targetY < 0
+                || targetY >= world.board().getRows()) {
+            throw new IllegalArgumentException(
+                    "transformation position is out of bounds"
+            );
+        }
+
+        x = targetX;
+        y = targetY;
+        resetBiteTarget();
     }
 
     public void moveToColumn(int column) {

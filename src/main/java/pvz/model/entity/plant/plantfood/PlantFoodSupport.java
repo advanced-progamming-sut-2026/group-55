@@ -5,6 +5,7 @@ import pvz.model.entity.plant.category.explosive.ExplosiveBehaviorFactory;
 import pvz.model.entity.plant.category.homing.HomingBehaviorFactory;
 import pvz.model.entity.plant.category.lobber.LobberBehaviorFactory;
 import pvz.model.entity.plant.category.melee.MeleeBehaviorFactory;
+import pvz.model.entity.plant.category.modifier.ModifierBehaviorFactory;
 import pvz.model.entity.plant.category.shooter.bowlingbulb.BowlingBulbPlantFoodProfile;
 import pvz.model.entity.plant.category.shooter.plantfood.ShooterPlantFoodProfiles;
 import pvz.model.entity.plant.category.sun.SunProfiles;
@@ -40,6 +41,9 @@ public final class PlantFoodSupport {
 
             case MELEE ->
                     MeleeBehaviorFactory.supportsPlantFood(spec);
+
+            case MODIFIER ->
+                    ModifierBehaviorFactory.supportsPlantFood(spec);
 
             case WALL ->
                     WallBehaviorFactory.supportsPlantFood(spec);

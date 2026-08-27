@@ -11,12 +11,16 @@ import java.util.function.Function;
 
 import pvz.model.core.board.Board;
 import pvz.model.core.board.HorizontalDirection;
+import pvz.model.core.board.TileType;
 import pvz.model.entity.LawnMower;
 import pvz.model.entity.collectible.Collectible;
 import pvz.model.entity.collectible.plantfood.PlantFood;
 import pvz.model.entity.collectible.sun.Sun;
 import pvz.model.entity.collectible.sun.SunCollectionOutcome;
 import pvz.model.entity.plant.Plant;
+import pvz.model.entity.plant.PlantStackingRole;
+import pvz.model.entity.plant.PlantTag;
+import pvz.model.entity.plant.lifecycle.PlantThreat;
 import pvz.model.entity.plant.attack.ShotVector;
 import pvz.model.entity.projectile.ProjectileType;
 import pvz.model.entity.zombie.DamageContext;
@@ -44,6 +48,7 @@ public final class World {
             new EnemyContentResolver(this);
     private final RandomGenerator random;
     private Function<String, Zombie> zombieCreator;
+    private Function<String, Plant> plantCreator;
     private ZombieDiscoveryListener zombieDiscoveryListener =
             ZombieDiscoveryListener.none();
 
@@ -114,13 +119,14 @@ public final class World {
                 zombie,
                 "zombie cannot be null"
         );
-        checkedZombie.setGlowing(
-                random.nextDouble() < GLOWING_ZOMBIE_CHANCE
-        );
         zombieRegistry.add(checkedZombie);
         zombieDiscoveryListener.onZombieDiscovered(
                 checkedZombie.getSpec()
         );
+    }
+
+    public boolean rollGlowingZombie() {
+        return random.nextDouble() < GLOWING_ZOMBIE_CHANCE;
     }
 
     public void removeZombie(Zombie zombie) {
@@ -574,6 +580,73 @@ public final class World {
         return List.copyOf(plants);
     }
 
+    public void setPlantCreator(Function<String, Plant> plantCreator) {
+        if (this.plantCreator != null) {
+            throw new IllegalStateException(
+                    "plant creator is already configured"
+            );
+        }
+        this.plantCreator = Objects.requireNonNull(
+                plantCreator,
+                "plant creator cannot be null"
+        );
+    }
+
+    public Plant spawnPlantFromAbility(
+            String plantName,
+            int column,
+            int row
+    ) {
+        if (plantCreator == null) {
+            throw new IllegalStateException(
+                    "plant creator is not configured"
+            );
+        }
+
+        Plant plant = plantCreator.apply(plantName);
+        if (plant == null) {
+            throw new IllegalArgumentException(
+                    "unknown plant: " + plantName
+            );
+        }
+
+        board.plant(column, row, plant);
+        if (!board.inBounds(column, row)
+                || !board.getTile(column, row).getPlants().contains(plant)) {
+            return null;
+        }
+
+        plant.place(this, column, row, game.getCurrentTick());
+        if (!plant.isRemovedFromWorld()) {
+            game.register(plant);
+        }
+        return plant;
+    }
+
+    public void removePlantsUnsupportedByWaterPlatform(
+            int column,
+            int row
+    ) {
+        if (!board.inBounds(column, row)) {
+            return;
+        }
+
+        var tile = board.getTile(column, row);
+        if (tile.getType() != TileType.WATER
+                || tile.getPlants().stream().anyMatch(
+                        plant -> plant.getStackingRole()
+                                == PlantStackingRole.WATER_PLATFORM
+                )) {
+            return;
+        }
+
+        for (Plant plant : tile.getPlants()) {
+            if (!plant.hasTag(PlantTag.WATER)) {
+                plant.tryRemove(PlantThreat.SUPPORT_LOSS);
+            }
+        }
+    }
+
     public void setZombieCreator(Function<String, Zombie> zombieCreator) {
         if (this.zombieCreator != null) {
             throw new IllegalStateException("zombie creator is already configured");
@@ -612,13 +685,7 @@ public final class World {
             int row,
             ZombieAllegiance allegiance
     ) {
-        if (zombieCreator == null) {
-            throw new IllegalStateException("zombie creator is not configured");
-        }
-        Zombie zombie = zombieCreator.apply(zombieId);
-        if (zombie == null) {
-            throw new IllegalArgumentException("unknown zombie: " + zombieId);
-        }
+        Zombie zombie = createZombieForSpawn(zombieId);
         zombie.spawn(
                 this,
                 column,
@@ -628,6 +695,40 @@ public final class World {
                         "zombie allegiance cannot be null"
                 )
         );
+        return zombie;
+    }
+
+    public Zombie spawnZombie(
+            String zombieId,
+            int column,
+            int row,
+            ZombieAllegiance allegiance,
+            boolean glowing
+    ) {
+        Zombie zombie = createZombieForSpawn(zombieId);
+        zombie.spawnWithGlowingState(
+                this,
+                column,
+                row,
+                Objects.requireNonNull(
+                        allegiance,
+                        "zombie allegiance cannot be null"
+                ),
+                glowing
+        );
+        return zombie;
+    }
+
+    private Zombie createZombieForSpawn(String zombieId) {
+        if (zombieCreator == null) {
+            throw new IllegalStateException("zombie creator is not configured");
+        }
+
+        Zombie zombie = zombieCreator.apply(zombieId);
+        if (zombie == null) {
+            throw new IllegalArgumentException("unknown zombie: " + zombieId);
+        }
+
         return zombie;
     }
 

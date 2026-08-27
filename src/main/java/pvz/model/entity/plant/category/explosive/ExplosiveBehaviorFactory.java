@@ -1,5 +1,6 @@
 package pvz.model.entity.plant.category.explosive;
 
+import java.util.Map;
 import java.util.Objects;
 
 import pvz.model.entity.plant.Plant;
@@ -64,6 +65,20 @@ public final class ExplosiveBehaviorFactory {
             case TOMBSTONE_DESTROY ->
                     new GraveBusterBehavior(owner, profile);
         };
+    }
+
+    public static PlantBehavior createMineBehavior(
+            Plant owner,
+            double damage,
+            Map<String, Double> params
+    ) {
+        Objects.requireNonNull(owner, "owner plant cannot be null");
+        Objects.requireNonNull(params, "mine params cannot be null");
+
+        return new ContactMineBehavior(
+                owner,
+                new ExplosiveProfile(ExplosiveKind.MINE, damage, params)
+        );
     }
 
     private static PlantBehavior blast(

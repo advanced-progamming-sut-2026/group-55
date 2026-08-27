@@ -60,3 +60,7 @@ plantId,behavior,param,value
 55,CAT_TAIL,projectileSpeedTilesPerSecond,2
 55,CAT_TAIL,plantFoodProjectileCount,8
 55,CAT_TAIL,plantFoodProjectileIntervalTicks,1
+58,LILY_PAD,plantFoodCloneCount,4
+52,TORCHWOOD,peaDamageMultiplier,2
+52,TORCHWOOD,plantFoodPeaDamageMultiplier,3
+52,TORCHWOOD,plantFoodBlueFlameDurationTicks,600

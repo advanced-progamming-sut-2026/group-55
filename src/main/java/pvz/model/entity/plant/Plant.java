@@ -401,11 +401,18 @@ public class Plant extends LivingEntity {
     ) {
         removedFromWorld = true;
 
+        boolean removedWaterPlatform = getStackingRole()
+                == PlantStackingRole.WATER_PLATFORM;
+
         world.board().detachPlant(column, row, this);
 
         world.game().unregister(this);
 
         behavior.onRemoved(threat);
+
+        if (removedWaterPlatform) {
+            world.removePlantsUnsupportedByWaterPlatform(column, row);
+        }
 
         if (eventMessage != null && !eventMessage.isBlank()) {
             GameEvents.publish(eventMessage);

@@ -8,6 +8,7 @@ import pvz.model.entity.plant.category.explosive.ExplosiveBehaviorFactory;
 import pvz.model.entity.plant.category.homing.HomingBehaviorFactory;
 import pvz.model.entity.plant.category.lobber.LobberBehaviorFactory;
 import pvz.model.entity.plant.category.melee.MeleeBehaviorFactory;
+import pvz.model.entity.plant.category.modifier.ModifierBehaviorFactory;
 import pvz.model.entity.plant.category.shooter.ShooterBehaviorFactory;
 import pvz.model.entity.plant.category.strikethrough.StrikeThroughBehaviorFactory;
 import pvz.model.entity.plant.category.sun.SunProducerBehavior;
@@ -41,6 +42,8 @@ public final class PlantBehaviorFactory {
             case HOMING -> HomingBehaviorFactory.create(owner, spec);
 
             case MELEE -> MeleeBehaviorFactory.create(owner, spec);
+
+            case MODIFIER -> ModifierBehaviorFactory.create(owner, spec);
 
             default -> new PassivePlantBehavior(owner);
         };

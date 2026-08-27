@@ -43,7 +43,7 @@ public class ShooterBehavior
 
         this.plantFoodProfile = ShooterPlantFoodProfiles.from(spec);
 
-        this.projectileEmitter = new PlantProjectileEmitter(spec.getName());
+        this.projectileEmitter = new PlantProjectileEmitter(spec);
 
         this.attackController = new ProjectileAttackController(
                 profile,

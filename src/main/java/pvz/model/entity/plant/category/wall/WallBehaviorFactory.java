@@ -46,6 +46,30 @@ public final class WallBehaviorFactory {
         );
     }
 
+    public static PlantBehavior createBasicWallLike(
+            Plant owner,
+            PlantSpec spec
+    ) {
+        Objects.requireNonNull(owner, "owner plant cannot be null");
+        Objects.requireNonNull(spec, "plant spec cannot be null");
+
+        if (spec.getBaseHp() <= 0) {
+            throw new IllegalArgumentException(
+                    "basic wall health must be positive"
+            );
+        }
+
+        if (spec.hasPlantFoodEffect()) {
+            return new ArmoredWallBehavior(
+                    owner,
+                    false,
+                    spec.getBaseHp()
+            );
+        }
+
+        return new WallBehavior(owner, false);
+    }
+
     public static boolean supportsPlantFood(PlantSpec spec) {
         return spec != null
                 && spec.getCategory() == PlantCategory.WALL
