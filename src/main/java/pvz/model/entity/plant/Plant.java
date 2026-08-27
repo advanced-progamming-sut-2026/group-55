@@ -17,9 +17,11 @@ import pvz.model.entity.plant.lifecycle.PlantRemovalResult;
 import pvz.model.entity.plant.behavior.PlantBehaviorFactory;
 import pvz.model.entity.plant.behavior.PlantPlacementContext;
 import pvz.model.entity.plant.behavior.capability.PlantFoodCapability;
-import pvz.model.entity.plant.behavior.capability.DamageModifierCapability;
 import pvz.model.entity.plant.behavior.capability.SunProductionCapability;
-import pvz.model.entity.plant.behavior.capability.VaultBlockingCapability;
+import pvz.model.entity.plant.hit.PlantHitContext;
+import pvz.model.entity.plant.hit.PlantHitSource;
+import pvz.model.entity.plant.placement.PlantPlacementTarget;
+import pvz.model.entity.zombie.Zombie;
 
 public class Plant extends LivingEntity {
     public static final int FULL_FREEZE_LEVEL = 3;
@@ -48,6 +50,8 @@ public class Plant extends LivingEntity {
     private final Set<Object> actionBlockers = new HashSet<>();
     private int freezeLevel;
 
+    private final PlantHitPipeline hitPipeline;
+
     public Plant(PlantSpec spec) {
         this.spec = Objects.requireNonNull(spec, "plant spec cannot be null");
 
@@ -60,9 +64,12 @@ public class Plant extends LivingEntity {
 
         this.behavior = PlantBehaviorFactory.create(this, spec);
 
-        this.plantFoodCapability = resolvePlantFoodCapability(behavior);
+        this.plantFoodCapability = PlantCapabilities.plantFood(behavior);
 
-        this.sunProductionCapability = resolveSunProductionCapability(behavior);
+        this.sunProductionCapability =
+                PlantCapabilities.sunProduction(behavior);
+
+        this.hitPipeline = new PlantHitPipeline(this, behavior);
 
         this.plantFoodController =
                 new PlantFoodController(
@@ -119,30 +126,7 @@ public class Plant extends LivingEntity {
         sunProductionCapability.onProducedSunRemoved();
     }
 
-    private static SunProductionCapability
-    resolveSunProductionCapability(PlantBehavior behavior) {
-        if (behavior instanceof SunProductionCapability capability) {
-            return capability;
-        }
-
-        return null;
-    }
-
     //plantfood
-    private static PlantFoodCapability
-    resolvePlantFoodCapability(PlantBehavior behavior) {
-        if (!(behavior
-                instanceof PlantFoodCapability capability)) {
-            return null;
-        }
-
-        if (!capability.supportsPlantFood()) {
-            return null;
-        }
-
-        return capability;
-    }
-
     public boolean supportsPlantFood() {
         return plantFoodController.supportsPlantFood();
     }
@@ -157,6 +141,13 @@ public class Plant extends LivingEntity {
         if (!actionBlockers.isEmpty()
                 && (threat == PlantThreat.DAMAGE
                 || threat == PlantThreat.INSTANT_DESTROY)) {
+            return false;
+        }
+
+        if (PlantCapabilities.blocksThreatDuringActivation(
+                behavior,
+                threat
+        )) {
             return false;
         }
 
@@ -193,7 +184,10 @@ public class Plant extends LivingEntity {
     private boolean isPlantFoodActivationAllowed() {
         return freezeLevel == 0
                 && world != null
-                && !world.board().isPlantCovered(this);
+                && !world.board().isPlantCovered(this)
+                && !PlantCapabilities.blocksPlantFoodDuringActivation(
+                        behavior
+                );
     }
 
     private void activatePlantFoodForMatchingPlants(
@@ -262,9 +256,42 @@ public class Plant extends LivingEntity {
         return spec.getStackingRole();
     }
 
+    public boolean canBeEatenByZombie() {
+        return PlantCapabilities.canBeEatenByZombie(behavior);
+    }
+
+    public boolean tryTriggerOnHostileContact(long currentTick) {
+        if (removedFromWorld) {
+            return false;
+        }
+
+        return PlantCapabilities.tryTriggerOnHostileContact(
+                behavior,
+                currentTick
+        );
+    }
+
+    public boolean requiresTargetTile() {
+        return PlantCapabilities.requiresTargetTile(behavior);
+    }
+
+    public boolean canTargetTile(PlantPlacementTarget target) {
+        return PlantCapabilities.canTargetTile(behavior, target);
+    }
+
+    public <T> T behaviorCapability(Class<T> capabilityType) {
+        Objects.requireNonNull(
+                capabilityType,
+                "capability type cannot be null"
+        );
+
+        return capabilityType.isInstance(behavior)
+                ? capabilityType.cast(behavior)
+                : null;
+    }
+
     public boolean blocksVaulting() {
-        return behavior instanceof VaultBlockingCapability capability
-                && capability.blocksVaulting();
+        return PlantCapabilities.blocksVaulting(behavior);
     }
     // remove damage death
     public boolean isRemovedFromWorld() {
@@ -349,6 +376,13 @@ public class Plant extends LivingEntity {
         }
 
         if (!canBeAffectedBy(threat)) {
+            if (PlantCapabilities.blocksThreatDuringActivation(
+                    behavior,
+                    threat
+            )) {
+                return PlantRemovalResult.BLOCKED_BY_ACTIVATION;
+            }
+
             return PlantRemovalResult.BLOCKED_BY_PLANT_FOOD;
         }
 
@@ -367,11 +401,18 @@ public class Plant extends LivingEntity {
     ) {
         removedFromWorld = true;
 
+        boolean removedWaterPlatform = getStackingRole()
+                == PlantStackingRole.WATER_PLATFORM;
+
         world.board().detachPlant(column, row, this);
 
         world.game().unregister(this);
 
         behavior.onRemoved(threat);
+
+        if (removedWaterPlatform) {
+            world.removePlantsUnsupportedByWaterPlatform(column, row);
+        }
 
         if (eventMessage != null && !eventMessage.isBlank()) {
             GameEvents.publish(eventMessage);
@@ -385,12 +426,36 @@ public class Plant extends LivingEntity {
 
     @Override
     protected double modifyIncomingDamage(double damage) {
-        if (behavior
-                instanceof DamageModifierCapability modifier) {
-            return modifier.modifyIncomingDamage(damage);
-        }
+        return hitPipeline.modifyIncomingDamage(damage);
+    }
 
-        return damage;
+    public boolean receiveHit(
+            PlantHitSource source,
+            Zombie attacker,
+            double damage
+    ) {
+        return hitPipeline.receiveHit(
+                source,
+                attacker,
+                damage,
+                currentTick()
+        );
+    }
+
+    public double getArmorHealth() {
+        return PlantCapabilities.armorHealth(behavior);
+    }
+
+    public double getArmorCapacity() {
+        return PlantCapabilities.armorCapacity(behavior);
+    }
+
+    public boolean hasIntactArmor() {
+        return getArmorHealth() > 0;
+    }
+
+    private long currentTick() {
+        return world == null ? 0 : world.game().getCurrentTick();
     }
 
     @Override
@@ -409,7 +474,14 @@ public class Plant extends LivingEntity {
     //update
     @Override
     public void update(long tick) {
-        if (world == null) {
+        if (world == null || removedFromWorld) {
+            return;
+        }
+
+        if (PlantCapabilities.updateTransientEffectIfActive(
+                behavior,
+                tick
+        )) {
             return;
         }
 
@@ -431,11 +503,15 @@ public class Plant extends LivingEntity {
             return;
         }
 
-        if (actionIntervalTicks <= 0) {
+        boolean intrinsicTiming =
+                PlantCapabilities.usesIntrinsicActionTiming(behavior);
+
+        if (!intrinsicTiming && actionIntervalTicks <= 0) {
             return;
         }
 
-        if (tick - lastActionTick < actionIntervalTicks) {
+        long minimumInterval = intrinsicTiming ? 1 : actionIntervalTicks;
+        if (tick - lastActionTick < minimumInterval) {
             return;
         }
 

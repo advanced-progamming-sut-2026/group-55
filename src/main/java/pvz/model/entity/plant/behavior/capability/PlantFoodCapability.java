@@ -10,6 +10,10 @@ public interface PlantFoodCapability {
         return PlantFoodRules.MINIMUM_DURATION_TICKS;
     }
 
+    default boolean canReceivePlantFood(long currentTick) {
+        return true;
+    }
+
     default boolean targetsMatchingPlantsOnBoard() {
         return false;
     }

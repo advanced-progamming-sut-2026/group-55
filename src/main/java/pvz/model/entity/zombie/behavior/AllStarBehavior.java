@@ -33,6 +33,26 @@ public final class AllStarBehavior implements ZombieBehavior {
     }
 
     @Override
+    public boolean onOpposingZombieEncounter(
+            Zombie zombie,
+            Zombie opponent,
+            World world,
+            long currentTick
+    ) {
+        if (!charged) {
+            return false;
+        }
+        opponent.takeZombieCombatDamage(Double.MAX_VALUE, currentTick);
+        charged = false;
+        GameEvents.publish(
+                "Allstar finished its charge against "
+                        + opponent.getName() + " in lane "
+                        + zombie.getRow() + "."
+        );
+        return true;
+    }
+
+    @Override
     public double modifyMovementMultiplier(
             Zombie zombie,
             World world,

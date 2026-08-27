@@ -1,6 +1,10 @@
 package pvz.model.entity.plant;
 
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class PlantSpec {
     private final int id;
@@ -18,6 +22,7 @@ public class PlantSpec {
     private final String lvl4;
     private final double actionInterval;
     private final double recharge;
+    private final Map<String, Map<String, Double>> behaviorParams;
 
     public PlantSpec(int id,
                      String name,
@@ -33,6 +38,26 @@ public class PlantSpec {
                      String lvl4,
                      double actionInterval,
                      double recharge) {
+        this(id, name, category, tags, cost, baseHp, damage, baseAbility,
+                plantFoodEffect, lvl2, lvl3, lvl4, actionInterval, recharge,
+                Map.of());
+    }
+
+    public PlantSpec(int id,
+                     String name,
+                     PlantCategory category,
+                     Set<PlantTag> tags,
+                     int cost,
+                     int baseHp,
+                     String damage,
+                     String baseAbility,
+                     String plantFoodEffect,
+                     String lvl2,
+                     String lvl3,
+                     String lvl4,
+                     double actionInterval,
+                     double recharge,
+                     Map<String, Map<String, Double>> behaviorParams) {
         this.id = id;
         this.name = name;
         this.category = category;
@@ -51,6 +76,24 @@ public class PlantSpec {
         this.lvl4 = lvl4;
         this.actionInterval = actionInterval;
         this.recharge = recharge;
+        this.behaviorParams = copyParams(behaviorParams);
+    }
+
+    private static Map<String, Map<String, Double>> copyParams(
+            Map<String, Map<String, Double>> params
+    ) {
+        Objects.requireNonNull(params, "behavior params cannot be null");
+
+        return params.entrySet().stream().collect(
+                Collectors.toUnmodifiableMap(
+                        entry -> normalizeBehavior(entry.getKey()),
+                        entry -> Map.copyOf(entry.getValue())
+                )
+        );
+    }
+
+    private static String normalizeBehavior(String behavior) {
+        return behavior.strip().toUpperCase(Locale.ROOT);
     }
 
     public int getBaseHp() { return baseHp; }
@@ -70,6 +113,21 @@ public class PlantSpec {
 
     public PlantStackingRole getStackingRole() {
         return stackingRole;
+    }
+
+    public Map<String, Map<String, Double>> getBehaviorParams() {
+        return behaviorParams;
+    }
+
+    public boolean hasBehaviorParams(String behavior) {
+        return behaviorParams.containsKey(normalizeBehavior(behavior));
+    }
+
+    public Map<String, Double> behaviorParams(String behavior) {
+        return behaviorParams.getOrDefault(
+                normalizeBehavior(behavior),
+                Map.of()
+        );
     }
 
     public boolean hasPlantFoodEffect() {

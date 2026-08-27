@@ -146,7 +146,10 @@ public final class GameController {
         world.sunBank().spend(cost);
         session.recordPlanting(type);
         plant.place(world, x, y, game.getCurrentTick());
-        game.register(plant);
+
+        if (!plant.isRemovedFromWorld()) {
+            game.register(plant);
+        }
 
         if (boosted) {
             boolean activated = plant.tryApplyPlantFood(game.getCurrentTick());
@@ -212,6 +215,9 @@ public final class GameController {
 
             case BLOCKED_BY_PLANT_FOOD ->
                     plant.getName() + " cannot be plucked while plant food is active!";
+
+            case BLOCKED_BY_ACTIVATION ->
+                    plant.getName() + " cannot be plucked while it is activating!";
 
             case ALREADY_REMOVED ->
                     "the plant at ("
@@ -473,7 +479,9 @@ public final class GameController {
             output.append('\n');
         }
 
-        output.append("Z = zombie, O = pushed obstacle, ")
+        output.append("Z = hostile zombie, A = allied zombie, ")
+                .append("X = opposing zombies sharing a tile, ")
+                .append("O = pushed obstacle, ")
                 .append("capital letter = plant's first, ")
                 .append("lowercase letter = non-normal tile's first, ")
                 .append(". = normal tile");
@@ -584,8 +592,16 @@ public final class GameController {
                         .append(plant.getSpec().getCategory().name()
                                 .toLowerCase(Locale.ROOT))
                         .append(", freezeLevel=")
-                        .append(plant.getFreezeLevel())
-                        .append("\n");
+                        .append(plant.getFreezeLevel());
+
+                if (plant.getArmorCapacity() > 0) {
+                    output.append(", armor=")
+                            .append(formatNumber(plant.getArmorHealth()))
+                            .append('/')
+                            .append(formatNumber(plant.getArmorCapacity()));
+                }
+
+                output.append("\n");
             }
         }
 
@@ -624,6 +640,8 @@ public final class GameController {
                         .append(formatNumber(zombie.getY()))
                         .append(", health=")
                         .append(formatNumber(zombie.getHealth()))
+                        .append(", allegiance=")
+                        .append(zombie.getAllegiance().name().toLowerCase(Locale.ROOT))
                         .append(", armor=")
                         .append(formatNumber(zombie.getArmorHealth()))
                         .append(", speed=")
@@ -663,6 +681,10 @@ public final class GameController {
 
             output.append("\thealth: ")
                     .append(zombie.getHealth())
+                    .append("\n");
+
+            output.append("\tallegiance: ")
+                    .append(zombie.getAllegiance().name().toLowerCase(Locale.ROOT))
                     .append("\n");
 
             output.append("\tarmor:\n");
@@ -779,10 +801,26 @@ public final class GameController {
     }
 
     private char cellSymbol(int x, int y) {
+        boolean hostileZombie = false;
+        boolean alliedZombie = false;
         for (Zombie zombie : world.getZombies()) {
-            if (zombie.getTileY() == y && zombie.getTileX() == x) {
-                return 'Z';
+            if (zombie.getTileY() != y || zombie.getTileX() != x) {
+                continue;
             }
+            if (zombie.isAllied()) {
+                alliedZombie = true;
+            } else {
+                hostileZombie = true;
+            }
+        }
+        if (hostileZombie && alliedZombie) {
+            return 'X';
+        }
+        if (alliedZombie) {
+            return 'A';
+        }
+        if (hostileZombie) {
+            return 'Z';
         }
 
         for (PushedObstacle obstacle : world.getPushedObstacles()) {

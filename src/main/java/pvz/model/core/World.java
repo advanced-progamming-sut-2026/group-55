@@ -11,16 +11,22 @@ import java.util.function.Function;
 
 import pvz.model.core.board.Board;
 import pvz.model.core.board.HorizontalDirection;
+import pvz.model.core.board.TileType;
 import pvz.model.entity.LawnMower;
 import pvz.model.entity.collectible.Collectible;
 import pvz.model.entity.collectible.plantfood.PlantFood;
 import pvz.model.entity.collectible.sun.Sun;
 import pvz.model.entity.collectible.sun.SunCollectionOutcome;
 import pvz.model.entity.plant.Plant;
+import pvz.model.entity.plant.PlantStackingRole;
+import pvz.model.entity.plant.PlantTag;
+import pvz.model.entity.plant.lifecycle.PlantThreat;
 import pvz.model.entity.plant.attack.ShotVector;
 import pvz.model.entity.projectile.ProjectileType;
+import pvz.model.entity.zombie.DamageContext;
 import pvz.model.entity.zombie.PushedObstacle;
 import pvz.model.entity.zombie.Zombie;
+import pvz.model.entity.zombie.ZombieAllegiance;
 
 public final class World {
     private static final int RADIOACTIVE_ZOMBIE_RADIUS = 2;
@@ -38,8 +44,11 @@ public final class World {
     private final List<PushedObstacle> pushedObstacles = new ArrayList<>();
     private final List<LawnMower> lawnMowers = new ArrayList<>();
     private final List<Collectible> collectibles = new ArrayList<>();
+    private final EnemyContentResolver enemyContentResolver =
+            new EnemyContentResolver(this);
     private final RandomGenerator random;
     private Function<String, Zombie> zombieCreator;
+    private Function<String, Plant> plantCreator;
     private ZombieDiscoveryListener zombieDiscoveryListener =
             ZombieDiscoveryListener.none();
 
@@ -110,13 +119,14 @@ public final class World {
                 zombie,
                 "zombie cannot be null"
         );
-        checkedZombie.setGlowing(
-                random.nextDouble() < GLOWING_ZOMBIE_CHANCE
-        );
         zombieRegistry.add(checkedZombie);
         zombieDiscoveryListener.onZombieDiscovered(
                 checkedZombie.getSpec()
         );
+    }
+
+    public boolean rollGlowingZombie() {
+        return random.nextDouble() < GLOWING_ZOMBIE_CHANCE;
     }
 
     public void removeZombie(Zombie zombie) {
@@ -185,8 +195,61 @@ public final class World {
         }
     }
 
+    /**
+     * Returns every zombie regardless of allegiance. Gameplay code that means
+     * "enemy of the player" should use {@link #getHostileZombies()} instead.
+     */
     public List<Zombie> getZombies() {
         return zombieRegistry.snapshot();
+    }
+
+    public List<Zombie> getHostileZombies() {
+        return zombieRegistry.hostileView();
+    }
+
+    public List<Zombie> getAlliedZombies() {
+        return zombieRegistry.alliedView();
+    }
+
+    public boolean changeZombieAllegiance(
+            Zombie zombie,
+            ZombieAllegiance newAllegiance
+    ) {
+        Objects.requireNonNull(zombie, "zombie cannot be null");
+        Objects.requireNonNull(
+                newAllegiance,
+                "zombie allegiance cannot be null"
+        );
+        if (!zombieRegistry.contains(zombie) || zombie.isDead()) {
+            return false;
+        }
+        if (zombie.getAllegiance() == newAllegiance) {
+            return false;
+        }
+        zombieRegistry.changeAllegiance(zombie, newAllegiance);
+        return true;
+    }
+
+    public Zombie findOpposingZombieInTile(Zombie zombie) {
+        return zombieRegistry.findOpposingZombieInTile(zombie);
+    }
+
+    public Zombie findOpposingZombieInTile(
+            ZombieAllegiance allegiance,
+            int column,
+            int row
+    ) {
+        if (!board.inBounds(column, row)) {
+            return null;
+        }
+        return zombieRegistry.findOpposingZombieInTile(
+                Objects.requireNonNull(
+                        allegiance,
+                        "zombie allegiance cannot be null"
+                ),
+                column,
+                row
+        );
     }
 
     public void addPushedObstacle(PushedObstacle obstacle) {
@@ -295,6 +358,73 @@ public final class World {
         }
     }
 
+    public boolean hasEnemyContentAt(int column, int row) {
+        return enemyContentResolver.hasEnemyContentAt(column, row);
+    }
+
+    public void damageZombiesInArea(
+            int column,
+            int row,
+            int radius,
+            double damage,
+            DamageContext.AttackDelivery delivery
+    ) {
+        board.damageZombiesInArea(
+                getHostileZombies(),
+                column,
+                row,
+                radius,
+                damage,
+                delivery
+        );
+    }
+
+    public void damageEnemyContentsInArea(
+            int column,
+            int row,
+            int radius,
+            double damage
+    ) {
+        enemyContentResolver.damageInArea(column, row, radius, damage);
+    }
+
+    public void damageEnemyContentsInRow(int row, double damage) {
+        enemyContentResolver.damageInRow(row, damage);
+    }
+
+    public void damageAllEnemyContents(double damage) {
+        enemyContentResolver.damageEverything(damage);
+    }
+
+    public void destroyFireVulnerableObstaclesInRow(int row) {
+        enemyContentResolver.destroyFireVulnerableObstaclesInRow(row);
+    }
+
+    public void clearZombieColdEffectsInRow(
+            int row,
+            long currentTick
+    ) {
+        // Heating a row is a status/environment interaction, not enemy
+        // damage. It may beneficially thaw an allied zombie as well.
+        board.clearColdEffectsFromZombiesInRow(
+                getZombies(),
+                row,
+                currentTick
+        );
+    }
+
+    public void notifyHostilePresentAt(
+            int column,
+            int row,
+            long currentTick
+    ) {
+        enemyContentResolver.notifyHostilePresentAt(
+                column,
+                row,
+                currentTick
+        );
+    }
+
     public boolean hasStraightTargetAhead(
             int row,
             double fromX
@@ -327,7 +457,7 @@ public final class World {
             HorizontalDirection direction
     ) {
         boolean boardTarget = board.hasStraightTarget(
-                zombieRegistry.view(),
+                zombieRegistry.hostileView(),
                 row,
                 fromX,
                 rangeTiles,
@@ -348,7 +478,7 @@ public final class World {
             ShotVector vector
     ) {
         boolean boardTarget = board.hasDirectionalTarget(
-                zombieRegistry.view(),
+                zombieRegistry.hostileView(),
                 startColumn,
                 startRow,
                 rangeTiles,
@@ -405,7 +535,7 @@ public final class World {
             Set<Zombie> ignoredZombies
     ) {
         return board.findHitZombie(
-                zombieRegistry.view(),
+                zombieRegistry.hostileView(),
                 row,
                 fromX,
                 toX,
@@ -450,6 +580,73 @@ public final class World {
         return List.copyOf(plants);
     }
 
+    public void setPlantCreator(Function<String, Plant> plantCreator) {
+        if (this.plantCreator != null) {
+            throw new IllegalStateException(
+                    "plant creator is already configured"
+            );
+        }
+        this.plantCreator = Objects.requireNonNull(
+                plantCreator,
+                "plant creator cannot be null"
+        );
+    }
+
+    public Plant spawnPlantFromAbility(
+            String plantName,
+            int column,
+            int row
+    ) {
+        if (plantCreator == null) {
+            throw new IllegalStateException(
+                    "plant creator is not configured"
+            );
+        }
+
+        Plant plant = plantCreator.apply(plantName);
+        if (plant == null) {
+            throw new IllegalArgumentException(
+                    "unknown plant: " + plantName
+            );
+        }
+
+        board.plant(column, row, plant);
+        if (!board.inBounds(column, row)
+                || !board.getTile(column, row).getPlants().contains(plant)) {
+            return null;
+        }
+
+        plant.place(this, column, row, game.getCurrentTick());
+        if (!plant.isRemovedFromWorld()) {
+            game.register(plant);
+        }
+        return plant;
+    }
+
+    public void removePlantsUnsupportedByWaterPlatform(
+            int column,
+            int row
+    ) {
+        if (!board.inBounds(column, row)) {
+            return;
+        }
+
+        var tile = board.getTile(column, row);
+        if (tile.getType() != TileType.WATER
+                || tile.getPlants().stream().anyMatch(
+                        plant -> plant.getStackingRole()
+                                == PlantStackingRole.WATER_PLATFORM
+                )) {
+            return;
+        }
+
+        for (Plant plant : tile.getPlants()) {
+            if (!plant.hasTag(PlantTag.WATER)) {
+                plant.tryRemove(PlantThreat.SUPPORT_LOSS);
+            }
+        }
+    }
+
     public void setZombieCreator(Function<String, Zombie> zombieCreator) {
         if (this.zombieCreator != null) {
             throw new IllegalStateException("zombie creator is already configured");
@@ -474,14 +671,64 @@ public final class World {
             int column,
             int row
     ) {
+        return spawnZombie(
+                zombieId,
+                column,
+                row,
+                ZombieAllegiance.HOSTILE
+        );
+    }
+
+    public Zombie spawnZombie(
+            String zombieId,
+            int column,
+            int row,
+            ZombieAllegiance allegiance
+    ) {
+        Zombie zombie = createZombieForSpawn(zombieId);
+        zombie.spawn(
+                this,
+                column,
+                row,
+                Objects.requireNonNull(
+                        allegiance,
+                        "zombie allegiance cannot be null"
+                )
+        );
+        return zombie;
+    }
+
+    public Zombie spawnZombie(
+            String zombieId,
+            int column,
+            int row,
+            ZombieAllegiance allegiance,
+            boolean glowing
+    ) {
+        Zombie zombie = createZombieForSpawn(zombieId);
+        zombie.spawnWithGlowingState(
+                this,
+                column,
+                row,
+                Objects.requireNonNull(
+                        allegiance,
+                        "zombie allegiance cannot be null"
+                ),
+                glowing
+        );
+        return zombie;
+    }
+
+    private Zombie createZombieForSpawn(String zombieId) {
         if (zombieCreator == null) {
             throw new IllegalStateException("zombie creator is not configured");
         }
+
         Zombie zombie = zombieCreator.apply(zombieId);
         if (zombie == null) {
             throw new IllegalArgumentException("unknown zombie: " + zombieId);
         }
-        zombie.spawn(this, column, row);
+
         return zombie;
     }
 

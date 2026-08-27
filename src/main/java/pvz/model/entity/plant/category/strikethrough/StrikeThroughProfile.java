@@ -9,15 +9,21 @@ import pvz.model.entity.projectile.ProjectileHitLimit;
 import pvz.model.entity.projectile.ProjectileType;
 
 public record StrikeThroughProfile(
+        StrikeThroughKind kind,
         double damagePerProjectile,
         long ticksBetweenShots,
         List<ShotPath> shotPaths,
         ProjectileType projectileType,
         int rangeTiles,
-        ProjectileHitLimit hitLimit
+        ProjectileHitLimit hitLimit,
+        double plantFoodDamageMultiplier,
+        double plantFoodDamage,
+        double plantFoodKnockbackTiles
 ) implements ProjectileAttackProfile {
 
     public StrikeThroughProfile {
+        kind = Objects.requireNonNull(kind, "strike-through kind cannot be null");
+
         if (damagePerProjectile < 0) {
             throw new IllegalArgumentException(
                     "projectile damage cannot be negative"
@@ -76,5 +82,25 @@ public record StrikeThroughProfile(
                 hitLimit,
                 "projectile hit limit cannot be null"
         );
+
+        if (!Double.isFinite(plantFoodDamageMultiplier)
+                || plantFoodDamageMultiplier <= 0) {
+            throw new IllegalArgumentException(
+                    "plant food damage multiplier must be positive and finite"
+            );
+        }
+
+        if (!Double.isFinite(plantFoodDamage) || plantFoodDamage < 0) {
+            throw new IllegalArgumentException(
+                    "plant food damage must be finite and non-negative"
+            );
+        }
+
+        if (!Double.isFinite(plantFoodKnockbackTiles)
+                || plantFoodKnockbackTiles < 0) {
+            throw new IllegalArgumentException(
+                    "plant food knockback must be finite and non-negative"
+            );
+        }
     }
 }

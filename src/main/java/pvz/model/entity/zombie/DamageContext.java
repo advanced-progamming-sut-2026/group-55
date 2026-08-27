@@ -33,7 +33,7 @@ public record DamageContext(
         );
     }
 
-    public enum DamageSource { PROJECTILE, DIRECT, POISON }
-    public enum AttackDelivery { STRAIGHT, LOBBED, CONTACT, UNKNOWN }
+    public enum DamageSource { PROJECTILE, ABILITY, DIRECT, POISON, ZOMBIE }
+    public enum AttackDelivery { STRAIGHT, LOBBED, HOMING, CONTACT, UNKNOWN }
     public enum ImpactMode { SINGLE_TARGET, AREA }
 }

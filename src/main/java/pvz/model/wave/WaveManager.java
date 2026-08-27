@@ -65,7 +65,7 @@ public final class WaveManager implements Updatable {
         if (state == WaveState.NOT_STARTED || state == WaveState.COMPLETED) {
             return;
         }
-        if (finalWaveFullySpawned && world.getZombies().isEmpty()) {
+        if (finalWaveFullySpawned && world.getHostileZombies().isEmpty()) {
             state = WaveState.COMPLETED;
             return;
         }
@@ -152,7 +152,7 @@ public final class WaveManager implements Updatable {
     }
 
     private double remainingWaveVitality() {
-        List<Zombie> activeZombies = world.getZombies();
+        List<Zombie> activeZombies = world.getHostileZombies();
         return currentWaveZombies.stream()
                 .filter(activeZombies::contains)
                 .mapToDouble(this::vitalityOf)
@@ -165,7 +165,7 @@ public final class WaveManager implements Updatable {
 
     public boolean isCompleted() {
         return state == WaveState.COMPLETED
-                || (finalWaveFullySpawned && world.getZombies().isEmpty());
+                || (finalWaveFullySpawned && world.getHostileZombies().isEmpty());
     }
 
     public int getCurrentWaveNumber() {

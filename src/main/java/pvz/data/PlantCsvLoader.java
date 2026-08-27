@@ -11,10 +11,19 @@ import pvz.model.entity.plant.PlantTag;
 
 public class PlantCsvLoader {
 
+    private static final String BEHAVIOR_PARAMS_FILE =
+            "plant_behavior_params.csv";
+
+    private static final int BEHAVIOR_PARAMS_COLUMNS = 4;
+
     private PlantCsvLoader() {}
 
     public static PlantData load(String path) throws IOException {
-        List<String> lines = Files.readAllLines(Path.of(path));
+        Path plantPath = Path.of(path);
+        List<String> lines = Files.readAllLines(plantPath);
+
+        Map<Integer, Map<String, Map<String, Double>>> behaviorParams =
+                loadBehaviorParams(plantPath);
 
         Map<String, PlantSpec> byName = new HashMap<>();
         Map<Integer, PlantSpec> byId = new HashMap<>();
@@ -45,13 +54,76 @@ public class PlantCsvLoader {
             double actionInterval = parseActionInterval(parts[12]);
             double recharge = Double.parseDouble(parts[13]);
             PlantSpec spec = new PlantSpec(id, name, category, tags, cost, baseHp, damage, baseAbility,
-                    plantFoodEffect, lvl2, lvl3, lvl4, actionInterval, recharge);
+                    plantFoodEffect, lvl2, lvl3, lvl4, actionInterval, recharge,
+                    behaviorParams.getOrDefault(id, Map.of()));
 
             byName.put(spec.getName().toLowerCase(Locale.ROOT), spec);
             byId.put(spec.getId(), spec);
         }
 
         return new PlantData(Map.copyOf(byName), Map.copyOf(byId));
+    }
+
+    private static Map<Integer, Map<String, Map<String, Double>>>
+            loadBehaviorParams(Path plantPath) throws IOException {
+        Path directory = plantPath.toAbsolutePath().getParent();
+
+        if (directory == null) {
+            return Map.of();
+        }
+
+        Path paramsPath = directory.resolve(BEHAVIOR_PARAMS_FILE);
+
+        if (!Files.exists(paramsPath)) {
+            return Map.of();
+        }
+
+        Map<Integer, Map<String, Map<String, Double>>> result =
+                new HashMap<>();
+
+        List<String> lines = Files.readAllLines(paramsPath);
+
+        for (int index = 1; index < lines.size(); index++) {
+            String line = lines.get(index).strip();
+
+            if (line.isEmpty()) {
+                continue;
+            }
+
+            addBehaviorParam(result, splitCsvLine(line), index + 1);
+        }
+
+        return Map.copyOf(result);
+    }
+
+    private static void addBehaviorParam(
+            Map<Integer, Map<String, Map<String, Double>>> result,
+            String[] parts,
+            int lineNumber
+    ) {
+        if (parts.length != BEHAVIOR_PARAMS_COLUMNS) {
+            throw new IllegalArgumentException(
+                    "Bad behavior param line " + lineNumber
+                            + ": expected " + BEHAVIOR_PARAMS_COLUMNS
+                            + " columns, got " + parts.length
+            );
+        }
+
+        int plantId = Integer.parseInt(parts[0].strip());
+        String behavior = parts[1].strip().toUpperCase(Locale.ROOT);
+        String param = parts[2].strip();
+        double value = Double.parseDouble(parts[3].strip());
+
+        Map<String, Double> values = result
+                .computeIfAbsent(plantId, ignored -> new HashMap<>())
+                .computeIfAbsent(behavior, ignored -> new HashMap<>());
+
+        if (values.putIfAbsent(param, value) != null) {
+            throw new IllegalArgumentException(
+                    "duplicate behavior param " + param
+                            + " for plant " + plantId
+            );
+        }
     }
 
     private static Set<PlantTag> parseTags(String column) {

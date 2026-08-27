@@ -8,15 +8,20 @@ import pvz.model.core.Game;
 import pvz.model.core.board.HorizontalDirection;
 import pvz.model.core.World;
 import pvz.model.entity.Entity;
+import pvz.model.entity.plant.Plant;
+import pvz.model.entity.plant.projectile.ProjectileModifierResolver;
 import pvz.model.entity.zombie.PushedObstacle;
 import pvz.model.entity.zombie.Zombie;
 
-public class Projectile extends Entity {
+public class Projectile extends Entity implements ProjectileModifierTarget {
     private static final double TILES_PER_SECOND = 2;
 
     private final World world;
     private final double damage;
-    private final ProjectileType type;
+    private ProjectileType type;
+    private final ProjectileFamily projectileFamily;
+    private PeaHeatState peaHeatState;
+    private double peaDamageMultiplier;
     private final ProjectileHitLimit hitLimit;
     private final Set<Zombie> hitZombies =
             new HashSet<>();
@@ -24,6 +29,7 @@ public class Projectile extends Entity {
             new HashSet<>();
     private final Set<Integer> hitTerrainColumns =
             new HashSet<>();
+    private final Set<Plant> appliedModifiers = new HashSet<>();
 
     private final double terminalX;
     private final HorizontalDirection direction;
@@ -112,6 +118,34 @@ public class Projectile extends Entity {
             HorizontalDirection direction,
             ProjectileHitLimit hitLimit
     ) {
+        this(
+                world,
+                name,
+                startColumn,
+                startRow,
+                spawnOffsetX,
+                damage,
+                type,
+                rangeTiles,
+                direction,
+                hitLimit,
+                ProjectileFamily.GENERIC
+        );
+    }
+
+    public Projectile(
+            World world,
+            String name,
+            int startColumn,
+            int startRow,
+            double spawnOffsetX,
+            double damage,
+            ProjectileType type,
+            int rangeTiles,
+            HorizontalDirection direction,
+            ProjectileHitLimit hitLimit,
+            ProjectileFamily projectileFamily
+    ) {
         if (rangeTiles <= 0) {
             throw new IllegalArgumentException("projectile range must be positive");
         }
@@ -138,6 +172,11 @@ public class Projectile extends Entity {
                 type,
                 "projectile type cannot be null"
         );
+        this.projectileFamily = Objects.requireNonNull(
+                projectileFamily,
+                "projectile family cannot be null"
+        );
+        initializePeaState();
 
         this.direction = Objects.requireNonNull(
                 direction,
@@ -170,6 +209,72 @@ public class Projectile extends Entity {
 
     public ProjectileType getType() {
         return type;
+    }
+
+    @Override
+    public ProjectileFamily getProjectileFamily() {
+        return projectileFamily;
+    }
+
+    @Override
+    public ProjectileType getProjectileType() {
+        return type;
+    }
+
+    @Override
+    public PeaHeatState getPeaHeatState() {
+        return peaHeatState;
+    }
+
+    @Override
+    public double getPeaDamageMultiplier() {
+        return peaDamageMultiplier;
+    }
+
+    @Override
+    public boolean promotePeaHeat(
+            PeaHeatState newState,
+            double totalDamageMultiplier
+    ) {
+        Objects.requireNonNull(newState, "pea heat state cannot be null");
+        if (!Double.isFinite(totalDamageMultiplier)
+                || totalDamageMultiplier <= 0) {
+            throw new IllegalArgumentException(
+                    "pea damage multiplier must be positive and finite"
+            );
+        }
+        if (projectileFamily != ProjectileFamily.PEA
+                || newState.ordinal() < peaHeatState.ordinal()
+                || (newState == peaHeatState
+                && totalDamageMultiplier <= peaDamageMultiplier)) {
+            return false;
+        }
+
+        peaHeatState = newState;
+        peaDamageMultiplier = totalDamageMultiplier;
+        type = ProjectileType.FIRE;
+        return true;
+    }
+
+    private void initializePeaState() {
+        if (projectileFamily == ProjectileFamily.PEA
+                && type == ProjectileType.FIRE) {
+            peaHeatState = PeaHeatState.FIRE;
+            peaDamageMultiplier = type.calculateDamage(1);
+            return;
+        }
+
+        peaHeatState = PeaHeatState.UNHEATED;
+        peaDamageMultiplier = 1;
+    }
+
+    private double effectiveBaseDamage() {
+        if (projectileFamily != ProjectileFamily.PEA) {
+            return damage;
+        }
+
+        double typeMultiplier = type.calculateDamage(1);
+        return damage * peaDamageMultiplier / typeMultiplier;
     }
 
     private double calculateTerminalX(int startColumn, int rangeTiles) {
@@ -274,6 +379,14 @@ public class Projectile extends Entity {
 
         x = nextX;
 
+        ProjectileModifierResolver.applyAtTile(
+                world,
+                this,
+                appliedModifiers,
+                getTileX(),
+                row
+        );
+
         // TODO: The resolver returns only the first blocking tile in the
         // movement segment. When a projectile moves from one already-hit
         // blocking tile directly into another, the second tile may be
@@ -302,7 +415,7 @@ public class Projectile extends Entity {
                 world.board().damageTerrainWithProjectile(
                         blockingTileColumn,
                         row,
-                        damage,
+                        effectiveBaseDamage(),
                         type
                 );
 
@@ -313,7 +426,10 @@ public class Projectile extends Entity {
             }
 
             if (isObstacleFirst(obstacle, zombie, previousX)) {
-                obstacle.takeProjectileDamage(type, damage);
+                obstacle.takeProjectileDamage(
+                        type,
+                        effectiveBaseDamage()
+                );
                 hitObstacles.add(obstacle);
                 if (hitLimit.isReachedBy(hitCount())) {
                     world.game().unregister(this);
@@ -325,7 +441,11 @@ public class Projectile extends Entity {
                 break;
             }
 
-            type.hitZombie(zombie, damage, tick);
+            type.hitZombie(
+                    zombie,
+                    effectiveBaseDamage(),
+                    tick
+            );
             hitZombies.add(zombie);
 
             if (hitLimit.isReachedBy(hitCount())) {

@@ -8,6 +8,7 @@ public final class SnorkelBehavior implements ZombieBehavior {
     @Override
     public DamageContext onIncomingHit(Zombie zombie, DamageContext context) {
         if (zombie.getWorld() == null
+                || context.source() == DamageContext.DamageSource.ZOMBIE
                 || zombie.isEating()
                 || zombie.getWorld().board().getTile(
                 zombie.getTileX(), zombie.getRow()

@@ -2,8 +2,11 @@ package pvz.model.core.board;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import pvz.model.entity.plant.Plant;
+import pvz.model.entity.plant.placement.PlantPlacementTarget;
 
 final class PlantPlacementManager {
 
@@ -19,6 +22,10 @@ final class PlantPlacementManager {
         }
 
         Tile tile = grid.getTile(x, y);
+
+        if (plant.requiresTargetTile()) {
+            return plantOnTargetTile(x, y, tile, plant);
+        }
 
         if (!tile.isPlantableFor(plant)) {
             return "you can't plant " + plant.getName() + " on this tile!";
@@ -69,5 +76,34 @@ final class PlantPlacementManager {
         source.removePlant(plant);
         target.addPlant(plant);
         return true;
+    }
+
+    private String plantOnTargetTile(
+            int x,
+            int y,
+            Tile tile,
+            Plant plant
+    ) {
+        if (!plant.canTargetTile(describeTarget(x, y, tile))) {
+            return "you can't plant " + plant.getName() + " on this tile!";
+        }
+
+        tile.addTopPlant(plant);
+        return "planted " + plant.getName() + " at (" + x + ", " + y + ") successfully!";
+    }
+
+    private PlantPlacementTarget describeTarget(int x, int y, Tile tile) {
+        Set<TileOverlayType> overlayTypes = tile.getOverlays().stream()
+                .map(TileOverlay::getType)
+                .collect(Collectors.toUnmodifiableSet());
+
+        return new PlantPlacementTarget(
+                x,
+                y,
+                tile.getType(),
+                overlayTypes,
+                tile.hasCrater(),
+                !tile.getPlants().isEmpty()
+        );
     }
 }

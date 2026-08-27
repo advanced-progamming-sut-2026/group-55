@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Objects;
 
 import pvz.model.entity.plant.Plant;
+import pvz.model.entity.plant.hit.PlantHitSource;
 import pvz.model.entity.projectile.ProjectileType;
 import pvz.model.entity.zombie.DamageContext;
 import pvz.model.entity.zombie.Zombie;
@@ -16,6 +17,46 @@ final class AreaDamageResolver {
         this.grid = Objects.requireNonNull(
                 grid,
                 "grid cannot be null"
+        );
+    }
+
+    void damageZombiesWithAbility(
+            List<Zombie> zombies,
+            int centerX,
+            int centerY,
+            int radius,
+            double damage
+    ) {
+        damageZombiesWithAbility(
+                zombies,
+                centerX,
+                centerY,
+                radius,
+                damage,
+                DamageContext.AttackDelivery.UNKNOWN
+        );
+    }
+
+    void damageZombiesWithAbility(
+            List<Zombie> zombies,
+            int centerX,
+            int centerY,
+            int radius,
+            double damage,
+            DamageContext.AttackDelivery delivery
+    ) {
+        Objects.requireNonNull(delivery, "attack delivery cannot be null");
+        applyToZombies(
+                zombies,
+                centerX,
+                centerY,
+                radius,
+                damage,
+                zombie -> zombie.takeAbilityDamage(
+                        damage,
+                        delivery,
+                        DamageContext.ImpactMode.AREA
+                )
         );
     }
 
@@ -135,7 +176,8 @@ final class AreaDamageResolver {
             for (int y = minimumY(centerY, radius);
                  y <= maximumY(centerY, radius);
                  y++) {
-                grid.getTile(x, y).takeDamage(damage);
+                grid.getTile(x, y)
+                        .damageAllDestructibleContent(damage);
             }
         }
     }
@@ -181,7 +223,11 @@ final class AreaDamageResolver {
             return;
         }
 
-        plants.getLast().takeDamage(damage);
+        plants.getLast().receiveHit(
+                PlantHitSource.AREA_DAMAGE,
+                null,
+                damage
+        );
     }
 
     private void validateArea(

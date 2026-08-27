@@ -63,18 +63,19 @@ public final class PushObstacleBehavior implements ZombieBehavior {
                     meltsOnFire,
                     destroyedObstacle -> spawnZombiesFromObstacle(
                             destroyedObstacle,
-                            world
+                            world,
+                            zombie
                     )
             );
             obstacle.spawn(world, zombie.getX(), zombie.getY());
             obstacles.add(obstacle);
         }
-        synchronizeObstacles(zombie, world);
+        synchronizeObstacles(zombie, world, currentTick);
     }
 
     @Override
     public void onTick(Zombie zombie, World world, long currentTick) {
-        synchronizeObstacles(zombie, world);
+        synchronizeObstacles(zombie, world, currentTick);
     }
 
     @Override
@@ -83,10 +84,14 @@ public final class PushObstacleBehavior implements ZombieBehavior {
             World world,
             long currentTick
     ) {
-        synchronizeObstacles(zombie, world);
+        synchronizeObstacles(zombie, world, currentTick);
     }
 
-    private void synchronizeObstacles(Zombie zombie, World world) {
+    private void synchronizeObstacles(
+            Zombie zombie,
+            World world,
+            long currentTick
+    ) {
         for (int slotIndex = 0; slotIndex < obstacles.size(); slotIndex++) {
             PushedObstacle obstacle = obstacles.get(slotIndex);
             if (obstacle.isDead()) {
@@ -96,13 +101,32 @@ public final class PushObstacleBehavior implements ZombieBehavior {
                     zombie.getX() - spacingTiles * (slotIndex + 1),
                     zombie.getY()
             );
+
+            crushOpposingZombieAtObstacle(
+                    obstacle,
+                    world,
+                    zombie,
+                    currentTick
+            );
+
+            world.notifyHostilePresentAt(
+                    obstacle.getTileX(),
+                    obstacle.getTileY(),
+                    currentTick
+            );
+
+            if (obstacle.isDead()) {
+                continue;
+            }
+
             crushPlantAtObstacle(obstacle, world);
         }
     }
 
     private void spawnZombiesFromObstacle(
             PushedObstacle obstacle,
-            World world
+            World world,
+            Zombie owner
     ) {
         if (spawnOnDestroyZombieId == null) {
             return;
@@ -118,7 +142,8 @@ public final class PushObstacleBehavior implements ZombieBehavior {
             Zombie spawnedZombie = world.spawnZombie(
                     spawnOnDestroyZombieId,
                     column,
-                    row
+                    row,
+                    owner.getAllegiance()
             );
             double targetX = Math.max(
                     0,
@@ -153,6 +178,32 @@ public final class PushObstacleBehavior implements ZombieBehavior {
                     "obstacle destruction spawn values require a zombie id"
             );
         }
+    }
+
+    private void crushOpposingZombieAtObstacle(
+            PushedObstacle obstacle,
+            World world,
+            Zombie owner,
+            long currentTick
+    ) {
+        if (!obstacle.crushesPlants()) {
+            return;
+        }
+        Zombie opponent = world.findOpposingZombieInTile(
+                owner.getAllegiance(),
+                obstacle.getTileX(),
+                obstacle.getTileY()
+        );
+        if (opponent == null) {
+            return;
+        }
+        opponent.takeZombieCombatDamage(Double.MAX_VALUE, currentTick);
+        GameEvents.publish(
+                obstacle.getName() + " crushed "
+                        + opponent.getName() + " at ("
+                        + opponent.getTileX() + ", "
+                        + opponent.getTileY() + ")."
+        );
     }
 
     private void crushPlantAtObstacle(
