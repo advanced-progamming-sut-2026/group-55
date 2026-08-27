@@ -76,7 +76,8 @@ public final class PlantFoodController {
             );
         }
 
-        if (!activationAllowed.getAsBoolean()) {
+        if (!supportedCapability.canReceivePlantFood(currentTick)
+                || !activationAllowed.getAsBoolean()) {
             return false;
         }
 
@@ -104,6 +105,7 @@ public final class PlantFoodController {
     public boolean canActivate(long currentTick) {
         if (capability == null
                 || !ownerPresentInWorld.getAsBoolean()
+                || !capability.canReceivePlantFood(currentTick)
                 || !activationAllowed.getAsBoolean()) {
             return false;
         }

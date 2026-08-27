@@ -1,14 +1,16 @@
 package pvz.model.greenhouse;
 
 public class Greenhouse {
-    private static final int ROWS = 4;
-    private static final int COLS = 5;
+
+    private static final int ROWS = 3;
+    private static final int COLS = 4;
+
     private final Pot[][] pots = new Pot[ROWS][COLS];
 
     public Greenhouse() {
         for (int y = 1; y <= ROWS; y++) {
             for (int x = 1; x <= COLS; x++) {
-                pots[y - 1][x - 1] = new Pot(x, y, (y != 1));
+                pots[y - 1][x - 1] = new Pot(x, y, y != 1);
             }
         }
     }
@@ -17,6 +19,7 @@ public class Greenhouse {
         if (x < 1 || x > COLS || y < 1 || y > ROWS) {
             return null;
         }
+
         return pots[y - 1][x - 1];
     }
 
@@ -32,12 +35,14 @@ public class Greenhouse {
         for (int y = 2; y <= ROWS; y++) {
             for (int x = 1; x <= COLS; x++) {
                 Pot pot = getPot(x, y);
+
                 if (pot != null && pot.isLocked()) {
                     pot.unlock();
                     return true;
                 }
             }
         }
+
         return false;
     }
 
@@ -49,6 +54,7 @@ public class Greenhouse {
         }
 
         int unlocked = 0;
+
         while (unlocked < count && unlockNextAvailablePot()) {
             unlocked++;
         }

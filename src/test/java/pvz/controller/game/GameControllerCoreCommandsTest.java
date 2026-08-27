@@ -15,6 +15,7 @@ import pvz.data.ZombieCsvLoader;
 import pvz.data.ZombieData;
 import pvz.model.entity.plant.PlantFactory;
 import pvz.model.entity.plant.Plant;
+import pvz.model.entity.zombie.HypnosisService;
 import pvz.model.entity.zombie.Zombie;
 import pvz.model.entity.zombie.ZombieFactory;
 import pvz.model.entity.projectile.ProjectileType;
@@ -30,33 +31,7 @@ class GameControllerCoreCommandsTest {
 
     @BeforeEach
     void setUp() throws IOException {
-        ZombieData zombieData = ZombieCsvLoader.load(
-                "assets/Data/zombies.csv"
-        );
-        AdventureData adventureData = AdventureCsvLoader.load(
-                "assets/Data/chapters.csv",
-                "assets/Data/levels.csv",
-                "assets/Data/level_zombies.csv",
-                "assets/Data/waves.csv",
-                zombieData
-        );
-        GameSessionConfig config = new GameSessionConfigFactory(
-                adventureData
-        ).create(
-                "egypt-1",
-                List.of("Peashooter"),
-                Set.of(),
-                0,
-                3
-        );
-        session = new GameSessionFactory(
-                new PlantFactory(
-                        PlantCsvLoader.load(
-                                "assets/Data/plants.csv"
-                        ).byName()
-                ),
-                new ZombieFactory(zombieData)
-        ).create(config);
+        session = createSession(List.of("Peashooter"));
         session.start();
         controller = new GameController(session);
     }
@@ -90,6 +65,23 @@ class GameControllerCoreCommandsTest {
 
         assertTrue(map.contains("row 1=ready"));
         assertTrue(zombieInfo.contains("chilled: 3.2s remaining"));
+    }
+
+    @Test
+    void mapShowsBothAllegiancesWhenOpposingZombiesShareATile() {
+        Zombie ally = session.createZombie("default");
+        ally.spawn(session.world(), 4, 1);
+        HypnosisService.hypnotize(
+                ally,
+                session.game().getCurrentTick()
+        );
+        Zombie hostile = session.createZombie("default");
+        hostile.spawn(session.world(), 4, 1);
+
+        String map = controller.handle("show map");
+
+        assertTrue(map.contains("[X]"));
+        assertTrue(map.contains("X = opposing zombies sharing a tile"));
     }
 
     @Test
@@ -140,5 +132,87 @@ class GameControllerCoreCommandsTest {
         assertTrue(result.contains("plant food cannot be applied"));
         assertEquals(1, session.resources().getPlantFoodCount());
         assertFalse(plant.isPlantFoodActive(session.game().getCurrentTick()));
+    }
+
+    @Test
+    void goldBloomStaysFiveTicksAfterPlantingAndIsThenRemoved()
+            throws IOException {
+        GameSession goldBloomSession = createSession(
+                List.of("Gold Bloom")
+        );
+        goldBloomSession.start();
+        GameController goldBloomController = new GameController(
+                goldBloomSession
+        );
+        int registeredBeforePlanting = goldBloomSession.game()
+                .getRegisteredObjectCount();
+
+        String result = goldBloomController.handle(
+                "plant plant -t Gold Bloom -l (3, 2)"
+        );
+
+        assertTrue(result.startsWith("planted Gold Bloom"));
+        assertEquals(
+                1,
+                goldBloomSession.board().getTile(3, 2).getPlants().size()
+        );
+        assertEquals(5, goldBloomSession.world().getCollectibles().size());
+        assertEquals(
+                registeredBeforePlanting + 6,
+                goldBloomSession.game().getRegisteredObjectCount()
+        );
+
+        goldBloomSession.advance(4);
+
+        assertEquals(
+                1,
+                goldBloomSession.board().getTile(3, 2).getPlants().size()
+        );
+
+        goldBloomSession.advance(1);
+
+        assertTrue(
+                goldBloomSession.board().getTile(3, 2)
+                        .getPlants()
+                        .isEmpty()
+        );
+        assertEquals(5, goldBloomSession.world().getCollectibles().size());
+        assertEquals(
+                registeredBeforePlanting + 5,
+                goldBloomSession.game().getRegisteredObjectCount()
+        );
+    }
+
+    private GameSession createSession(
+            List<String> selectedPlants
+    ) throws IOException {
+        ZombieData zombieData = ZombieCsvLoader.load(
+                "assets/Data/zombies.csv"
+        );
+        AdventureData adventureData = AdventureCsvLoader.load(
+                "assets/Data/chapters.csv",
+                "assets/Data/levels.csv",
+                "assets/Data/level_zombies.csv",
+                "assets/Data/waves.csv",
+                zombieData
+        );
+        GameSessionConfig config = new GameSessionConfigFactory(
+                adventureData
+        ).create(
+                "egypt-1",
+                selectedPlants,
+                Set.of(),
+                0,
+                3
+        );
+
+        return new GameSessionFactory(
+                new PlantFactory(
+                        PlantCsvLoader.load(
+                                "assets/Data/plants.csv"
+                        ).byName()
+                ),
+                new ZombieFactory(zombieData)
+        ).create(config);
     }
 }

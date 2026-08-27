@@ -2,11 +2,13 @@ package pvz.model.entity.plant.category.wall;
 
 import pvz.model.entity.plant.Plant;
 import pvz.model.entity.plant.behavior.capability.DamageModifierCapability;
+import pvz.model.entity.plant.behavior.capability.PlantArmorCapability;
 import pvz.model.entity.plant.behavior.capability.PlantFoodCapability;
 
 class ArmoredWallBehavior extends WallBehavior
         implements DamageModifierCapability,
-        PlantFoodCapability {
+        PlantFoodCapability,
+        PlantArmorCapability {
 
     private final double armorCapacity;
     private double armorHealth;
@@ -55,6 +57,16 @@ class ArmoredWallBehavior extends WallBehavior
         }
 
         return Math.max(0, remainingDamage);
+    }
+
+    @Override
+    public double getArmorHealth() {
+        return armorHealth;
+    }
+
+    @Override
+    public double getArmorCapacity() {
+        return armorCapacity;
     }
 
     protected void onArmorDestroyed() {

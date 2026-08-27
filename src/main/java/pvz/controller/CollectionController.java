@@ -87,6 +87,7 @@ public class CollectionController extends BaseController {
 
     private void handlePurchasePlant(CollectionCommand cmd, User user) {
         PlantSpec spec = plantData.byName().get(cmd.getTargetName().toLowerCase());
+
         if (spec == null) {
             view.showError(SystemMessage.COLLECTION_ITEM_NOT_FOUND.getMessage());
         } else if (user.getOwnedPlant(spec.getName()) != null) {
@@ -95,6 +96,7 @@ public class CollectionController extends BaseController {
             view.showError(SystemMessage.COLLECTION_NOT_ENOUGH_COINS.getMessage());
         } else {
             user.addPlant(new PlayerPlant(spec.getName()));
+            user.addNews("Plant Unlocked", spec.getName() + " has been unlocked!");
             userManager.save();
             view.showSuccess(SystemMessage.COLLECTION_PLANT_PURCHASED.getMessage());
         }

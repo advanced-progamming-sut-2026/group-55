@@ -17,5 +17,10 @@ public enum PlantTag {
     TRAP,
     MOVE_ZOMBIES,
     SUN,
-    EXPLOSIVE
+    EXPLOSIVE,
+    MINT,
+    BLOCK_VAULT,
+    REFLECT_DAMAGE,
+    REPEL_ZOMBIES,
+    ATTRACT_ZOMBIES
 }

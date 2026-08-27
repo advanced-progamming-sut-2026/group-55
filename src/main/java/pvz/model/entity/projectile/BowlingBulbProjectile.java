@@ -254,7 +254,7 @@ public final class BowlingBulbProjectile
             long currentTick
     ) {
         world.board().damageZombiesWithProjectileInArea(
-                world.getZombies(),
+                world.getHostileZombies(),
                 centerColumn,
                 centerRow,
                 explosionRadius,

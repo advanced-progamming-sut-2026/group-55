@@ -4,20 +4,41 @@ import java.util.Objects;
 
 import pvz.model.core.board.HorizontalDirection;
 import pvz.model.core.World;
+import pvz.model.entity.plant.PlantSpec;
+import pvz.model.entity.plant.PlantTag;
 import pvz.model.entity.plant.attack.ShotVector;
 import pvz.model.entity.projectile.DirectionalProjectile;
 import pvz.model.entity.projectile.Projectile;
+import pvz.model.entity.projectile.ProjectileFamily;
 import pvz.model.entity.projectile.ProjectileHitLimit;
 import pvz.model.entity.projectile.ProjectileType;
 
 public final class PlantProjectileEmitter {
 
     private final String projectileName;
+    private final ProjectileFamily projectileFamily;
 
     private World world;
     private int column;
 
     public PlantProjectileEmitter(String plantName) {
+        this(plantName, ProjectileFamily.GENERIC);
+    }
+
+    public PlantProjectileEmitter(PlantSpec spec) {
+        this(
+                Objects.requireNonNull(spec, "plant spec cannot be null")
+                        .getName(),
+                spec.getTags().contains(PlantTag.PEA)
+                        ? ProjectileFamily.PEA
+                        : ProjectileFamily.GENERIC
+        );
+    }
+
+    private PlantProjectileEmitter(
+            String plantName,
+            ProjectileFamily projectileFamily
+    ) {
         String normalizedPlantName = Objects.requireNonNull(
                         plantName,
                         "plant name cannot be null"
@@ -28,6 +49,10 @@ public final class PlantProjectileEmitter {
         }
 
         projectileName = normalizedPlantName + " projectile";
+        this.projectileFamily = Objects.requireNonNull(
+                projectileFamily,
+                "projectile family cannot be null"
+        );
     }
 
     public void onPlaced(World world, int column) {
@@ -81,7 +106,8 @@ public final class PlantProjectileEmitter {
                         projectileType,
                         rangeTiles,
                         direction,
-                        hitLimit
+                        hitLimit,
+                        projectileFamily
                 )
         );
     }
@@ -144,7 +170,8 @@ public final class PlantProjectileEmitter {
                         projectileType,
                         rangeTiles,
                         vector,
-                        hitLimit
+                        hitLimit,
+                        projectileFamily
                 )
         );
     }

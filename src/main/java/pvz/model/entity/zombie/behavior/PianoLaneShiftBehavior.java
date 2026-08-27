@@ -32,7 +32,7 @@ public final class PianoLaneShiftBehavior implements ZombieBehavior {
             return;
         }
         nextShiftTick = currentTick + shiftIntervalTicks;
-        for (Zombie target : world.getZombies()) {
+        for (Zombie target : world.getHostileZombies()) {
             if (target == zombie || target.isDead()) {
                 continue;
             }

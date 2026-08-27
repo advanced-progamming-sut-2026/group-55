@@ -23,6 +23,6 @@ public record WinConditionContext(
     }
 
     public int aliveZombieCount() {
-        return world.getZombies().size();
+        return world.getHostileZombies().size();
     }
 }

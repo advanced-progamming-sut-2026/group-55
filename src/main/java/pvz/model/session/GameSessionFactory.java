@@ -82,6 +82,7 @@ public final class GameSessionFactory {
         World world =
                 new World(game, board, resources, random);
 
+        world.setPlantCreator(plantFactory::create);
         world.setZombieCreator(
                 id -> zombieFactory.create(
                         id,

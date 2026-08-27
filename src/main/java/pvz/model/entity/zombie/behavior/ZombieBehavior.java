@@ -5,6 +5,7 @@ import pvz.model.entity.plant.Plant;
 import pvz.model.entity.zombie.ArmorInstance;
 import pvz.model.entity.zombie.DamageContext;
 import pvz.model.entity.zombie.Zombie;
+import pvz.model.entity.zombie.ZombieAllegiance;
 
 public interface ZombieBehavior {
     default void onSpawn(Zombie zombie, World world, long currentTick) {}
@@ -23,9 +24,33 @@ public interface ZombieBehavior {
             long currentTick
     ) {}
 
+    default void onAllegianceChanged(
+            Zombie zombie,
+            World world,
+            ZombieAllegiance oldAllegiance,
+            ZombieAllegiance newAllegiance,
+            long currentTick
+    ) {}
+
     default boolean onPlantEncounter(
             Zombie zombie,
             Plant plant,
+            World world,
+            long currentTick
+    ) {
+        return false;
+    }
+
+    /**
+     * Gives special collision-oriented zombie behaviors a chance to handle an
+     * opposing-allegiance zombie before generic zombie-vs-zombie combat starts.
+     * Returning {@code true} means the encounter was fully handled for this
+     * tick. Behaviors that do not have special contact semantics should keep
+     * the default and fall through to the shared combat controller.
+     */
+    default boolean onOpposingZombieEncounter(
+            Zombie zombie,
+            Zombie opponent,
             World world,
             long currentTick
     ) {

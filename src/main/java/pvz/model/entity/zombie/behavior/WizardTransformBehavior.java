@@ -7,6 +7,7 @@ import pvz.model.core.GameEvents;
 import pvz.model.core.World;
 import pvz.model.entity.plant.Plant;
 import pvz.model.entity.zombie.Zombie;
+import pvz.model.entity.zombie.ZombieAllegiance;
 
 public final class WizardTransformBehavior implements ZombieBehavior {
     private final long castIntervalTicks;
@@ -62,7 +63,27 @@ public final class WizardTransformBehavior implements ZombieBehavior {
     }
 
     @Override
+    public void onAllegianceChanged(
+            Zombie zombie,
+            World world,
+            ZombieAllegiance oldAllegiance,
+            ZombieAllegiance newAllegiance,
+            long currentTick
+    ) {
+        if (newAllegiance == ZombieAllegiance.ALLIED) {
+            restoreTransformedPlants();
+        }
+    }
+
+    @Override
     public void onDeath(Zombie zombie, World world, long currentTick) {
+        restoreTransformedPlants();
+    }
+
+    private void restoreTransformedPlants() {
+        if (transformedPlants.isEmpty()) {
+            return;
+        }
         for (Plant plant : transformedPlants) {
             if (!plant.isRemovedFromWorld()) {
                 plant.removeActionBlocker(this);

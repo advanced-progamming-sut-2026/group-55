@@ -1,7 +1,10 @@
 package pvz.model.entity.zombie;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
+import java.util.function.Predicate;
 
 public final class ArmorSet {
     private final List<ArmorInstance> layers;
@@ -52,6 +55,25 @@ public final class ArmorSet {
 
     public void add(ArmorSpec spec) {
         layers.add(new ArmorInstance(spec));
+    }
+
+    public ArmorInstance detachFirstIntactArmor(
+            Predicate<ArmorSpec> selector
+    ) {
+        Objects.requireNonNull(selector, "armor selector cannot be null");
+
+        Iterator<ArmorInstance> iterator = layers.iterator();
+
+        while (iterator.hasNext()) {
+            ArmorInstance layer = iterator.next();
+
+            if (!layer.isBroken() && selector.test(layer.spec())) {
+                iterator.remove();
+                return layer;
+            }
+        }
+
+        return null;
     }
 
     public record ArmorDamageResult(

@@ -46,7 +46,7 @@ final class LobberTargetResolver {
     List<LobberTarget> findPlantFoodTargets() {
         List<LobberTarget> targets = new ArrayList<>();
 
-        world.getZombies().stream()
+        world.getHostileZombies().stream()
                 .filter(zombie -> !zombie.isDead())
                 .map(LobberTarget::zombie)
                 .forEach(targets::add);
@@ -71,7 +71,7 @@ final class LobberTargetResolver {
     private Zombie findNearestZombieAhead() {
         double sourceX = sourceColumn - 0.5;
 
-        return world.getZombies().stream()
+        return world.getHostileZombies().stream()
                 .filter(zombie -> !zombie.isDead())
                 .filter(zombie -> zombie.getTileY() == sourceRow)
                 .filter(zombie -> zombie.getX() >= sourceX)

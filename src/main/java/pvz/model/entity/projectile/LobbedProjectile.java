@@ -158,6 +158,14 @@ public final class LobbedProjectile extends Entity {
             int impactColumn,
             int impactRow
     ) {
+        Zombie zombie = target.zombie();
+
+        // A projectile launched while the target was hostile must not become
+        // friendly fire if that exact zombie is hypnotized during flight.
+        if (zombie.isDead() || zombie.isAllied()) {
+            return;
+        }
+
         if (shot.splashRadius() > 0) {
             damageArea(
                     currentTick,
@@ -167,9 +175,7 @@ public final class LobbedProjectile extends Entity {
             return;
         }
 
-        Zombie zombie = target.zombie();
-
-        if (zombie.isDead() || target.hasLostZombie()) {
+        if (target.hasLostZombie()) {
             return;
         }
 
@@ -191,7 +197,7 @@ public final class LobbedProjectile extends Entity {
             int impactRow
     ) {
         world.board().damageZombiesWithProjectileInArea(
-                world.getZombies(),
+                world.getHostileZombies(),
                 impactColumn,
                 impactRow,
                 shot.splashRadius(),

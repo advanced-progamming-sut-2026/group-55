@@ -12,6 +12,8 @@ public enum PlantThreat {
 
     FORCED_REMOVAL(true, true),
 
+    SUPPORT_LOSS(false, true),
+
     FREEZE(true, false),
 
     OCTOPUS(true, false),
@@ -19,6 +21,8 @@ public enum PlantThreat {
     ACTION_BLOCK(true, false),
 
     FORCED_RELOCATION(true, false),
+
+    TRANSIENT_EFFECT_COMPLETION(false, true),
 
     SYSTEM_CLEANUP(false, false);
 

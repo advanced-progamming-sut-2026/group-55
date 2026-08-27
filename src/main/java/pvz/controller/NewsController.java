@@ -28,34 +28,61 @@ public class NewsController extends BaseController {
 
         User currentUser = appState.getCurrentUser();
 
-        if (newsCmd.getAction() == NewsCommand.Action.SHOW_UNREAD) {
-            List<NewsItem> unread = currentUser.getUnreadNews();
-            if (unread.isEmpty()) {
-                view.showSuccess(SystemMessage.NEWS_NO_UNREAD.getMessage());
-            } else {
-                view.showSuccess(SystemMessage.NEWS_UNREAD_HEADER.getMessage());
-                for (NewsItem news : unread) {
-                    view.showSuccess("* " + news.getMessage());
-                }
-                currentUser.markAllAsRead();
-                userManager.save();
-            }
-        } else if (newsCmd.getAction() == NewsCommand.Action.SHOW_ALL) {
-            List<NewsItem> all = currentUser.getAllNews();
-            if (all.isEmpty()) {
-                view.showSuccess(SystemMessage.NEWS_EMPTY_INBOX.getMessage());
-            } else {
-                view.showSuccess(SystemMessage.NEWS_ALL_HEADER.getMessage());
-                for (NewsItem news : all) {
-                    String status = news.isRead() ?
-                            SystemMessage.NEWS_STATUS_READ.getMessage() :
-                            SystemMessage.NEWS_STATUS_NEW.getMessage();
+        if (currentUser == null) {
+            view.showError(SystemMessage.USER_NOT_LOGGED_IN.getMessage());
+            return null;
+        }
 
-                    view.showSuccess(status + " " + news.getMessage());
-                }
-            }
+        if (newsCmd.getAction() == NewsCommand.Action.SHOW_UNREAD) {
+            showUnreadNews(currentUser);
+        } else if (newsCmd.getAction() == NewsCommand.Action.SHOW_ALL) {
+            showAllNews(currentUser);
         }
 
         return null;
+    }
+
+    private void showUnreadNews(User user) {
+        List<NewsItem> unread = user.getUnreadNews();
+
+        if (unread.isEmpty()) {
+            view.showSuccess(SystemMessage.NEWS_NO_UNREAD.getMessage());
+            return;
+        }
+
+        view.showSuccess(SystemMessage.NEWS_UNREAD_HEADER.getMessage());
+
+        for (NewsItem news : unread) {
+            showNews(news);
+        }
+
+        user.markAllAsRead();
+        userManager.save();
+    }
+
+    private void showAllNews(User user) {
+        List<NewsItem> all = user.getAllNews();
+
+        if (all.isEmpty()) {
+            view.showSuccess(SystemMessage.NEWS_EMPTY_INBOX.getMessage());
+            return;
+        }
+
+        view.showSuccess(SystemMessage.NEWS_ALL_HEADER.getMessage());
+
+        for (NewsItem news : all) {
+            String status = news.isRead()
+                    ? SystemMessage.NEWS_STATUS_READ.getMessage()
+                    : SystemMessage.NEWS_STATUS_NEW.getMessage();
+
+            view.showSuccess(status);
+            showNews(news);
+        }
+    }
+
+    private void showNews(NewsItem news) {
+        view.showSuccess("Date: " + news.getDate());
+        view.showSuccess("Title: " + news.getTitle());
+        view.showSuccess("Message: " + news.getMessage());
     }
 }

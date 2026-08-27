@@ -11,34 +11,45 @@ import pvz.model.entity.plant.PlantSpec;
 
 public final class SunProfiles {
 
-    private static final Map<String, LongFunction<SunProfile>>
-            PROFILE_FACTORIES = Map.of(
+    private static final Map<String, SunProfileDefinition>
+            PROFILE_DEFINITIONS = Map.of(
                     "sunflower",
-                    ignoredTick ->
-                            new FixedSunProfile(
-                                    SunValue.NORMALSUN.getValue(),
-                                    1,
-                                    SunValue.FNSUN.getValue()
-                            ),
+                    new SunProfileDefinition(
+                            ignoredTick ->
+                                    new FixedSunProfile(
+                                            SunValue.NORMALSUN.getValue(),
+                                            1,
+                                            SunValue.FNSUN.getValue()
+                                    )
+                    ),
 
                     "twin sunflower",
-                    ignoredTick ->
-                            new FixedSunProfile(
-                                    SunValue.NORMALSUN.getValue(),
-                                    2,
-                                    SunValue.FTSUN.getValue()
-                            ),
+                    new SunProfileDefinition(
+                            ignoredTick ->
+                                    new FixedSunProfile(
+                                            SunValue.NORMALSUN.getValue(),
+                                            2,
+                                            SunValue.FTSUN.getValue()
+                                    )
+                    ),
 
                     "primal sunflower",
-                    ignoredTick ->
-                            new FixedSunProfile(
-                                    SunValue.BIGSUN.getValue(),
-                                    1,
-                                    SunValue.FBSUN.getValue()
-                            ),
+                    new SunProfileDefinition(
+                            ignoredTick ->
+                                    new FixedSunProfile(
+                                            SunValue.BIGSUN.getValue(),
+                                            1,
+                                            SunValue.FBSUN.getValue()
+                                    )
+                    ),
 
                     "sun-shroom",
-                    SunShroomProfile::new
+                    new SunProfileDefinition(SunShroomProfile::new),
+
+                    "gold bloom",
+                    new SunProfileDefinition(
+                            ignoredTick -> new GoldBloomProfile()
+                    )
             );
 
     private SunProfiles() {
@@ -56,29 +67,54 @@ public final class SunProfiles {
             );
         }
 
-        LongFunction<SunProfile> profileFactory = PROFILE_FACTORIES.get(normalize(spec.getName()));
+        SunProfileDefinition definition = definitionFor(spec);
 
-        if (profileFactory == null) {
+        if (definition == null) {
             throw new IllegalArgumentException(
                     "missing sun profile for " + spec.getName()
             );
         }
 
-        return profileFactory.apply(
-                plantedTick
-        );
+        return definition.factory().apply(plantedTick);
     }
 
     public static boolean hasProfileFor(PlantSpec spec) {
-        return spec != null
-                && spec.getCategory() == PlantCategory.SUN_PRODUCER
-                && PROFILE_FACTORIES.containsKey(normalize(spec.getName())
-        );
+        return definitionFor(spec) != null;
+    }
+
+    public static boolean supportsPlantFood(PlantSpec spec) {
+        SunProfileDefinition definition = definitionFor(spec);
+
+        if (definition == null || !spec.hasPlantFoodEffect()) {
+            return false;
+        }
+
+        return definition.factory().apply(0).supportsPlantFood();
+    }
+
+    private static SunProfileDefinition definitionFor(PlantSpec spec) {
+        if (spec == null
+                || spec.getCategory() != PlantCategory.SUN_PRODUCER) {
+            return null;
+        }
+
+        return PROFILE_DEFINITIONS.get(normalize(spec.getName()));
     }
 
     private static String normalize(String plantName) {
         return plantName
                 .strip()
                 .toLowerCase(Locale.ROOT);
+    }
+
+    private record SunProfileDefinition(
+            LongFunction<SunProfile> factory
+    ) {
+        private SunProfileDefinition {
+            Objects.requireNonNull(
+                    factory,
+                    "sun profile factory cannot be null"
+            );
+        }
     }
 }

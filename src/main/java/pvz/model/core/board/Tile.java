@@ -18,6 +18,8 @@ public final class Tile {
     private double health;
     private final List<Plant> plants = new ArrayList<>();
     private final List<TileOverlay> overlays = new ArrayList<>();
+    private boolean craterActive;
+    private long craterExpirationTick;
 
     public Tile(TileType type, int x, int y) {
         setType(type);
@@ -52,7 +54,7 @@ public final class Tile {
     boolean isPlantableFor(Plant plant) {
         Objects.requireNonNull(plant, "plant cannot be null");
 
-        if (hasBlockingOverlay()) {
+        if (hasBlockingOverlay() || craterActive) {
             return false;
         }
 
@@ -78,6 +80,36 @@ public final class Tile {
             case SELF_STACKING -> canAddSelfStackingPlant(newPlant);
             case NONE -> !hasMainPlant();
         };
+    }
+
+    void placeCrater(long currentTick, long durationTicks) {
+        if (currentTick < 0 || durationTicks <= 0) {
+            throw new IllegalArgumentException(
+                    "crater duration must be positive and tick non-negative"
+            );
+        }
+
+        craterActive = true;
+        craterExpirationTick = currentTick + durationTicks;
+    }
+
+    void updateCrater(long currentTick) {
+        if (craterActive && currentTick >= craterExpirationTick) {
+            craterActive = false;
+            GameEvents.publish(
+                    "the crater at (" + x + ", " + y + ") faded away"
+            );
+        }
+    }
+
+    public boolean hasCrater() {
+        return craterActive;
+    }
+
+    void addTopPlant(Plant plant) {
+        plants.add(
+                Objects.requireNonNull(plant, "plant cannot be null")
+        );
     }
 
     void addPlant(Plant plant) {
@@ -117,11 +149,7 @@ public final class Tile {
     }
 
     boolean takeDamage(double damage) {
-        if (!Double.isFinite(damage) || damage < 0) {
-            throw new IllegalArgumentException(
-                    "tile damage must be finite and non-negative"
-            );
-        }
+        validateDamage(damage);
 
         TileOverlay blockingOverlay = getTopBlockingOverlay();
         if (blockingOverlay != null) {
@@ -141,6 +169,36 @@ public final class Tile {
         }
 
         return false;
+    }
+
+    boolean damageAllDestructibleContent(double damage) {
+        validateDamage(damage);
+
+        if (damage == 0) {
+            return false;
+        }
+
+        boolean destroyed = false;
+
+        for (TileOverlay overlay : List.copyOf(overlays)) {
+            if (damageOverlay(overlay, damage)) {
+                destroyed = true;
+            }
+        }
+
+        if (!type.isDestructible()) {
+            return destroyed;
+        }
+
+        health = Math.max(0, health - damage);
+
+        if (health == 0) {
+            publishDestroyedMessage();
+            setType(TileType.NORMAL);
+            return true;
+        }
+
+        return destroyed;
     }
 
     boolean addOverlay(TileOverlayType overlayType, Plant coveredPlant) {
@@ -173,6 +231,20 @@ public final class Tile {
 
         removeOverlay(overlay);
         return true;
+    }
+
+    int destroyAllOverlays(TileOverlayType overlayType) {
+        Objects.requireNonNull(overlayType, "overlay type cannot be null");
+
+        List<TileOverlay> matchingOverlays = overlays.stream()
+                .filter(overlay -> overlay.getType() == overlayType)
+                .toList();
+
+        for (TileOverlay overlay : matchingOverlays) {
+            removeOverlay(overlay);
+        }
+
+        return matchingOverlays.size();
     }
 
     public boolean hasOverlay(TileOverlayType overlayType) {
@@ -243,6 +315,14 @@ public final class Tile {
 
         removeOverlay(overlay);
         return true;
+    }
+
+    private void validateDamage(double damage) {
+        if (!Double.isFinite(damage) || damage < 0) {
+            throw new IllegalArgumentException(
+                    "tile damage must be finite and non-negative"
+            );
+        }
     }
 
     private void removeOverlay(TileOverlay overlay) {
