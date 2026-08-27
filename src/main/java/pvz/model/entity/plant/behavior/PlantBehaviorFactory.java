@@ -8,6 +8,7 @@ import pvz.model.entity.plant.category.explosive.ExplosiveBehaviorFactory;
 import pvz.model.entity.plant.category.homing.HomingBehaviorFactory;
 import pvz.model.entity.plant.category.lobber.LobberBehaviorFactory;
 import pvz.model.entity.plant.category.melee.MeleeBehaviorFactory;
+import pvz.model.entity.plant.category.mint.MintBehaviorFactory;
 import pvz.model.entity.plant.category.modifier.ModifierBehaviorFactory;
 import pvz.model.entity.plant.category.shooter.ShooterBehaviorFactory;
 import pvz.model.entity.plant.category.strikethrough.StrikeThroughBehaviorFactory;
@@ -23,6 +24,10 @@ public final class PlantBehaviorFactory {
         Objects.requireNonNull(owner, "owner plant cannot be null");
 
         Objects.requireNonNull(spec, "plant spec cannot be null");
+
+        if (MintBehaviorFactory.isMint(spec)) {
+            return MintBehaviorFactory.create(owner, spec);
+        }
 
         return switch (spec.getCategory()) {
 

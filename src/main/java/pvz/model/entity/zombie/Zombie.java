@@ -354,6 +354,24 @@ public final class Zombie extends LivingEntity {
         notifyPositionChanged();
     }
 
+    public void knockBackTowardSpawn(double tiles) {
+        requireSpawned();
+        if (!Double.isFinite(tiles) || tiles < 0) {
+            throw new IllegalArgumentException(
+                    "knockback distance must be finite and non-negative"
+            );
+        }
+        if (tiles == 0 || isDead()) {
+            return;
+        }
+
+        double rightmostCenter = world.board().getCols() - 0.5;
+        x = Math.min(rightmostCenter, x + tiles);
+        resetBiteTarget();
+        zombieCombat.reset();
+        notifyPositionChanged();
+    }
+
     @Override
     protected double modifyIncomingDamage(double damage) {
         if (incomingDamage == null

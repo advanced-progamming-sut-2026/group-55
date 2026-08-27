@@ -6,5 +6,7 @@ public enum HomingKind {
 
     ELECTRIC_BLUEBERRY,
 
+    MAGNET_SHROOM,
+
     CAT_TAIL
 }

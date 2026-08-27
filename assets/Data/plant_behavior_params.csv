@@ -64,3 +64,6 @@ plantId,behavior,param,value
 52,TORCHWOOD,peaDamageMultiplier,2
 52,TORCHWOOD,plantFoodPeaDamageMultiplier,3
 52,TORCHWOOD,plantFoodBlueFlameDurationTicks,600
+17,CACTUS,plantFoodDamageMultiplier,2
+24,FUME_SHROOM,plantFoodDamage,1500
+24,FUME_SHROOM,plantFoodKnockbackTiles,10

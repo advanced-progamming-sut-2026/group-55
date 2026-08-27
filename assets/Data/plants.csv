@@ -59,12 +59,12 @@ id,name,category,tags,cost,baseHp,damage,baseAbility,plantFoodEffect,lvl2,lvl3,l
 58,Lily Pad,MODIFIER,WATER|STACK,25,300,0,Planting platform for other plants on water (essential for the beach).,Creates several copies of itself on empty water tiles.,Cost -25,HP +200,Cooldown -2s,-,5
 59,Hot Potato,EXPLOSIVE,FIRE,0,0,0,Plant on ice to melt it instantly (essential for the frozen cave).,None (single-use).,Cooldown -2s,Melt Area 3x3,Explode on Finish,-,5
 60,Grave Buster,EXPLOSIVE,,0,0,Insta-kill,Destroys graves (essential for Ancient Egypt and Dark Ages levels).,None (single-use).,Eat Time -1s,Cooldown -2s,Explode on Finish,-,10
-61,Enlighten-mint,SUN_PRODUCER,,0,0,0,Temporarily applies Plant Food to every plant in its family.,None (single-use).,Duration +1s,Cooldown -5s,reset family cooldowns,-,85
-62,Appease-mint,SHOOTER,,0,0,0,Temporarily applies Plant Food to every plant in its family.,None (single-use).,Duration +1s,Cooldown -5s,reset family cooldowns,-,85
-63,Arma-mint,LOBBER,,0,0,0,Temporarily applies Plant Food to every plant in its family.,None (single-use).,Duration +1s,Cooldown -5s,reset family cooldowns,-,85
-64,Bombard-mint,EXPLOSIVE,,0,0,0,Temporarily applies Plant Food to every plant in its family.,None (single-use).,Duration +1s,Cooldown -5s,reset family cooldowns,-,85
-65,Enforce-mint,MELEE,,0,0,0,Temporarily applies Plant Food to every plant in its family.,None (single-use).,Duration +1s,Cooldown -5s,reset family cooldowns,-,85
-66,Reinforce-mint,WALL,,0,0,0,Temporarily applies Plant Food to every plant in its family.,None (single-use).,Duration +1s,Cooldown -5s,reset family cooldowns,-,85
-67,Enchant-mint,MODIFIER,,0,0,0,Temporarily applies Plant Food to every plant in its family.,None (single-use).,Duration +1s,Cooldown -5s,reset family cooldowns,-,85
-68,Pierce-mint,STRIKE_THROUGH,,0,0,0,Temporarily applies Plant Food to every plant in its family.,None (single-use).,Duration +1s,Cooldown -5s,reset family cooldowns,-,85
-69,catTail-mint,HOMING,,0,0,0,Temporarily applies Plant Food to every plant in its family.,None (single-use).,Duration +1s,Cooldown -5s,reset family cooldowns,-,85
+61,Enlighten-mint,SUN_PRODUCER,MINT,0,300,0,Temporarily applies Plant Food to every plant in its family.,None (single-use).,Duration +1s,Cooldown -5s,reset family cooldowns,-,85
+62,Appease-mint,SHOOTER,MINT,0,300,0,Temporarily applies Plant Food to every plant in its family.,None (single-use).,Duration +1s,Cooldown -5s,reset family cooldowns,-,85
+63,Arma-mint,LOBBER,MINT,0,300,0,Temporarily applies Plant Food to every plant in its family.,None (single-use).,Duration +1s,Cooldown -5s,reset family cooldowns,-,85
+64,Bombard-mint,EXPLOSIVE,MINT,0,300,0,Temporarily applies Plant Food to every plant in its family.,None (single-use).,Duration +1s,Cooldown -5s,reset family cooldowns,-,85
+65,Enforce-mint,MELEE,MINT,0,300,0,Temporarily applies Plant Food to every plant in its family.,None (single-use).,Duration +1s,Cooldown -5s,reset family cooldowns,-,85
+66,Reinforce-mint,WALL,MINT,0,300,0,Temporarily applies Plant Food to every plant in its family.,None (single-use).,Duration +1s,Cooldown -5s,reset family cooldowns,-,85
+67,Enchant-mint,MODIFIER,MINT,0,300,0,Temporarily applies Plant Food to every plant in its family.,None (single-use).,Duration +1s,Cooldown -5s,reset family cooldowns,-,85
+68,Pierce-mint,STRIKE_THROUGH,MINT,0,300,0,Temporarily applies Plant Food to every plant in its family.,None (single-use).,Duration +1s,Cooldown -5s,reset family cooldowns,-,85
+69,catTail-mint,HOMING,MINT,0,300,0,Temporarily applies Plant Food to every plant in its family.,None (single-use).,Duration +1s,Cooldown -5s,reset family cooldowns,-,85

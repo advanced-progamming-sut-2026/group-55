@@ -31,7 +31,7 @@ public final class ElementInteractionResolver {
         }
 
         switch (projectileType) {
-            case NORMAL -> {
+            case NORMAL, ELECTRIC -> {
             }
             case FIRE -> zombie.clearColdEffects(currentTick);
             case ICE -> zombie.applyChill(

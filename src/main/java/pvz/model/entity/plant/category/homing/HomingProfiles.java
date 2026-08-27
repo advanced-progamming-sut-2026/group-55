@@ -11,6 +11,7 @@ final class HomingProfiles {
     private static final Map<String, HomingKind> KINDS_BY_NAME = Map.of(
             "caulipower", HomingKind.CAULIPOWER,
             "electric blueberry", HomingKind.ELECTRIC_BLUEBERRY,
+            "magnet-shroom", HomingKind.MAGNET_SHROOM,
             "cat-tail", HomingKind.CAT_TAIL
     );
 
@@ -55,7 +56,8 @@ final class HomingProfiles {
     }
 
     private static double damageOf(HomingKind kind, PlantSpec spec) {
-        if (kind == HomingKind.CAULIPOWER) {
+        if (kind == HomingKind.CAULIPOWER
+                || kind == HomingKind.MAGNET_SHROOM) {
             return 0;
         }
 

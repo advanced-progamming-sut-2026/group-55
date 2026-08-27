@@ -28,6 +28,9 @@ public final class HomingBehaviorFactory {
             case ELECTRIC_BLUEBERRY ->
                     new ElectricBlueberryBehavior(owner, profile);
 
+            case MAGNET_SHROOM ->
+                    new MagnetShroomBehavior(owner, profile);
+
             case CAT_TAIL -> new CatTailBehavior(owner, profile);
         };
     }

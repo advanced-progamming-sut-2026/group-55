@@ -60,10 +60,11 @@ class CatTailBehaviorTest {
     }
 
     @Test
-    void allThreeHomingPlantsHaveRealBehaviorsAndPlantFood() {
+    void allFourHomingPlantsHaveRealBehaviorsAndPlantFood() {
         for (String name : java.util.List.of(
                 "Caulipower",
                 "Electric Blueberry",
+                "Magnet-shroom",
                 "Cat-tail"
         )) {
             assertNotNull(
@@ -79,7 +80,6 @@ class CatTailBehaviorTest {
         }
 
         for (String name : java.util.List.of(
-                "Magnet-shroom",
                 "catTail-mint"
         )) {
             assertNull(

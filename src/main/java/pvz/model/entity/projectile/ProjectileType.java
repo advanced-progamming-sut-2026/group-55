@@ -8,6 +8,7 @@ import pvz.model.entity.zombie.DamageContext;
 
 public enum ProjectileType {
     NORMAL,
+    ELECTRIC,
     FIRE,
     ICE,
     POISON;

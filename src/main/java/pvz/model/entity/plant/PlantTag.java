@@ -18,6 +18,7 @@ public enum PlantTag {
     MOVE_ZOMBIES,
     SUN,
     EXPLOSIVE,
+    MINT,
     BLOCK_VAULT,
     REFLECT_DAMAGE,
     REPEL_ZOMBIES,

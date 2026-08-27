@@ -1,6 +1,5 @@
 package pvz.model.entity.plant.category.strikethrough;
 
-import java.util.Locale;
 import java.util.Objects;
 
 import pvz.model.entity.plant.Plant;
@@ -17,28 +16,17 @@ public final class StrikeThroughBehaviorFactory {
             Plant owner,
             PlantSpec spec
     ) {
-        Objects.requireNonNull(
-                owner,
-                "owner plant cannot be null"
-        );
+        Objects.requireNonNull(owner, "owner plant cannot be null");
+        Objects.requireNonNull(spec, "plant spec cannot be null");
 
-        Objects.requireNonNull(
-                spec,
-                "plant spec cannot be null"
-        );
+        if (!StrikeThroughProfiles.isSupported(spec)) {
+            return new PassivePlantBehavior(owner);
+        }
 
-        String plantName = spec.getName()
-                .strip()
-                .toLowerCase(Locale.ROOT);
+        return new StrikeThroughBehavior(owner, spec);
+    }
 
-        return switch (plantName) {
-            case "cactus", "fume-shroom" ->
-                    new StrikeThroughBehavior(
-                            owner,
-                            spec
-                    );
-
-            default -> new PassivePlantBehavior(owner);
-        };
+    public static boolean supportsPlantFood(PlantSpec spec) {
+        return StrikeThroughProfiles.supportsPlantFood(spec);
     }
 }
