@@ -158,7 +158,7 @@ public class ShooterBehavior
             }
             case FREEZE_OWNER_LANE ->
                     world().board().freezeZombiesInRow(
-                            world().getZombies(),
+                            world().getHostileZombies(),
                             row(),
                             currentTick,
                             SNOW_PEA_FREEZE_DURATION_TICKS

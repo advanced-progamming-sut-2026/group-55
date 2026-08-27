@@ -6,6 +6,7 @@ import pvz.model.entity.collectible.Collectible;
 import pvz.model.entity.collectible.sun.Sun;
 import pvz.model.entity.collectible.sun.SunState;
 import pvz.model.entity.zombie.Zombie;
+import pvz.model.entity.zombie.ZombieAllegiance;
 
 public final class RaSunStealBehavior implements ZombieBehavior {
     private final int maximumStolenSun;
@@ -34,10 +35,30 @@ public final class RaSunStealBehavior implements ZombieBehavior {
     }
 
     @Override
-    public void onDeath(Zombie zombie, World world, long currentTick) {
-        if (stolenSun > 0) {
-            world.sunBank().add(stolenSun);
-            GameEvents.publish("Ra returned " + stolenSun + " stolen sun.");
+    public void onAllegianceChanged(
+            Zombie zombie,
+            World world,
+            ZombieAllegiance oldAllegiance,
+            ZombieAllegiance newAllegiance,
+            long currentTick
+    ) {
+        if (newAllegiance == ZombieAllegiance.ALLIED) {
+            returnStolenSun(world);
         }
+    }
+
+    @Override
+    public void onDeath(Zombie zombie, World world, long currentTick) {
+        returnStolenSun(world);
+    }
+
+    private void returnStolenSun(World world) {
+        if (stolenSun <= 0) {
+            return;
+        }
+        int returned = stolenSun;
+        stolenSun = 0;
+        world.sunBank().add(returned);
+        GameEvents.publish("Ra returned " + returned + " stolen sun.");
     }
 }

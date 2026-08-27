@@ -6,6 +6,7 @@ import pvz.model.core.World;
 import pvz.model.entity.plant.Plant;
 import pvz.model.entity.plant.lifecycle.PlantThreat;
 import pvz.model.entity.zombie.Zombie;
+import pvz.model.entity.zombie.ZombieAllegiance;
 
 public final class TurquoiseLaserBehavior implements ZombieBehavior {
     private final int detectionRadiusTiles;
@@ -107,8 +108,31 @@ public final class TurquoiseLaserBehavior implements ZombieBehavior {
     }
 
     @Override
+    public void onAllegianceChanged(
+            Zombie zombie,
+            World world,
+            ZombieAllegiance oldAllegiance,
+            ZombieAllegiance newAllegiance,
+            long currentTick
+    ) {
+        if (newAllegiance != ZombieAllegiance.ALLIED) {
+            return;
+        }
+        charging = false;
+        releaseStolenSun(zombie, world);
+    }
+
+    @Override
     public void onDeath(Zombie zombie, World world, long currentTick) {
+        releaseStolenSun(zombie, world);
+    }
+
+    private void releaseStolenSun(Zombie zombie, World world) {
+        if (stolenSun <= 0) {
+            return;
+        }
         int dropped = (int) Math.floor(stolenSun * sunDropRatio);
+        stolenSun = 0;
         world.dropRecoveredSun(dropped, zombie.getX(), zombie.getY());
         if (dropped > 0) {
             GameEvents.publish("Turquoise dropped " + dropped + " stolen sun.");

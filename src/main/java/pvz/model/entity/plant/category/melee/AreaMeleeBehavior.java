@@ -12,7 +12,7 @@ class AreaMeleeBehavior extends AbstractMeleeBehavior {
     @Override
     protected boolean hasAttackTarget(long currentTick) {
         int radius = profile().rangeTiles();
-        return world().getZombies().stream()
+        return world().getHostileZombies().stream()
                 .filter(zombie -> !zombie.isDead())
                 .anyMatch(zombie -> Math.abs(
                         zombie.getTileX() - column()

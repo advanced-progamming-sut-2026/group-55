@@ -22,6 +22,7 @@ import pvz.model.entity.projectile.ProjectileType;
 import pvz.model.entity.zombie.DamageContext;
 import pvz.model.entity.zombie.PushedObstacle;
 import pvz.model.entity.zombie.Zombie;
+import pvz.model.entity.zombie.ZombieAllegiance;
 
 public final class World {
     private static final int RADIOACTIVE_ZOMBIE_RADIUS = 2;
@@ -188,8 +189,61 @@ public final class World {
         }
     }
 
+    /**
+     * Returns every zombie regardless of allegiance. Gameplay code that means
+     * "enemy of the player" should use {@link #getHostileZombies()} instead.
+     */
     public List<Zombie> getZombies() {
         return zombieRegistry.snapshot();
+    }
+
+    public List<Zombie> getHostileZombies() {
+        return zombieRegistry.hostileView();
+    }
+
+    public List<Zombie> getAlliedZombies() {
+        return zombieRegistry.alliedView();
+    }
+
+    public boolean changeZombieAllegiance(
+            Zombie zombie,
+            ZombieAllegiance newAllegiance
+    ) {
+        Objects.requireNonNull(zombie, "zombie cannot be null");
+        Objects.requireNonNull(
+                newAllegiance,
+                "zombie allegiance cannot be null"
+        );
+        if (!zombieRegistry.contains(zombie) || zombie.isDead()) {
+            return false;
+        }
+        if (zombie.getAllegiance() == newAllegiance) {
+            return false;
+        }
+        zombieRegistry.changeAllegiance(zombie, newAllegiance);
+        return true;
+    }
+
+    public Zombie findOpposingZombieInTile(Zombie zombie) {
+        return zombieRegistry.findOpposingZombieInTile(zombie);
+    }
+
+    public Zombie findOpposingZombieInTile(
+            ZombieAllegiance allegiance,
+            int column,
+            int row
+    ) {
+        if (!board.inBounds(column, row)) {
+            return null;
+        }
+        return zombieRegistry.findOpposingZombieInTile(
+                Objects.requireNonNull(
+                        allegiance,
+                        "zombie allegiance cannot be null"
+                ),
+                column,
+                row
+        );
     }
 
     public void addPushedObstacle(PushedObstacle obstacle) {
@@ -310,7 +364,7 @@ public final class World {
             DamageContext.AttackDelivery delivery
     ) {
         board.damageZombiesInArea(
-                getZombies(),
+                getHostileZombies(),
                 column,
                 row,
                 radius,
@@ -344,6 +398,8 @@ public final class World {
             int row,
             long currentTick
     ) {
+        // Heating a row is a status/environment interaction, not enemy
+        // damage. It may beneficially thaw an allied zombie as well.
         board.clearColdEffectsFromZombiesInRow(
                 getZombies(),
                 row,
@@ -395,7 +451,7 @@ public final class World {
             HorizontalDirection direction
     ) {
         boolean boardTarget = board.hasStraightTarget(
-                zombieRegistry.view(),
+                zombieRegistry.hostileView(),
                 row,
                 fromX,
                 rangeTiles,
@@ -416,7 +472,7 @@ public final class World {
             ShotVector vector
     ) {
         boolean boardTarget = board.hasDirectionalTarget(
-                zombieRegistry.view(),
+                zombieRegistry.hostileView(),
                 startColumn,
                 startRow,
                 rangeTiles,
@@ -473,7 +529,7 @@ public final class World {
             Set<Zombie> ignoredZombies
     ) {
         return board.findHitZombie(
-                zombieRegistry.view(),
+                zombieRegistry.hostileView(),
                 row,
                 fromX,
                 toX,
@@ -542,6 +598,20 @@ public final class World {
             int column,
             int row
     ) {
+        return spawnZombie(
+                zombieId,
+                column,
+                row,
+                ZombieAllegiance.HOSTILE
+        );
+    }
+
+    public Zombie spawnZombie(
+            String zombieId,
+            int column,
+            int row,
+            ZombieAllegiance allegiance
+    ) {
         if (zombieCreator == null) {
             throw new IllegalStateException("zombie creator is not configured");
         }
@@ -549,7 +619,15 @@ public final class World {
         if (zombie == null) {
             throw new IllegalArgumentException("unknown zombie: " + zombieId);
         }
-        zombie.spawn(this, column, row);
+        zombie.spawn(
+                this,
+                column,
+                row,
+                Objects.requireNonNull(
+                        allegiance,
+                        "zombie allegiance cannot be null"
+                )
+        );
         return zombie;
     }
 

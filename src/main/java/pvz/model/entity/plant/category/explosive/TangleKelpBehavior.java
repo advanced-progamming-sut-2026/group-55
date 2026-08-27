@@ -72,7 +72,7 @@ final class TangleKelpBehavior extends AbstractExplosiveBehavior
     }
 
     private List<Zombie> zombiesInWater() {
-        return world().getZombies().stream()
+        return world().getHostileZombies().stream()
                 .filter(zombie -> !zombie.isDead())
                 .filter(this::standsInWater)
                 .toList();
@@ -93,7 +93,7 @@ final class TangleKelpBehavior extends AbstractExplosiveBehavior
     }
 
     private Zombie zombieInTile() {
-        return world().getZombies().stream()
+        return world().getHostileZombies().stream()
                 .filter(zombie -> !zombie.isDead())
                 .filter(zombie -> zombie.getTileX() == column()
                         && zombie.getTileY() == row())

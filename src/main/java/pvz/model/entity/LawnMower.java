@@ -47,7 +47,7 @@ public final class LawnMower {
             obstacle.takeDirectDamage(Double.MAX_VALUE);
         }
 
-        for (Zombie zombie : new ArrayList<>(world.getZombies())) {
+        for (Zombie zombie : new ArrayList<>(world.getHostileZombies())) {
             if (zombie.getTileY() != row) {
                 continue;
             }

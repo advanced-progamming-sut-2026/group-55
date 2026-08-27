@@ -27,7 +27,7 @@ final class GarlicBehavior extends WallBehavior
 
         int row = row();
 
-        for (Zombie zombie : List.copyOf(world().getZombies())) {
+        for (Zombie zombie : List.copyOf(world().getHostileZombies())) {
             if (zombie.isDead() || zombie.getRow() != row) {
                 continue;
             }

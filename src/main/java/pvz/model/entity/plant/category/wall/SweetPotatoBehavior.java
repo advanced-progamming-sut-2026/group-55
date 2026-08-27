@@ -42,7 +42,7 @@ final class SweetPotatoBehavior extends WallBehavior
 
         int row = row();
 
-        for (Zombie zombie : List.copyOf(world().getZombies())) {
+        for (Zombie zombie : List.copyOf(world().getHostileZombies())) {
             if (!isInAttractionRange(zombie, row)) {
                 continue;
             }

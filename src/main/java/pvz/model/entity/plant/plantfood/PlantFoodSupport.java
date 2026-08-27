@@ -2,6 +2,7 @@ package pvz.model.entity.plant.plantfood;
 
 import pvz.model.entity.plant.PlantSpec;
 import pvz.model.entity.plant.category.explosive.ExplosiveBehaviorFactory;
+import pvz.model.entity.plant.category.homing.HomingBehaviorFactory;
 import pvz.model.entity.plant.category.lobber.LobberBehaviorFactory;
 import pvz.model.entity.plant.category.melee.MeleeBehaviorFactory;
 import pvz.model.entity.plant.category.shooter.bowlingbulb.BowlingBulbPlantFoodProfile;
@@ -33,6 +34,9 @@ public final class PlantFoodSupport {
 
             case EXPLOSIVE ->
                     ExplosiveBehaviorFactory.supportsPlantFood(spec);
+
+            case HOMING ->
+                    HomingBehaviorFactory.supportsPlantFood(spec);
 
             case MELEE ->
                     MeleeBehaviorFactory.supportsPlantFood(spec);

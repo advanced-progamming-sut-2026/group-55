@@ -74,7 +74,7 @@ final class SquashBehavior extends AbstractExplosiveBehavior
         ensurePlaced();
 
         List<Zombie> candidates = new ArrayList<>(
-                world().getZombies().stream()
+                world().getHostileZombies().stream()
                         .filter(zombie -> !zombie.isDead())
                         .toList()
         );

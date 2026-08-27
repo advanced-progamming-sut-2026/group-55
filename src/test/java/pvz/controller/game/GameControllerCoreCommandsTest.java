@@ -15,6 +15,7 @@ import pvz.data.ZombieCsvLoader;
 import pvz.data.ZombieData;
 import pvz.model.entity.plant.PlantFactory;
 import pvz.model.entity.plant.Plant;
+import pvz.model.entity.zombie.HypnosisService;
 import pvz.model.entity.zombie.Zombie;
 import pvz.model.entity.zombie.ZombieFactory;
 import pvz.model.entity.projectile.ProjectileType;
@@ -64,6 +65,23 @@ class GameControllerCoreCommandsTest {
 
         assertTrue(map.contains("row 1=ready"));
         assertTrue(zombieInfo.contains("chilled: 3.2s remaining"));
+    }
+
+    @Test
+    void mapShowsBothAllegiancesWhenOpposingZombiesShareATile() {
+        Zombie ally = session.createZombie("default");
+        ally.spawn(session.world(), 4, 1);
+        HypnosisService.hypnotize(
+                ally,
+                session.game().getCurrentTick()
+        );
+        Zombie hostile = session.createZombie("default");
+        hostile.spawn(session.world(), 4, 1);
+
+        String map = controller.handle("show map");
+
+        assertTrue(map.contains("[X]"));
+        assertTrue(map.contains("X = opposing zombies sharing a tile"));
     }
 
     @Test

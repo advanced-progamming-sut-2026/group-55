@@ -71,7 +71,7 @@ final class DirectionalMeleeBehavior extends AbstractMeleeBehavior {
             double damage
     ) {
         int radius = profile().plantFoodRadius();
-        for (Zombie zombie : world().getZombies()) {
+        for (Zombie zombie : world().getHostileZombies()) {
             if (zombie.isDead()
                     || Math.abs(zombie.getTileX() - column()) > radius
                     || Math.abs(zombie.getTileY() - row()) > radius) {

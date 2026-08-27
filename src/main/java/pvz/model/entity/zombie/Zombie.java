@@ -32,6 +32,10 @@ public final class Zombie extends LivingEntity {
     private Plant biteTarget;
     private long nextBiteTick = Long.MAX_VALUE;
 
+    private ZombieAllegiance allegiance = ZombieAllegiance.HOSTILE;
+    private final ZombieCombatController zombieCombat =
+            new ZombieCombatController();
+
     private long chilledUntilTick;
     private long frozenUntilTick;
     private long butteredUntilTick;
@@ -80,7 +84,20 @@ public final class Zombie extends LivingEntity {
     }
 
     public void spawn(World world, int column, int row) {
+        spawn(world, column, row, ZombieAllegiance.HOSTILE);
+    }
+
+    public void spawn(
+            World world,
+            int column,
+            int row,
+            ZombieAllegiance initialAllegiance
+    ) {
         Objects.requireNonNull(world, "world cannot be null");
+        Objects.requireNonNull(
+                initialAllegiance,
+                "initial allegiance cannot be null"
+        );
 
         if (this.world != null) {
             throw new IllegalStateException(
@@ -94,13 +111,21 @@ public final class Zombie extends LivingEntity {
             );
         }
 
-        world.addZombie(this);
-        this.world = world;
+        allegiance = initialAllegiance;
         this.x = tileCenter(column);
         this.y = tileCenter(row);
+        world.addZombie(this);
+        this.world = world;
         world.game().register(this);
-        for (ZombieBehavior behavior : behaviors) {
-            behavior.onSpawn(this, world, world.game().getCurrentTick());
+
+        if (isHostile()) {
+            for (ZombieBehavior behavior : behaviors) {
+                behavior.onSpawn(
+                        this,
+                        world,
+                        world.game().getCurrentTick()
+                );
+            }
         }
     }
 
@@ -132,6 +157,57 @@ public final class Zombie extends LivingEntity {
 
     public boolean isEating() {
         return biteTarget != null && !biteTarget.isRemovedFromWorld();
+    }
+
+    public ZombieAllegiance getAllegiance() {
+        return allegiance;
+    }
+
+    public boolean isHostile() {
+        return allegiance == ZombieAllegiance.HOSTILE;
+    }
+
+    public boolean isAllied() {
+        return allegiance == ZombieAllegiance.ALLIED;
+    }
+
+    /**
+     * Internal side-change hook used by World/ZombieRegistry. Callers that
+     * change allegiance must go through World so registry indexes stay in sync.
+     */
+    public void applyAllegianceFromWorld(
+            ZombieAllegiance newAllegiance
+    ) {
+        Objects.requireNonNull(
+                newAllegiance,
+                "zombie allegiance cannot be null"
+        );
+
+        if (allegiance == newAllegiance) {
+            return;
+        }
+
+        ZombieAllegiance oldAllegiance = allegiance;
+        allegiance = newAllegiance;
+        resetBiteTarget();
+        zombieCombat.reset();
+
+        if (world != null) {
+            long tick = currentTick();
+            for (ZombieBehavior behavior : behaviors) {
+                behavior.onAllegianceChanged(
+                        this,
+                        world,
+                        oldAllegiance,
+                        newAllegiance,
+                        tick
+                );
+            }
+        }
+    }
+
+    public boolean isFightingZombie() {
+        return zombieCombat.isFighting();
     }
 
     public ZombieSpec getSpec() {
@@ -235,9 +311,26 @@ public final class Zombie extends LivingEntity {
         }
 
         if (isFrozen(tick) || isButtered(tick)) {
-            for (ZombieBehavior behavior : behaviors) {
-                behavior.onHardStopTick(this, world, tick);
+            zombieCombat.reset();
+            if (isHostile()) {
+                for (ZombieBehavior behavior : behaviors) {
+                    behavior.onHardStopTick(this, world, tick);
+                }
             }
+            return;
+        }
+
+        // Opposing zombies are a physical combat blocker for both sides.
+        // Checking before hostile abilities prevents a zombie already locked
+        // in melee from continuing to attack the player's plants remotely.
+        if (updateZombieCombat(tick)) {
+            resetBiteTarget();
+            return;
+        }
+
+        if (isAllied()) {
+            resetBiteTarget();
+            advanceMovement(tick, false);
             return;
         }
 
@@ -246,6 +339,13 @@ public final class Zombie extends LivingEntity {
         }
 
         if (reachedHouse || exitedWorld || isDead()) {
+            return;
+        }
+
+        // Some hostile abilities move the zombie during onTick. Re-check
+        // contact before allowing a plant encounter or another movement step.
+        if (updateZombieCombat(tick)) {
+            resetBiteTarget();
             return;
         }
 
@@ -261,24 +361,31 @@ public final class Zombie extends LivingEntity {
             return;
         }
 
-        biteTarget = null;
-        nextBiteTick = Long.MAX_VALUE;
+        resetBiteTarget();
+        advanceMovement(tick, true);
+    }
 
+    private void advanceMovement(
+            long tick,
+            boolean applyHostileBehaviorModifiers
+    ) {
         double speedMultiplier =
                 isChilled(tick)
                         ? CHILLED_SPEED_MULTIPLIER
                         : 1;
 
-        for (ZombieBehavior behavior : behaviors) {
-            speedMultiplier = behavior.modifyMovementMultiplier(
-                    this,
-                    world,
-                    tick,
-                    speedMultiplier
-            );
+        if (applyHostileBehaviorModifiers) {
+            for (ZombieBehavior behavior : behaviors) {
+                speedMultiplier = behavior.modifyMovementMultiplier(
+                        this,
+                        world,
+                        tick,
+                        speedMultiplier
+                );
+            }
         }
 
-        double nextX = x - tilesPerSecond
+        double nextX = x + movementSign() * tilesPerSecond
                 * speedMultiplier
                 / Game.TICKS_PER_SECOND;
 
@@ -292,10 +399,44 @@ public final class Zombie extends LivingEntity {
         x = nextX;
         notifyPositionChanged();
 
-        if (x <= 0) {
+        if (isHostile() && x <= 0) {
             x = 0;
             handleReachedHouse();
         }
+    }
+
+    private double movementSign() {
+        return isAllied() ? 1 : -1;
+    }
+
+    private boolean updateZombieCombat(long tick) {
+        Zombie opponent = world.findOpposingZombieInTile(this);
+        if (opponent == null) {
+            zombieCombat.reset();
+            return false;
+        }
+
+        if (isHostile()) {
+            for (ZombieBehavior behavior : behaviors) {
+                if (behavior.onOpposingZombieEncounter(
+                        this,
+                        opponent,
+                        world,
+                        tick
+                )) {
+                    zombieCombat.reset();
+                    return true;
+                }
+            }
+        }
+
+        return zombieCombat.update(
+                this,
+                opponent,
+                tick,
+                damagePerSecond,
+                attackIntervalTicks(tick)
+        );
     }
 
     private void handleReachedHouse() {
@@ -385,6 +526,26 @@ public final class Zombie extends LivingEntity {
         ));
     }
 
+    public boolean takeZombieCombatDamage(
+            double damage,
+            long currentTick
+    ) {
+        if (currentTick < 0) {
+            throw new IllegalArgumentException(
+                    "current tick cannot be negative"
+            );
+        }
+        return receiveHit(new DamageContext(
+                damage,
+                DamageContext.DamageSource.ZOMBIE,
+                null,
+                DamageContext.AttackDelivery.CONTACT,
+                DamageContext.ImpactMode.SINGLE_TARGET,
+                false,
+                currentTick
+        ));
+    }
+
     public boolean receiveHit(DamageContext context) {
         Objects.requireNonNull(context, "damage context cannot be null");
         DamageContext processed = context;
@@ -444,6 +605,10 @@ public final class Zombie extends LivingEntity {
                             + chilledAttackIntervalTicks()
             );
         }
+        zombieCombat.delayNextAttack(
+                currentTick,
+                chilledAttackIntervalTicks()
+        );
     }
 
     public void removeChill(long currentTick) {
@@ -461,6 +626,10 @@ public final class Zombie extends LivingEntity {
                     currentTick + Game.TICKS_PER_SECOND
             );
         }
+        zombieCombat.accelerateNextAttack(
+                currentTick,
+                Game.TICKS_PER_SECOND
+        );
     }
 
     public void applyFreeze(
@@ -738,6 +907,10 @@ public final class Zombie extends LivingEntity {
     }
 
     private Plant frontPlant() {
+        if (isAllied()) {
+            return null;
+        }
+
         int column = getTileX();
         int row = getTileY();
         if (!world.board().inBounds(column, row)) {
@@ -775,11 +948,13 @@ public final class Zombie extends LivingEntity {
 
     private void notifyPositionChanged() {
         long tick = currentTick();
-        for (ZombieBehavior behavior : behaviors) {
-            behavior.onPositionChanged(this, world, tick);
+        if (isHostile()) {
+            for (ZombieBehavior behavior : behaviors) {
+                behavior.onPositionChanged(this, world, tick);
+            }
         }
 
-        if (world != null && !isDead()) {
+        if (world != null && !isDead() && isHostile()) {
             world.notifyHostilePresentAt(
                     getTileX(),
                     getTileY(),

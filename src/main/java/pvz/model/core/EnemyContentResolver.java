@@ -31,7 +31,7 @@ final class EnemyContentResolver {
             return false;
         }
 
-        boolean zombiePresent = world.getZombies().stream()
+        boolean zombiePresent = world.getHostileZombies().stream()
                 .anyMatch(zombie -> !zombie.isDead()
                         && zombie.getTileX() == column
                         && zombie.getTileY() == row);
@@ -50,7 +50,7 @@ final class EnemyContentResolver {
         validateDamage(damage);
 
         world.board().damageZombiesInArea(
-                world.getZombies(),
+                world.getHostileZombies(),
                 column,
                 row,
                 radius,
@@ -83,7 +83,7 @@ final class EnemyContentResolver {
             );
         }
 
-        for (Zombie zombie : world.getZombies()) {
+        for (Zombie zombie : world.getHostileZombies()) {
             if (zombie.getTileY() == row) {
                 zombie.takeAbilityDamage(
                         damage,
@@ -110,7 +110,7 @@ final class EnemyContentResolver {
     void damageEverything(double damage) {
         validateDamage(damage);
 
-        for (Zombie zombie : world.getZombies()) {
+        for (Zombie zombie : world.getHostileZombies()) {
             zombie.takeAbilityDamage(
                         damage,
                         DamageContext.ImpactMode.AREA

@@ -61,7 +61,7 @@ final class IcebergLettuceBehavior extends AbstractExplosiveBehavior
     }
 
     private boolean hasZombieInTile() {
-        return world().getZombies().stream()
+        return world().getHostileZombies().stream()
                 .filter(zombie -> !zombie.isDead())
                 .anyMatch(this::standsOnPlant);
     }

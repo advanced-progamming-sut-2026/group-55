@@ -5,6 +5,7 @@ import java.util.Objects;
 import pvz.model.entity.plant.Plant;
 import pvz.model.entity.plant.PlantSpec;
 import pvz.model.entity.plant.category.explosive.ExplosiveBehaviorFactory;
+import pvz.model.entity.plant.category.homing.HomingBehaviorFactory;
 import pvz.model.entity.plant.category.lobber.LobberBehaviorFactory;
 import pvz.model.entity.plant.category.melee.MeleeBehaviorFactory;
 import pvz.model.entity.plant.category.shooter.ShooterBehaviorFactory;
@@ -24,43 +25,22 @@ public final class PlantBehaviorFactory {
 
         return switch (spec.getCategory()) {
 
-            case SHOOTER ->
-                    ShooterBehaviorFactory.create(
-                            owner,
-                            spec
-                    );
+            case SHOOTER -> ShooterBehaviorFactory.create(owner, spec);
 
             case SUN_PRODUCER -> new SunProducerBehavior(owner, spec);
 
             case STRIKE_THROUGH ->
-                    StrikeThroughBehaviorFactory.create(
-                            owner,
-                            spec
-                    );
+                    StrikeThroughBehaviorFactory.create(owner, spec);
 
-            case WALL ->
-                    WallBehaviorFactory.create(
-                            owner,
-                            spec
-                    );
+            case WALL -> WallBehaviorFactory.create(owner, spec);
 
-            case EXPLOSIVE ->
-                    ExplosiveBehaviorFactory.create(
-                            owner,
-                            spec
-                    );
+            case EXPLOSIVE -> ExplosiveBehaviorFactory.create(owner, spec);
 
-            case LOBBER ->
-                    LobberBehaviorFactory.create(
-                            owner,
-                            spec
-                    );
+            case LOBBER -> LobberBehaviorFactory.create(owner, spec);
 
-            case MELEE ->
-                    MeleeBehaviorFactory.create(
-                            owner,
-                            spec
-                    );
+            case HOMING -> HomingBehaviorFactory.create(owner, spec);
+
+            case MELEE -> MeleeBehaviorFactory.create(owner, spec);
 
             default -> new PassivePlantBehavior(owner);
         };

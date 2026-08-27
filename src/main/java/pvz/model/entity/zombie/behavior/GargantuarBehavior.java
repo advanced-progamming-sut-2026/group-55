@@ -34,6 +34,21 @@ public final class GargantuarBehavior implements ZombieBehavior {
     }
 
     @Override
+    public boolean onOpposingZombieEncounter(
+            Zombie zombie,
+            Zombie opponent,
+            World world,
+            long currentTick
+    ) {
+        opponent.takeZombieCombatDamage(Double.MAX_VALUE, currentTick);
+        GameEvents.publish(
+                "Gargantuar smashed " + opponent.getName()
+                        + " in lane " + zombie.getRow() + "."
+        );
+        return true;
+    }
+
+    @Override
     public boolean onPlantEncounter(
             Zombie zombie,
             Plant plant,

@@ -29,7 +29,7 @@ final class MeleeTargetResolver {
             World world,
             int rangeTiles
     ) {
-        return world.getZombies().stream()
+        return world.getHostileZombies().stream()
                 .filter(zombie -> isValid(zombie, owner))
                 .filter(zombie -> zombie.getTileX() >= owner.getTileX())
                 .filter(zombie -> zombie.getTileX()
@@ -45,7 +45,7 @@ final class MeleeTargetResolver {
             World world,
             int rangeTiles
     ) {
-        return world.getZombies().stream()
+        return world.getHostileZombies().stream()
                 .filter(zombie -> isValid(zombie, owner))
                 .filter(zombie -> zombie.getTileX() >= owner.getTileX())
                 .filter(zombie -> zombie.getTileX()
@@ -61,7 +61,7 @@ final class MeleeTargetResolver {
             World world,
             int rangeTiles
     ) {
-        return world.getZombies().stream()
+        return world.getHostileZombies().stream()
                 .filter(zombie -> isValid(zombie, owner))
                 .filter(zombie -> Math.abs(
                         zombie.getTileX() - owner.getTileX()

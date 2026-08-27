@@ -19,7 +19,7 @@ final class ZombieFreezeSupport {
         Objects.requireNonNull(world, "world cannot be null");
 
         world.board().freezeZombiesInArea(
-                world.getZombies(),
+                world.getHostileZombies(),
                 column,
                 row,
                 0,
@@ -37,7 +37,7 @@ final class ZombieFreezeSupport {
 
         for (int row = 1; row <= world.board().getRows(); row++) {
             world.board().freezeZombiesInRow(
-                    world.getZombies(),
+                    world.getHostileZombies(),
                     row,
                     currentTick,
                     durationTicks

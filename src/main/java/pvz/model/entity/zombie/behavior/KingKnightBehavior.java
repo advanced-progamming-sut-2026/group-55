@@ -64,7 +64,7 @@ public final class KingKnightBehavior implements ZombieBehavior {
             return;
         }
         nextCastTick = currentTick + castIntervalTicks;
-        List<Zombie> candidates = world.getZombies().stream()
+        List<Zombie> candidates = world.getHostileZombies().stream()
                 .filter(candidate -> candidate != zombie)
                 .filter(candidate -> eligibleZombieId.equals(
                         candidate.getSpec().getId()

@@ -53,3 +53,10 @@ plantId,behavior,param,value
 43,KIWIBEAST,stageThreeTicks,720
 43,KIWIBEAST,stageTwoDamage,30
 43,KIWIBEAST,stageThreeDamage,45
+14,CAULIPOWER,projectileSpeedTilesPerSecond,2
+14,CAULIPOWER,plantFoodTargetCount,5
+15,ELECTRIC_BLUEBERRY,projectileSpeedTilesPerSecond,2
+15,ELECTRIC_BLUEBERRY,plantFoodTargetCount,3
+55,CAT_TAIL,projectileSpeedTilesPerSecond,2
+55,CAT_TAIL,plantFoodProjectileCount,8
+55,CAT_TAIL,plantFoodProjectileIntervalTicks,1
