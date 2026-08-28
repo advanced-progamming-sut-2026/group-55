@@ -1,21 +1,48 @@
 package pvz.model.entity.plant.category.sun;
 
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.List;
-
 import pvz.model.entity.collectible.sun.SunValue;
 
 public final class GoldBloomProfile implements SunProfile {
+    public static final int BASE_TOTAL_SUN = SunValue.BIGSUN.getValue() * 5;
 
-    public static final int SUN_VALUE = SunValue.BIGSUN.getValue();
+    private final int totalSun;
 
-    public static final int SUN_COUNT = 5;
+    public GoldBloomProfile() {
+        this(0);
+    }
 
-    public static final int TOTAL_SUN = SUN_VALUE * SUN_COUNT;
+    public GoldBloomProfile(int bonusSun) {
+        if (bonusSun < 0) {
+            throw new IllegalArgumentException("Gold Bloom bonus sun cannot be negative");
+        }
+        totalSun = BASE_TOTAL_SUN + bonusSun;
+    }
 
     @Override
     public List<Integer> getCycleDrops(long currentTick) {
-        return Collections.nCopies(SUN_COUNT, SUN_VALUE);
+        return splitIntoSupportedSunValues(totalSun);
+    }
+
+    private List<Integer> splitIntoSupportedSunValues(int total) {
+        List<Integer> result = new ArrayList<>();
+        int remaining = total;
+        int[] values = {
+                SunValue.BIGSUN.getValue(),
+                SunValue.NORMALSUN.getValue(),
+                SunValue.SMALLSUN.getValue()
+        };
+        for (int value : values) {
+            while (remaining >= value) {
+                result.add(value);
+                remaining -= value;
+            }
+        }
+        if (remaining != 0) {
+            throw new IllegalStateException("Gold Bloom total cannot be represented by supported sun values");
+        }
+        return List.copyOf(result);
     }
 
     @Override

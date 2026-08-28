@@ -23,6 +23,7 @@ final class SunBeanBehavior extends ArmoredWallBehavior
     public static final int SUN_DROP_VALUE =
             SunValue.SPECIALSUN.getValue();
 
+    private final double damagePerSunDrop;
     private double unconvertedDamage;
 
     private int pendingSuns;
@@ -30,9 +31,14 @@ final class SunBeanBehavior extends ArmoredWallBehavior
     SunBeanBehavior(
             Plant owner,
             boolean blocksVaulting,
-            double armorCapacity
+            double armorCapacity,
+            double damagePerSunDrop
     ) {
         super(owner, blocksVaulting, armorCapacity);
+        if (!Double.isFinite(damagePerSunDrop) || damagePerSunDrop <= 0) {
+            throw new IllegalArgumentException("damage per sun drop must be positive and finite");
+        }
+        this.damagePerSunDrop = damagePerSunDrop;
     }
 
     @Override
@@ -88,14 +94,14 @@ final class SunBeanBehavior extends ArmoredWallBehavior
         unconvertedDamage += damage;
 
         int drops = (int) Math.floor(
-                unconvertedDamage / DAMAGE_PER_SUN_DROP
+                unconvertedDamage / damagePerSunDrop
         );
 
         if (drops <= 0) {
             return 0;
         }
 
-        unconvertedDamage -= drops * DAMAGE_PER_SUN_DROP;
+        unconvertedDamage -= drops * damagePerSunDrop;
 
         return drops;
     }

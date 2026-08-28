@@ -15,16 +15,20 @@ final class KiwibeastBehavior extends AreaMeleeBehavior {
         return switch (getGrowthStage(currentTick)) {
             case 1 -> profile().damage();
             case 2 -> profile().stageTwoDamage();
-            default -> profile().stageThreeDamage();
+            case 3 -> profile().stageThreeDamage();
+            default -> profile().stageFourDamage();
         };
     }
 
     @Override
     public int getGrowthStage(long currentTick) {
         int timedStage;
-        if (currentTick - placedTick() >= profile().stageThreeTicks()) {
+        long age = currentTick - placedTick();
+        if (profile().maxGrowthStage() >= 4 && age >= profile().stageFourTicks()) {
+            timedStage = 4;
+        } else if (age >= profile().stageThreeTicks()) {
             timedStage = 3;
-        } else if (currentTick - placedTick() >= profile().stageTwoTicks()) {
+        } else if (age >= profile().stageTwoTicks()) {
             timedStage = 2;
         } else {
             timedStage = 1;

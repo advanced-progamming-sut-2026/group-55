@@ -60,6 +60,32 @@ class StrikeThroughPlantFoodTest {
         }
     }
 
+
+    @Test
+    void cactusLevelTwoPiercesOneMoreTargetThanLevelOneBeforePlantFood() {
+        Plant levelOne = plantFactory.create("Cactus", 1);
+        world.board().plant(2, 3, levelOne);
+        levelOne.place(world, 2, 3, game.getCurrentTick());
+        game.register(levelOne);
+
+        List<Zombie> firstWave = spawnFrozenGargantuars(4, 4, 3);
+        List<Double> firstHealth = healthSnapshot(firstWave);
+        game.advance(25);
+        assertEquals(3, countDamaged(firstWave, firstHealth, 30));
+
+        levelOne.tryRemove(pvz.model.entity.plant.lifecycle.PlantThreat.FORCED_REMOVAL);
+        firstWave.forEach(zombie -> zombie.takeDirectDamage(Double.MAX_VALUE));
+
+        Plant levelTwo = plantFactory.create("Cactus", 2);
+        world.board().plant(2, 3, levelTwo);
+        levelTwo.place(world, 2, 3, game.getCurrentTick());
+        game.register(levelTwo);
+        List<Zombie> secondWave = spawnFrozenGargantuars(4, 4, 3);
+        List<Double> secondHealth = healthSnapshot(secondWave);
+        game.advance(25);
+        assertEquals(4, countDamaged(secondWave, secondHealth, 30));
+    }
+
     @Test
     void cactusPlantFoodPermanentlyElectrifiesAndUnlocksUnlimitedPiercing() {
         Plant cactus = placePlant("Cactus", 2, 3);

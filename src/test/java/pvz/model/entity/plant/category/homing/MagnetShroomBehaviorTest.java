@@ -133,6 +133,28 @@ class MagnetShroomBehaviorTest {
         assertFalse(bucket.getArmorSet().hasArmor("BUCKET"));
     }
 
+
+    @Test
+    void levelTwoRangeUpgradeReachesOneAdditionalColumn() {
+        Plant levelOne = plantFactory.create("Magnet-shroom", 1);
+        world.board().plant(6, 3, levelOne);
+        levelOne.place(world, 6, 3, game.getCurrentTick());
+        game.register(levelOne);
+        Zombie farBucket = frozenZombie("ZombieArmor2", 1, 3);
+
+        game.advance(MAGNET_INTERVAL_TICKS);
+        assertTrue(farBucket.getArmorSet().hasArmor("BUCKET"));
+
+        levelOne.tryRemove(pvz.model.entity.plant.lifecycle.PlantThreat.FORCED_REMOVAL);
+        Plant levelTwo = plantFactory.create("Magnet-shroom", 2);
+        world.board().plant(6, 3, levelTwo);
+        levelTwo.place(world, 6, 3, game.getCurrentTick());
+        game.register(levelTwo);
+
+        game.advance(MAGNET_INTERVAL_TICKS);
+        assertFalse(farBucket.getArmorSet().hasArmor("BUCKET"));
+    }
+
     private Plant placePlant(String name, int column, int row) {
         Plant plant = plantFactory.create(name);
         world.board().plant(column, row, plant);

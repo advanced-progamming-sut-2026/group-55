@@ -11,6 +11,8 @@ import pvz.model.entity.plant.behavior.AbstractPlantBehavior;
 import pvz.model.entity.plant.behavior.capability.TransientEffectCapability;
 import pvz.model.entity.plant.category.explosive.TransientActionWindow;
 import pvz.model.entity.plant.lifecycle.PlantThreat;
+import pvz.model.entity.plant.level.PlantUpgradeType;
+import pvz.model.core.Game;
 
 final class MintBehavior extends AbstractPlantBehavior
         implements TransientEffectCapability {
@@ -18,12 +20,14 @@ final class MintBehavior extends AbstractPlantBehavior
     private static final long DISPLAY_TICKS = 5;
 
     private final PlantCategory family;
-    private final TransientActionWindow displayWindow =
-            new TransientActionWindow(DISPLAY_TICKS);
+    private final TransientActionWindow displayWindow;
 
     MintBehavior(Plant owner, PlantSpec spec) {
         super(owner);
         family = spec.getCategory();
+        long durationBonus = Math.round(spec.getUpgradeValue(
+                PlantUpgradeType.MINT_DURATION_SECONDS_ADD) * Game.TICKS_PER_SECOND);
+        displayWindow = new TransientActionWindow(Math.max(1, DISPLAY_TICKS + durationBonus));
     }
 
     @Override

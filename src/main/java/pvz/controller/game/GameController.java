@@ -17,6 +17,7 @@ import pvz.model.entity.collectible.sun.Sun;
 import pvz.model.entity.collectible.plantfood.PlantFood;
 import pvz.model.entity.collectible.sun.SunCollectionOutcome;
 import pvz.model.entity.plant.Plant;
+import pvz.model.entity.plant.level.PlantUpgradeType;
 import pvz.model.entity.zombie.PushedObstacle;
 import pvz.model.entity.zombie.Zombie;
 import pvz.model.entity.zombie.ArmorInstance;
@@ -146,6 +147,12 @@ public final class GameController {
         world.sunBank().spend(cost);
         session.recordPlanting(type);
         plant.place(world, x, y, game.getCurrentTick());
+
+        if (plant.getSpec().hasUpgrade(PlantUpgradeType.MINT_RESET_FAMILY_COOLDOWNS)) {
+            session.resetFamilyRecharge(plant.getSpec().getCategory());
+            result += "\n" + plant.getName()
+                    + " reset the recharge of its non-mint family cards.";
+        }
 
         if (!plant.isRemovedFromWorld()) {
             game.register(plant);
@@ -441,7 +448,8 @@ public final class GameController {
                 + ")";
     }
 
-    private String handleShowMap() {//TODO: bada mishe bein plant zombie tile khali va .... rang entekhab kard behtar beshe
+    private String handleShowMap() {
+        // TODO: later, use distinct colors for plants, zombies, tiles, and empty cells.
         StringBuilder output = new StringBuilder();
         output.append("tick: ")
                 .append(game.getCurrentTick())

@@ -8,6 +8,8 @@ import pvz.model.account.User;
 import pvz.model.command.CollectionCommand;
 import pvz.model.command.Command;
 import pvz.model.entity.plant.PlantSpec;
+import pvz.model.entity.plant.level.PlantLevelCost;
+import pvz.model.service.PlantUpgradeService;
 import pvz.model.entity.zombie.ZombieSpec;
 import pvz.model.utils.AppState;
 import pvz.model.utils.Message;
@@ -20,11 +22,19 @@ public class CollectionController extends BaseController {
 
     private final PlantData plantData;
     private final ZombieData zombieData;
+    private final PlantUpgradeService plantUpgradeService;
 
-    public CollectionController(AppState appState, UserManager userManager, MenuView view, PlantData plantData, ZombieData zombieData) {
+    public CollectionController(
+            AppState appState,
+            UserManager userManager,
+            MenuView view,
+            PlantData plantData,
+            ZombieData zombieData
+    ) {
         super(appState, userManager, view);
         this.plantData = plantData;
         this.zombieData = zombieData;
+        this.plantUpgradeService = new PlantUpgradeService(plantData.levelCosts());
     }
 
     @Override
@@ -39,7 +49,7 @@ public class CollectionController extends BaseController {
         switch (cmd.getAction()) {
             case SHOW_PLANTS -> handleShowPlants(currentUser);
             case SHOW_ALL_PLANTS -> handleShowAllPlants();
-            case SHOW_PLANT_DETAILS -> handleShowPlantDetails(cmd);
+            case SHOW_PLANT_DETAILS -> handleShowPlantDetails(cmd, currentUser);
             case PURCHASE_PLANT -> handlePurchasePlant(cmd, currentUser);
             case UPGRADE_PLANT -> handleUpgradePlant(cmd, currentUser);
             case SHOW_ZOMBIES -> handleShowZombies(currentUser);
@@ -52,8 +62,18 @@ public class CollectionController extends BaseController {
 
     private void handleShowPlants(User user) {
         view.showSuccess(SystemMessage.COLLECTION_HEADER_YOUR_PLANTS.getMessage());
-        user.getUnlockedPlants()
-                .forEach(p -> view.showSuccess(p.getPlantName() + " (Lvl " + p.getLevel() + ")"));
+        user.getUnlockedPlants().forEach(playerPlant -> {
+            String progress;
+            if (playerPlant.getLevel() >= PlantSpec.MAX_LEVEL) {
+                progress = "MAX";
+            } else {
+                PlantLevelCost next = plantData.levelCosts()
+                        .forTargetLevel(playerPlant.getLevel() + 1);
+                progress = playerPlant.getSeedPackets() + "/" + next.seedPackets() + " seeds";
+            }
+            view.showSuccess(playerPlant.getPlantName()
+                    + " (Lvl " + playerPlant.getLevel() + ", " + progress + ")");
+        });
     }
 
     private void handleShowAllPlants() {
@@ -63,30 +83,54 @@ public class CollectionController extends BaseController {
                 .forEach(p -> view.showSuccess(p.getId() + ". " + p.getName()));
     }
 
-    private void handleShowPlantDetails(CollectionCommand cmd) {
-        PlantSpec spec = plantData.byName().get(cmd.getTargetName().toLowerCase());
+    private void handleShowPlantDetails(CollectionCommand cmd, User user) {
+        PlantSpec spec = plantData.byName().get(cmd.getTargetName().toLowerCase(Locale.ROOT));
         if (spec == null) {
             view.showError(SystemMessage.COLLECTION_ITEM_NOT_FOUND.getMessage());
             return;
         }
+        PlayerPlant owned = user.getOwnedPlant(spec.getName());
+        int currentLevel = owned == null ? PlantSpec.MIN_LEVEL : owned.getLevel();
+        PlantSpec effectiveSpec = spec.withLevel(currentLevel);
+
         view.showSuccess("ID: " + spec.getId());
         view.showSuccess("Name: " + spec.getName());
         view.showSuccess("Category: " + spec.getCategory());
-        view.showSuccess("Tags: " + spec.getTags().toString());
-        view.showSuccess("Cost: " + spec.getCost() + " Sun");
-        view.showSuccess("Base HP: " + spec.getBaseHp());
-        view.showSuccess("Damage: " + spec.getDamage());
+        view.showSuccess("Tags: " + spec.getTags());
         view.showSuccess("Base Ability: " + spec.getBaseAbility());
         view.showSuccess("Plant Food Effect: " + spec.getPlantFoodEffect());
         view.showSuccess("Lvl 2 Upgrade: " + spec.getLvl2());
         view.showSuccess("Lvl 3 Upgrade: " + spec.getLvl3());
         view.showSuccess("Lvl 4 Upgrade: " + spec.getLvl4());
-        view.showSuccess("Action Interval: " + spec.getActionInterval() + "s");
-        view.showSuccess("Recharge: " + spec.getRecharge() + "s");
+
+        if (owned == null) {
+            view.showSuccess("Owned: no");
+            view.showSuccess("Base Cost: " + spec.getCost() + " Sun");
+            view.showSuccess("Base HP: " + spec.getBaseHp());
+            view.showSuccess("Base Damage: " + spec.getDamage());
+            view.showSuccess("Base Action Interval: " + spec.getActionInterval() + "s");
+            view.showSuccess("Base Recharge: " + spec.getRecharge() + "s");
+            return;
+        }
+
+        view.showSuccess("Current Level: " + currentLevel);
+        view.showSuccess("Seed Packets: " + owned.getSeedPackets());
+        view.showSuccess("Effective Cost: " + effectiveSpec.getCost() + " Sun");
+        view.showSuccess("Effective HP: " + effectiveSpec.getBaseHp());
+        view.showSuccess("Effective Damage: " + effectiveSpec.getDamage());
+        view.showSuccess("Effective Action Interval: " + effectiveSpec.getActionInterval() + "s");
+        view.showSuccess("Effective Recharge: " + effectiveSpec.getRecharge() + "s");
+        if (currentLevel < PlantSpec.MAX_LEVEL) {
+            PlantLevelCost next = plantData.levelCosts().forTargetLevel(currentLevel + 1);
+            view.showSuccess("Next Upgrade: " + next.coins() + " coins + "
+                    + next.seedPackets() + " seed packets");
+        } else {
+            view.showSuccess("Next Upgrade: MAX LEVEL");
+        }
     }
 
     private void handlePurchasePlant(CollectionCommand cmd, User user) {
-        PlantSpec spec = plantData.byName().get(cmd.getTargetName().toLowerCase());
+        PlantSpec spec = plantData.byName().get(cmd.getTargetName().toLowerCase(Locale.ROOT));
         if (spec == null) {
             view.showError(SystemMessage.COLLECTION_ITEM_NOT_FOUND.getMessage());
         } else if (user.getOwnedPlant(spec.getName()) != null) {
@@ -101,29 +145,32 @@ public class CollectionController extends BaseController {
     }
 
     private void handleUpgradePlant(CollectionCommand cmd, User user) {
-        PlayerPlant p = user.getOwnedPlant(cmd.getTargetName());
-        if (p == null) {
-            view.showError(SystemMessage.COLLECTION_ITEM_NOT_FOUND.getMessage());
-            return;
-        }
+        PlantUpgradeService.Result result = plantUpgradeService.upgrade(
+                user,
+                cmd.getTargetName()
+        );
 
-        int currentLevel = p.getLevel();
-        if (currentLevel >= 4) {
-            view.showError(SystemMessage.COLLECTION_MAX_LEVEL_REACHED.getMessage());
-            return;
-        }
-        //همینجوری فعلا نوشتم
-        int costCoins = 500 * currentLevel;
-        int costPackets = currentLevel;
-
-        if (user.getCoins() >= costCoins && p.getSeedPackets() >= costPackets) {
-            user.spendCoins(costCoins);
-            p.spendSeedPackets(costPackets);
-            p.upgrade();
-            userManager.save();
-            view.showSuccess(SystemMessage.COLLECTION_PLANT_UPGRADED.getMessage());
-        } else {
-            view.showError(SystemMessage.COLLECTION_NOT_ENOUGH_SEEDS.getMessage());
+        switch (result) {
+            case NOT_OWNED -> view.showError(
+                    SystemMessage.COLLECTION_ITEM_NOT_FOUND.getMessage());
+            case MAX_LEVEL -> view.showError(
+                    SystemMessage.COLLECTION_MAX_LEVEL_REACHED.getMessage());
+            case NOT_ENOUGH_COINS -> view.showError(
+                    SystemMessage.COLLECTION_NOT_ENOUGH_COINS.getMessage());
+            case NOT_ENOUGH_SEEDS -> view.showError(
+                    SystemMessage.COLLECTION_NOT_ENOUGH_SEEDS.getMessage());
+            case SUCCESS -> {
+                String username = user.getUsername();
+                if (userManager.save()) {
+                    view.showSuccess(SystemMessage.COLLECTION_PLANT_UPGRADED.getMessage());
+                } else {
+                    userManager.reload();
+                    appState.setCurrentUser(userManager.find(
+                            candidate -> candidate.getUsername().equals(username)
+                    ));
+                    view.showError("Failed to save game data. Plant upgrade reverted.");
+                }
+            }
         }
     }
 
@@ -162,7 +209,7 @@ public class CollectionController extends BaseController {
     private void handleShowZombieDetails(CollectionCommand cmd) {
 
         ZombieSpec spec =
-                zombieData.byName().get(cmd.getTargetName().toLowerCase());
+                zombieData.byName().get(cmd.getTargetName().toLowerCase(Locale.ROOT));
 
         if (spec == null) {
             view.showError(SystemMessage.COLLECTION_ITEM_NOT_FOUND.getMessage());

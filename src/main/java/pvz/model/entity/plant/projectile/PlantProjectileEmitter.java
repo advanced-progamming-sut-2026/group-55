@@ -10,6 +10,9 @@ import pvz.model.entity.plant.attack.ShotVector;
 import pvz.model.entity.projectile.DirectionalProjectile;
 import pvz.model.entity.projectile.Projectile;
 import pvz.model.entity.projectile.ProjectileFamily;
+import pvz.model.entity.projectile.ProjectileEffectProfile;
+import pvz.model.entity.plant.level.PlantUpgradeType;
+import pvz.model.core.Game;
 import pvz.model.entity.projectile.ProjectileHitLimit;
 import pvz.model.entity.projectile.ProjectileType;
 
@@ -17,27 +20,29 @@ public final class PlantProjectileEmitter {
 
     private final String projectileName;
     private final ProjectileFamily projectileFamily;
+    private final ProjectileEffectProfile effectProfile;
 
     private World world;
     private int column;
 
     public PlantProjectileEmitter(String plantName) {
-        this(plantName, ProjectileFamily.GENERIC);
+        this(plantName, ProjectileFamily.GENERIC, ProjectileEffectProfile.DEFAULT);
     }
 
     public PlantProjectileEmitter(PlantSpec spec) {
         this(
-                Objects.requireNonNull(spec, "plant spec cannot be null")
-                        .getName(),
+                Objects.requireNonNull(spec, "plant spec cannot be null").getName(),
                 spec.getTags().contains(PlantTag.PEA)
                         ? ProjectileFamily.PEA
-                        : ProjectileFamily.GENERIC
+                        : ProjectileFamily.GENERIC,
+                effectProfileFor(spec)
         );
     }
 
     private PlantProjectileEmitter(
             String plantName,
-            ProjectileFamily projectileFamily
+            ProjectileFamily projectileFamily,
+            ProjectileEffectProfile effectProfile
     ) {
         String normalizedPlantName = Objects.requireNonNull(
                         plantName,
@@ -52,6 +57,24 @@ public final class PlantProjectileEmitter {
         this.projectileFamily = Objects.requireNonNull(
                 projectileFamily,
                 "projectile family cannot be null"
+        );
+        this.effectProfile = Objects.requireNonNull(
+                effectProfile,
+                "projectile effect profile cannot be null"
+        );
+    }
+
+    private static ProjectileEffectProfile effectProfileFor(PlantSpec spec) {
+        long chillTicks = ProjectileEffectProfile.DEFAULT.chillDurationTicks()
+                + Math.round(spec.getUpgradeValue(PlantUpgradeType.CHILL_SECONDS_ADD)
+                * Game.TICKS_PER_SECOND);
+        double poisonDamage = ProjectileEffectProfile.DEFAULT.poisonDamagePerSecond()
+                + spec.getUpgradeValue(PlantUpgradeType.POISON_DAMAGE_PER_TICK_ADD);
+        return new ProjectileEffectProfile(
+                Math.max(0, chillTicks),
+                ProjectileEffectProfile.DEFAULT.poisonDurationTicks(),
+                Math.max(0, poisonDamage),
+                ProjectileEffectProfile.DEFAULT.maximumPoisonStacks()
         );
     }
 
@@ -107,7 +130,8 @@ public final class PlantProjectileEmitter {
                         rangeTiles,
                         direction,
                         hitLimit,
-                        projectileFamily
+                        projectileFamily,
+                        effectProfile
                 )
         );
     }
@@ -171,7 +195,8 @@ public final class PlantProjectileEmitter {
                         rangeTiles,
                         vector,
                         hitLimit,
-                        projectileFamily
+                        projectileFamily,
+                        effectProfile
                 )
         );
     }

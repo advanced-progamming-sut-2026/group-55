@@ -29,7 +29,7 @@ plantId,behavior,param,value
 57,GLOBAL_FREEZE,freezeDurationTicks,100
 57,GLOBAL_FREEZE,effectDisplayTicks,5
 59,TILE_MELT,effectDisplayTicks,5
-60,TOMBSTONE_DESTROY,effectDisplayTicks,5
+60,TOMBSTONE_DESTROY,effectDisplayTicks,20
 39,BONK_CHOY,rangeTiles,1
 39,BONK_CHOY,plantFoodRadius,1
 39,BONK_CHOY,plantFoodHitCount,8

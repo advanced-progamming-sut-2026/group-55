@@ -5,6 +5,7 @@ import java.util.Map;
 
 import pvz.model.entity.plant.PlantCategory;
 import pvz.model.entity.plant.PlantSpec;
+import pvz.model.entity.plant.level.PlantUpgradeType;
 
 final class HomingProfiles {
 
@@ -29,7 +30,9 @@ final class HomingProfiles {
                 kind,
                 damageOf(kind, spec),
                 spec.getActionInterval(),
-                spec.behaviorParams(kind.name())
+                spec.behaviorParams(kind.name()),
+                4 + (int) Math.round(spec.getUpgradeValue(PlantUpgradeType.RANGE_TILES_ADD)),
+                spec.hasUpgrade(PlantUpgradeType.HOMING_PRIORITY_MODE)
         );
     }
 

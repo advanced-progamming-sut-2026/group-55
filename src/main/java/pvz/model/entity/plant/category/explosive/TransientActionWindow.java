@@ -50,6 +50,15 @@ public final class TransientActionWindow {
         }
     }
 
+
+    public void reset() {
+        if (state != State.FINISHED) {
+            throw new IllegalStateException("only a finished action window can be reset");
+        }
+        state = State.IDLE;
+        finishTick = 0;
+    }
+
     public State getState() {
         return state;
     }

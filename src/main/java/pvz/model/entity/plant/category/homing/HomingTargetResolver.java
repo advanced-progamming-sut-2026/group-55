@@ -35,6 +35,23 @@ public final class HomingTargetResolver {
         return randomOf(world, destructibleTargets(world));
     }
 
+
+    public static HomingTarget highestThreatHostileZombie(World world) {
+        return hostileZombieTargets(world).stream()
+                .min(Comparator
+                        .comparingDouble(HomingTarget::getX)
+                        .thenComparingDouble(HomingTarget::getY))
+                .orElse(null);
+    }
+
+    public static HomingTarget highestThreatDestructibleTarget(World world) {
+        return destructibleTargets(world).stream()
+                .min(Comparator
+                        .comparingDouble(HomingTarget::getX)
+                        .thenComparingDouble(HomingTarget::getY))
+                .orElse(null);
+    }
+
     public static HomingTarget catTailPriorityZombie(
             World world,
             Plant owner

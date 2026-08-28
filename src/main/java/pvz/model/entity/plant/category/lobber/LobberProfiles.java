@@ -7,6 +7,7 @@ import pvz.model.core.Game;
 import pvz.model.entity.plant.PlantCategory;
 import pvz.model.entity.plant.PlantSpec;
 import pvz.model.entity.projectile.ProjectileType;
+import pvz.model.entity.plant.level.PlantUpgradeType;
 
 final class LobberProfiles {
     private static final int NO_SPLASH = 0;
@@ -52,29 +53,21 @@ final class LobberProfiles {
 
         return switch (normalize(spec.getName())) {
             case "cabbage-pult" -> singleShot(
-                    parseSimpleDamage(spec),
-                    NO_SPLASH,
-                    ProjectileType.NORMAL
+                    spec, parseSimpleDamage(spec), NO_SPLASH, ProjectileType.NORMAL
             );
 
             case "kernel-pult" -> createKernelProfile(spec);
 
             case "melon-pult" -> singleShot(
-                    parseSimpleDamage(spec),
-                    AREA_SPLASH_RADIUS,
-                    ProjectileType.NORMAL
+                    spec, parseSimpleDamage(spec), AREA_SPLASH_RADIUS, ProjectileType.NORMAL
             );
 
             case "winter melon" -> singleShot(
-                    parseSimpleDamage(spec),
-                    AREA_SPLASH_RADIUS,
-                    ProjectileType.ICE
+                    spec, parseSimpleDamage(spec), AREA_SPLASH_RADIUS, ProjectileType.ICE
             );
 
             case "pepper-pult" -> singleShot(
-                    parseSimpleDamage(spec),
-                    AREA_SPLASH_RADIUS,
-                    ProjectileType.FIRE
+                    spec, parseSimpleDamage(spec), AREA_SPLASH_RADIUS, ProjectileType.FIRE
             );
 
             default -> throw new IllegalArgumentException(
@@ -105,21 +98,26 @@ final class LobberProfiles {
         return new LobberProfile(
                 kernel,
                 butter,
-                BUTTER_CHANCE
+                Math.min(1, BUTTER_CHANCE + spec.getUpgradeValue(
+                        PlantUpgradeType.KERNEL_BUTTER_CHANCE_ADD))
         );
     }
 
     private static LobberProfile singleShot(
+            PlantSpec spec,
             double damage,
             int splashRadius,
             ProjectileType projectileType
     ) {
+        double splashBonus = spec.getUpgradeValue(
+                PlantUpgradeType.SPLASH_DAMAGE_ADD);
+        int warmthRadius = normalize(spec.getName()).equals("pepper-pult")
+                ? 1 + (int) Math.round(spec.getUpgradeValue(PlantUpgradeType.WARMTH_RADIUS_ADD))
+                : 0;
         return new LobberProfile(
                 new LobberShot(
-                        damage,
-                        splashRadius,
-                        projectileType,
-                        0
+                        damage, splashRadius, projectileType, 0,
+                        splashBonus, warmthRadius
                 )
         );
     }

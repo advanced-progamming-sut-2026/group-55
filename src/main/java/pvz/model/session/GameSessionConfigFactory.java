@@ -39,6 +39,20 @@ public final class GameSessionConfigFactory {
             int startingPlantFood,
             int difficultyLevel
     ) {
+        return create(
+                levelId, selectedPlants, Map.of(), boostedPlants,
+                startingPlantFood, difficultyLevel
+        );
+    }
+
+    public GameSessionConfig create(
+            String levelId,
+            List<String> selectedPlants,
+            Map<String, Integer> plantLevels,
+            Set<String> boostedPlants,
+            int startingPlantFood,
+            int difficultyLevel
+    ) {
         LevelSpec level = adventureData.catalog().requireLevel(levelId);
         String normalizedLevelId = level.id()
                 .toLowerCase(Locale.ROOT);
@@ -61,6 +75,7 @@ public final class GameSessionConfigFactory {
                 .startingPlantFood(startingPlantFood)
                 .difficultyLevel(difficultyLevel)
                 .skySunEnabled(level.skySunEnabled())
+                .plantLevels(plantLevels)
                 .boostedPlants(boostedPlants)
                 .waveConfiguration(waves)
                 .winCondition(

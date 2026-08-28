@@ -14,12 +14,16 @@ final class HomingProfile {
     private final double actionIntervalSeconds;
 
     private final Map<String, Double> params;
+    private final int magnetHorizontalRangeTiles;
+    private final boolean priorityTargeting;
 
     HomingProfile(
             HomingKind kind,
             double damage,
             double actionIntervalSeconds,
-            Map<String, Double> params
+            Map<String, Double> params,
+            int magnetHorizontalRangeTiles,
+            boolean priorityTargeting
     ) {
         this.kind = Objects.requireNonNull(kind, "kind cannot be null");
 
@@ -41,6 +45,11 @@ final class HomingProfile {
         this.params = Map.copyOf(
                 Objects.requireNonNull(params, "params cannot be null")
         );
+        if (magnetHorizontalRangeTiles <= 0) {
+            throw new IllegalArgumentException("magnet range must be positive");
+        }
+        this.magnetHorizontalRangeTiles = magnetHorizontalRangeTiles;
+        this.priorityTargeting = priorityTargeting;
     }
 
     HomingKind kind() {
@@ -72,6 +81,15 @@ final class HomingProfile {
 
     long plantFoodProjectileIntervalTicks() {
         return (long) required("plantFoodProjectileIntervalTicks");
+    }
+
+
+    int magnetHorizontalRangeTiles() {
+        return magnetHorizontalRangeTiles;
+    }
+
+    boolean priorityTargeting() {
+        return priorityTargeting;
     }
 
     boolean supportsPlantFood() {
