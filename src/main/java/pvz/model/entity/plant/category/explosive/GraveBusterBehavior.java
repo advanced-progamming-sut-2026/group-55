@@ -14,8 +14,7 @@ final class GraveBusterBehavior extends AbstractExplosiveBehavior
 
     @Override
     public boolean canTarget(PlantPlacementTarget target) {
-        return target != null
-                && target.tileType() == TileType.TOMBSTONE;
+        return target != null && target.tileType() == TileType.TOMBSTONE;
     }
 
     @Override
@@ -25,18 +24,15 @@ final class GraveBusterBehavior extends AbstractExplosiveBehavior
 
     @Override
     protected void applyEffect(long currentTick) {
-        double tombstoneHealth = world().board()
-                .getTile(column(), row())
-                .getHealth();
-
+        double tombstoneHealth = world().board().getTile(column(), row()).getHealth();
         if (tombstoneHealth > 0) {
-            world().board().damageTerrain(
-                    column(),
-                    row(),
-                    tombstoneHealth
-            );
+            world().board().damageTerrain(column(), row(), tombstoneHealth);
         }
-
-        publishEffect("destroyed the tombstone.");
+        if (profile().finishExplosionDamage() > 0) {
+            world().damageEnemyContentsInArea(
+                    column(), row(), 1, profile().finishExplosionDamage());
+        }
+        publishEffect("destroyed the tombstone." +
+                (profile().finishExplosionDamage() > 0 ? " It exploded on finish." : ""));
     }
 }

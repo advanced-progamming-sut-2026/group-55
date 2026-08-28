@@ -81,7 +81,9 @@ public final class GameSession {
 
     public Plant createPlant(String plantName) {
         requireRunning();
-        return plantFactory.create(normalizeName(plantName));
+        String normalizedName = normalizeName(plantName);
+        int level = config.plantLevels().getOrDefault(normalizedName, 1);
+        return plantFactory.create(normalizedName, level);
     }
 
     public Zombie createZombie(String zombieName) {
@@ -136,6 +138,18 @@ public final class GameSession {
                 normalizeName(plantName),
                 game.getCurrentTick()
         );
+    }
+
+
+    public void resetFamilyRecharge(pvz.model.entity.plant.PlantCategory category) {
+        requireRunning();
+        Objects.requireNonNull(category, "plant category cannot be null");
+        lastPlantedTicks.keySet().removeIf(plantName -> {
+            pvz.model.entity.plant.PlantSpec spec = plantFactory.getSpec(plantName);
+            return spec != null
+                    && spec.getCategory() == category
+                    && !spec.getTags().contains(pvz.model.entity.plant.PlantTag.MINT);
+        });
     }
 
     public BattleResources resources() {

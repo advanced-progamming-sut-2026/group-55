@@ -4,6 +4,7 @@ import java.util.Objects;
 
 import pvz.model.core.Game;
 import pvz.model.core.World;
+import pvz.model.core.board.TileOverlayType;
 import pvz.model.entity.Entity;
 import pvz.model.entity.plant.category.lobber.LobberShot;
 import pvz.model.entity.plant.category.lobber.LobberTarget;
@@ -148,7 +149,7 @@ public final class LobbedProjectile extends Entity {
         world.board().damageTerrainWithProjectile(
                 impactColumn,
                 impactRow,
-                shot.damage(),
+                shot.areaDamage(),
                 shot.projectileType()
         );
     }
@@ -181,7 +182,7 @@ public final class LobbedProjectile extends Entity {
 
         boolean accepted = shot.projectileType().hitZombie(
                 zombie,
-                shot.damage(),
+                shot.areaDamage(),
                 currentTick,
                 DamageContext.AttackDelivery.LOBBED
         );
@@ -201,7 +202,7 @@ public final class LobbedProjectile extends Entity {
                 impactColumn,
                 impactRow,
                 shot.splashRadius(),
-                shot.damage(),
+                shot.areaDamage(),
                 shot.projectileType(),
                 DamageContext.AttackDelivery.LOBBED,
                 currentTick
@@ -211,7 +212,7 @@ public final class LobbedProjectile extends Entity {
                 impactColumn,
                 impactRow,
                 shot.splashRadius(),
-                shot.damage(),
+                shot.areaDamage(),
                 shot.projectileType()
         );
 
@@ -219,9 +220,21 @@ public final class LobbedProjectile extends Entity {
                 impactColumn,
                 impactRow,
                 shot.splashRadius(),
-                shot.damage(),
+                shot.areaDamage(),
                 shot.projectileType()
         );
+
+        if (shot.projectileType() == ProjectileType.FIRE && shot.warmthRadius() > 0) {
+            for (int row = impactRow - shot.warmthRadius();
+                    row <= impactRow + shot.warmthRadius(); row++) {
+                for (int column = impactColumn - shot.warmthRadius();
+                        column <= impactColumn + shot.warmthRadius(); column++) {
+                    if (world.board().inBounds(column, row)) {
+                        world.board().destroyOverlay(column, row, TileOverlayType.FROZEN);
+                    }
+                }
+            }
+        }
     }
 
     private void applyButterIfNeeded(

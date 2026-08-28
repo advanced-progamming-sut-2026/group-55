@@ -51,29 +51,32 @@ public enum ProjectileType {
             DamageContext.AttackDelivery delivery,
             DamageContext.ImpactMode impactMode
     ) {
-        Objects.requireNonNull(
-                zombie,
-                "zombie cannot be null"
+        return hitZombie(
+                zombie, baseDamage, currentTick, delivery, impactMode,
+                ProjectileEffectProfile.DEFAULT
         );
+    }
 
+    public boolean hitZombie(
+            Zombie zombie,
+            double baseDamage,
+            long currentTick,
+            DamageContext.AttackDelivery delivery,
+            DamageContext.ImpactMode impactMode,
+            ProjectileEffectProfile effectProfile
+    ) {
+        Objects.requireNonNull(zombie, "zombie cannot be null");
+        Objects.requireNonNull(effectProfile, "projectile effect profile cannot be null");
         boolean bypassArmor = this == POISON;
         boolean accepted = hit(
-                zombie,
-                calculateDamage(baseDamage),
-                currentTick,
-                delivery,
-                impactMode,
-                bypassArmor
+                zombie, calculateDamage(baseDamage), currentTick,
+                delivery, impactMode, bypassArmor
         );
-
         if (accepted) {
             ElementInteractionResolver.applyAcceptedZombieHit(
-                    this,
-                    zombie,
-                    currentTick
+                    this, zombie, currentTick, effectProfile
             );
         }
-
         return accepted;
     }
 

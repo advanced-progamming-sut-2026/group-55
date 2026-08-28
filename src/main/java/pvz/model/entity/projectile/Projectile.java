@@ -23,6 +23,7 @@ public class Projectile extends Entity implements ProjectileModifierTarget {
     private PeaHeatState peaHeatState;
     private double peaDamageMultiplier;
     private final ProjectileHitLimit hitLimit;
+    private ProjectileEffectProfile effectProfile = ProjectileEffectProfile.DEFAULT;
     private final Set<Zombie> hitZombies =
             new HashSet<>();
     private final Set<PushedObstacle> hitObstacles =
@@ -209,6 +210,29 @@ public class Projectile extends Entity implements ProjectileModifierTarget {
 
     public ProjectileType getType() {
         return type;
+    }
+
+
+    public Projectile(
+            World world,
+            String name,
+            int startColumn,
+            int startRow,
+            double spawnOffsetX,
+            double damage,
+            ProjectileType type,
+            int rangeTiles,
+            HorizontalDirection direction,
+            ProjectileHitLimit hitLimit,
+            ProjectileFamily projectileFamily,
+            ProjectileEffectProfile effectProfile
+    ) {
+        this(
+                world, name, startColumn, startRow, spawnOffsetX, damage,
+                type, rangeTiles, direction, hitLimit, projectileFamily
+        );
+        this.effectProfile = Objects.requireNonNull(
+                effectProfile, "projectile effect profile cannot be null");
     }
 
     @Override
@@ -444,7 +468,10 @@ public class Projectile extends Entity implements ProjectileModifierTarget {
             type.hitZombie(
                     zombie,
                     effectiveBaseDamage(),
-                    tick
+                    tick,
+                    pvz.model.entity.zombie.DamageContext.AttackDelivery.STRAIGHT,
+                    pvz.model.entity.zombie.DamageContext.ImpactMode.SINGLE_TARGET,
+                    effectProfile
             );
             hitZombies.add(zombie);
 

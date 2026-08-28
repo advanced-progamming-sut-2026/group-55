@@ -732,6 +732,13 @@ public final class World {
         return zombie;
     }
 
+    public boolean rollChance(double probability) {
+        if (!Double.isFinite(probability) || probability < 0 || probability > 1) {
+            throw new IllegalArgumentException("probability must be between 0 and 1");
+        }
+        return random.nextDouble() < probability;
+    }
+
     public int randomInt(int bound) {
         if (bound <= 0) {
             throw new IllegalArgumentException("random bound must be positive");

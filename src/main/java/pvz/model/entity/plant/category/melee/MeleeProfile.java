@@ -91,6 +91,19 @@ final class MeleeProfile {
         return required("stageThreeDamage");
     }
 
+
+    long stageFourTicks() {
+        return (long) optional("stageFourTicks", stageThreeTicks());
+    }
+
+    double stageFourDamage() {
+        return optional("stageFourDamage", stageThreeDamage());
+    }
+
+    int maxGrowthStage() {
+        return (int) optional("maxGrowthStage", 3);
+    }
+
     int plantFoodGrowthStage() {
         return (int) required("plantFoodGrowthStage");
     }

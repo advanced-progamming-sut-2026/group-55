@@ -37,13 +37,13 @@ final class TangleKelpBehavior extends AbstractExplosiveBehavior
 
     @Override
     protected void applyEffect(long currentTick) {
-        Zombie target = zombieInTile();
-
-        if (target != null) {
-            dragUnderwater(target);
+        List<Zombie> targets = zombiesInOwnTile();
+        int targetCount = Math.min(profile().normalTargetCount(), targets.size());
+        for (int index = 0; index < targetCount; index++) {
+            dragUnderwater(targets.get(index));
         }
 
-        publishEffect("dragged a zombie underwater.");
+        publishEffect("dragged " + targetCount + " zombie(s) underwater.");
     }
 
     @Override
@@ -90,6 +90,15 @@ final class TangleKelpBehavior extends AbstractExplosiveBehavior
                 zombie.getTileX(),
                 zombie.getTileY()
         ).getType() == TileType.WATER;
+    }
+
+
+    private List<Zombie> zombiesInOwnTile() {
+        return world().getHostileZombies().stream()
+                .filter(zombie -> !zombie.isDead())
+                .filter(zombie -> zombie.getTileX() == column()
+                        && zombie.getTileY() == row())
+                .toList();
     }
 
     private Zombie zombieInTile() {

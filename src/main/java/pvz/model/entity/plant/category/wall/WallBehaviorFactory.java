@@ -8,6 +8,7 @@ import pvz.model.entity.plant.PlantCategory;
 import pvz.model.entity.plant.PlantSpec;
 import pvz.model.entity.plant.PlantTag;
 import pvz.model.entity.plant.behavior.PlantBehavior;
+import pvz.model.entity.plant.level.PlantUpgradeType;
 
 public final class WallBehaviorFactory {
 
@@ -89,7 +90,8 @@ public final class WallBehaviorFactory {
                     owner,
                     blocksVaulting,
                     spec.getBaseHp(),
-                    parseDamage(spec)
+                    parseDamage(spec) + spec.getUpgradeValue(
+                            PlantUpgradeType.EXPLOSION_DAMAGE_ADD)
             );
         }
 
@@ -98,7 +100,8 @@ public final class WallBehaviorFactory {
                     owner,
                     blocksVaulting,
                     spec.getBaseHp(),
-                    parseDamage(spec)
+                    parseDamage(spec) + spec.getUpgradeValue(
+                            PlantUpgradeType.ENDURIAN_REFLECT_DAMAGE_ADD)
             );
         }
 
@@ -114,7 +117,10 @@ public final class WallBehaviorFactory {
             return new SunBeanBehavior(
                     owner,
                     blocksVaulting,
-                    spec.getBaseHp()
+                    spec.getBaseHp(),
+                    SunBeanBehavior.DAMAGE_PER_SUN_DROP
+                            + spec.getUpgradeValue(
+                            PlantUpgradeType.SUN_BEAN_DAMAGE_THRESHOLD_ADD)
             );
         }
 

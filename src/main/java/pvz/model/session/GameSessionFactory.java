@@ -3,6 +3,7 @@ package pvz.model.session;
 import java.awt.Point;
 import java.util.List;
 import java.util.Objects;
+import java.util.Locale;
 import java.util.Random;
 import java.util.random.RandomGenerator;
 
@@ -82,7 +83,13 @@ public final class GameSessionFactory {
         World world =
                 new World(game, board, resources, random);
 
-        world.setPlantCreator(plantFactory::create);
+        world.setPlantCreator(name -> plantFactory.create(
+                name,
+                config.plantLevels().getOrDefault(
+                        name.strip().toLowerCase(Locale.ROOT),
+                        1
+                )
+        ));
         world.setZombieCreator(
                 id -> zombieFactory.create(
                         id,

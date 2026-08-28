@@ -11,6 +11,7 @@ import pvz.model.entity.plant.attack.ShotPath;
 import pvz.model.entity.plant.attack.ShotVector;
 import pvz.model.entity.projectile.ProjectileHitLimit;
 import pvz.model.entity.projectile.ProjectileType;
+import pvz.model.entity.plant.level.PlantUpgradeType;
 
 public final class StrikeThroughProfiles {
     private static final int FULL_BOARD_RANGE = Integer.MAX_VALUE;
@@ -41,8 +42,8 @@ public final class StrikeThroughProfiles {
                 0,
                 List.of(new ShotPath(0, ShotVector.RIGHT, 1)),
                 ProjectileType.NORMAL,
-                rangeTiles(kind),
-                hitLimit(kind),
+                rangeTiles(kind, spec),
+                hitLimit(kind, spec),
                 plantFoodDamageMultiplier(kind, spec),
                 plantFoodDamage(kind, spec),
                 plantFoodKnockbackTiles(kind, spec)
@@ -67,16 +68,21 @@ public final class StrikeThroughProfiles {
         );
     }
 
-    private static int rangeTiles(StrikeThroughKind kind) {
+    private static int rangeTiles(StrikeThroughKind kind, PlantSpec spec) {
         return switch (kind) {
             case CACTUS -> FULL_BOARD_RANGE;
-            case FUME_SHROOM -> FUME_SHROOM_RANGE_TILES;
+            case FUME_SHROOM -> FUME_SHROOM_RANGE_TILES
+                    + (int) Math.round(spec.getUpgradeValue(PlantUpgradeType.RANGE_TILES_ADD));
         };
     }
 
-    private static ProjectileHitLimit hitLimit(StrikeThroughKind kind) {
+    private static ProjectileHitLimit hitLimit(StrikeThroughKind kind, PlantSpec spec) {
         return switch (kind) {
-            case CACTUS -> ProjectileHitLimit.limitedTo(CACTUS_MAX_HITS);
+            case CACTUS -> ProjectileHitLimit.limitedTo(
+                    CACTUS_MAX_HITS
+                            + (int) Math.round(spec.getUpgradeValue(
+                            PlantUpgradeType.CACTUS_PIERCE_ADD))
+            );
             case FUME_SHROOM -> ProjectileHitLimit.unlimited();
         };
     }

@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -20,6 +22,7 @@ public record GameSessionConfig(
         int difficultyLevel,
         boolean skySunEnabled,
         List<String> selectedPlants,
+        Map<String, Integer> plantLevels,
         Set<String> boostedPlants,
         List<Point> tombCoordinates,
         WaveConfiguration waveConfiguration,
@@ -61,6 +64,11 @@ public record GameSessionConfig(
         );
 
         Objects.requireNonNull(
+                plantLevels,
+                "plant levels cannot be null"
+        );
+
+        Objects.requireNonNull(
                 boostedPlants,
                 "boosted plants cannot be null"
         );
@@ -82,6 +90,30 @@ public record GameSessionConfig(
                 .map(GameSessionConfig::normalizePlantName)
                 .distinct()
                 .toList();
+
+        Map<String, Integer> normalizedLevels = new HashMap<>();
+        for (Map.Entry<String, Integer> entry : plantLevels.entrySet()) {
+            String plantName = normalizePlantName(entry.getKey());
+            Integer level = Objects.requireNonNull(
+                    entry.getValue(),
+                    "plant level cannot be null"
+            );
+            if (level < 1 || level > 4) {
+                throw new IllegalArgumentException(
+                        "plant level must be between 1 and 4 for " + plantName
+                );
+            }
+            normalizedLevels.put(plantName, level);
+        }
+        for (String selectedPlant : selectedPlants) {
+            normalizedLevels.putIfAbsent(selectedPlant, 1);
+        }
+        if (!new HashSet<>(selectedPlants).containsAll(normalizedLevels.keySet())) {
+            throw new IllegalArgumentException(
+                    "plant levels may only be provided for selected plants"
+            );
+        }
+        plantLevels = Map.copyOf(normalizedLevels);
 
         boostedPlants = boostedPlants.stream()
                 .map(GameSessionConfig::normalizePlantName)
@@ -115,6 +147,7 @@ public record GameSessionConfig(
         private int startingSun = 50;
         private int difficultyLevel = 3;
         private boolean skySunEnabled = true;
+        private Map<String, Integer> plantLevels = Map.of();
         private Set<String> boostedPlants = Set.of();
         private List<Point> tombCoordinates = List.of();
         private WaveConfiguration waveConfiguration;
@@ -162,6 +195,14 @@ public record GameSessionConfig(
 
         public Builder nightMode() {
             return skySunEnabled(false);
+        }
+
+        public Builder plantLevels(Map<String, Integer> plantLevels) {
+            this.plantLevels = Map.copyOf(Objects.requireNonNull(
+                    plantLevels,
+                    "plant levels cannot be null"
+            ));
+            return this;
         }
 
         public Builder boostedPlants(
@@ -224,6 +265,7 @@ public record GameSessionConfig(
                     difficultyLevel,
                     skySunEnabled,
                     selectedPlants,
+                    plantLevels,
                     boostedPlants,
                     tombCoordinates,
                     waveConfiguration,

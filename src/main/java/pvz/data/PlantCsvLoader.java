@@ -8,6 +8,10 @@ import java.util.*;
 import pvz.model.entity.plant.PlantCategory;
 import pvz.model.entity.plant.PlantSpec;
 import pvz.model.entity.plant.PlantTag;
+import pvz.model.entity.plant.level.PlantLevelCost;
+import pvz.model.entity.plant.level.PlantLevelCostTable;
+import pvz.model.entity.plant.level.PlantLevelUpgrade;
+import pvz.model.entity.plant.level.PlantUpgradeType;
 
 public class PlantCsvLoader {
 
@@ -15,6 +19,10 @@ public class PlantCsvLoader {
             "plant_behavior_params.csv";
 
     private static final int BEHAVIOR_PARAMS_COLUMNS = 4;
+    private static final String LEVEL_UPGRADES_FILE = "plant_level_upgrades.csv";
+    private static final String LEVEL_COSTS_FILE = "plant_level_costs.csv";
+    private static final int LEVEL_UPGRADE_COLUMNS = 5;
+    private static final int LEVEL_COST_COLUMNS = 3;
 
     private PlantCsvLoader() {}
 
@@ -24,6 +32,9 @@ public class PlantCsvLoader {
 
         Map<Integer, Map<String, Map<String, Double>>> behaviorParams =
                 loadBehaviorParams(plantPath);
+        Map<Integer, List<PlantLevelUpgrade>> levelUpgrades =
+                loadLevelUpgrades(plantPath);
+        PlantLevelCostTable levelCosts = loadLevelCosts(plantPath);
 
         Map<String, PlantSpec> byName = new HashMap<>();
         Map<Integer, PlantSpec> byId = new HashMap<>();
@@ -55,13 +66,144 @@ public class PlantCsvLoader {
             double recharge = Double.parseDouble(parts[13]);
             PlantSpec spec = new PlantSpec(id, name, category, tags, cost, baseHp, damage, baseAbility,
                     plantFoodEffect, lvl2, lvl3, lvl4, actionInterval, recharge,
-                    behaviorParams.getOrDefault(id, Map.of()));
+                    behaviorParams.getOrDefault(id, Map.of()),
+                    levelUpgrades.getOrDefault(id, List.of()));
+            validateLevelUpgradeCoverage(spec);
 
             byName.put(spec.getName().toLowerCase(Locale.ROOT), spec);
             byId.put(spec.getId(), spec);
         }
 
-        return new PlantData(Map.copyOf(byName), Map.copyOf(byId));
+        validateNoUnknownUpgradePlantIds(levelUpgrades, byId.keySet());
+        return new PlantData(Map.copyOf(byName), Map.copyOf(byId), levelCosts);
+    }
+
+
+    private static Map<Integer, List<PlantLevelUpgrade>> loadLevelUpgrades(Path plantPath)
+            throws IOException {
+        Path directory = plantPath.toAbsolutePath().getParent();
+        if (directory == null) {
+            return Map.of();
+        }
+        Path upgradePath = directory.resolve(LEVEL_UPGRADES_FILE);
+        if (!Files.exists(upgradePath)) {
+            return Map.of();
+        }
+
+        Map<Integer, List<PlantLevelUpgrade>> result = new HashMap<>();
+        List<String> lines = Files.readAllLines(upgradePath);
+        for (int index = 1; index < lines.size(); index++) {
+            String line = lines.get(index).strip();
+            if (line.isEmpty()) {
+                continue;
+            }
+            String[] parts = splitCsvLine(line);
+            if (parts.length != LEVEL_UPGRADE_COLUMNS) {
+                throw new IllegalArgumentException(
+                        "Bad plant level upgrade line " + (index + 1)
+                                + ": expected " + LEVEL_UPGRADE_COLUMNS
+                                + " columns, got " + parts.length
+                );
+            }
+            int plantId = Integer.parseInt(parts[0].strip());
+            int targetLevel = Integer.parseInt(parts[1].strip());
+            PlantUpgradeType type = PlantUpgradeType.valueOf(parts[2].strip());
+            double value = Double.parseDouble(parts[3].strip());
+            String sourceText = parts[4].strip();
+            PlantLevelUpgrade upgrade = new PlantLevelUpgrade(
+                    targetLevel, type, value, sourceText);
+            List<PlantLevelUpgrade> upgrades =
+                    result.computeIfAbsent(plantId, ignored -> new ArrayList<>());
+            if (upgrades.stream().anyMatch(existing -> existing.targetLevel() == targetLevel)) {
+                throw new IllegalArgumentException(
+                        "duplicate plant upgrade for plant " + plantId
+                                + " target level " + targetLevel
+                );
+            }
+            upgrades.add(upgrade);
+        }
+        result.replaceAll((ignored, upgrades) -> upgrades.stream()
+                .sorted(Comparator.comparingInt(PlantLevelUpgrade::targetLevel))
+                .toList());
+        return Map.copyOf(result);
+    }
+
+    private static PlantLevelCostTable loadLevelCosts(Path plantPath) throws IOException {
+        Path directory = plantPath.toAbsolutePath().getParent();
+        if (directory == null) {
+            return PlantLevelCostTable.defaults();
+        }
+        Path costPath = directory.resolve(LEVEL_COSTS_FILE);
+        if (!Files.exists(costPath)) {
+            return PlantLevelCostTable.defaults();
+        }
+
+        Map<Integer, PlantLevelCost> costs = new HashMap<>();
+        List<String> lines = Files.readAllLines(costPath);
+        for (int index = 1; index < lines.size(); index++) {
+            String line = lines.get(index).strip();
+            if (line.isEmpty()) {
+                continue;
+            }
+            String[] parts = splitCsvLine(line);
+            if (parts.length != LEVEL_COST_COLUMNS) {
+                throw new IllegalArgumentException(
+                        "Bad plant level cost line " + (index + 1)
+                                + ": expected " + LEVEL_COST_COLUMNS
+                                + " columns, got " + parts.length
+                );
+            }
+            PlantLevelCost cost = new PlantLevelCost(
+                    Integer.parseInt(parts[0].strip()),
+                    Integer.parseInt(parts[1].strip()),
+                    Integer.parseInt(parts[2].strip())
+            );
+            if (costs.putIfAbsent(cost.targetLevel(), cost) != null) {
+                throw new IllegalArgumentException(
+                        "duplicate plant level cost for target level " + cost.targetLevel());
+            }
+        }
+        return new PlantLevelCostTable(costs);
+    }
+
+    private static void validateLevelUpgradeCoverage(PlantSpec spec) {
+        if (spec.getLevelUpgrades().isEmpty()) {
+            return;
+        }
+        if (spec.getLevelUpgrades().size() != 3) {
+            throw new IllegalArgumentException(
+                    "plant " + spec.getId() + " must define exactly three level upgrades");
+        }
+        String[] sourceTexts = {spec.getLvl2(), spec.getLvl3(), spec.getLvl4()};
+        for (int targetLevel = 2; targetLevel <= 4; targetLevel++) {
+            final int expectedLevel = targetLevel;
+            PlantLevelUpgrade upgrade = spec.getLevelUpgrades().stream()
+                    .filter(candidate -> candidate.targetLevel() == expectedLevel)
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "plant " + spec.getId() + " missing level " + expectedLevel
+                                    + " upgrade"));
+            String expectedText = sourceTexts[targetLevel - 2].strip();
+            if (!upgrade.sourceText().equals(expectedText)) {
+                throw new IllegalArgumentException(
+                        "plant " + spec.getId() + " level " + targetLevel
+                                + " upgrade source text mismatch: expected '" + expectedText
+                                + "' but got '" + upgrade.sourceText() + "'"
+                );
+            }
+        }
+    }
+
+    private static void validateNoUnknownUpgradePlantIds(
+            Map<Integer, List<PlantLevelUpgrade>> upgrades,
+            Set<Integer> knownPlantIds
+    ) {
+        for (Integer plantId : upgrades.keySet()) {
+            if (!knownPlantIds.contains(plantId)) {
+                throw new IllegalArgumentException(
+                        "plant level upgrade references unknown plant id " + plantId);
+            }
+        }
     }
 
     private static Map<Integer, Map<String, Map<String, Double>>>

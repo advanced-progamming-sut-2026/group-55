@@ -25,6 +25,7 @@ public final class DirectionalProjectile extends Entity
     private double peaDamageMultiplier;
     private final ShotVector vector;
     private final ProjectileHitLimit hitLimit;
+    private ProjectileEffectProfile effectProfile = ProjectileEffectProfile.DEFAULT;
     private final Set<Zombie> hitZombies = new HashSet<>();
     private final Set<PushedObstacle> hitObstacles = new HashSet<>();
     private final Set<Long> hitTerrainTiles = new HashSet<>();
@@ -180,6 +181,29 @@ public final class DirectionalProjectile extends Entity
                 rangeTiles == Integer.MAX_VALUE
                         ? Double.POSITIVE_INFINITY
                         : Math.max(0, rangeTiles - spawnOffset);
+    }
+
+
+    public DirectionalProjectile(
+            World world,
+            String name,
+            int startColumn,
+            int startRow,
+            double spawnOffset,
+            double damage,
+            ProjectileType type,
+            int rangeTiles,
+            ShotVector vector,
+            ProjectileHitLimit hitLimit,
+            ProjectileFamily projectileFamily,
+            ProjectileEffectProfile effectProfile
+    ) {
+        this(
+                world, name, startColumn, startRow, spawnOffset, damage,
+                type, rangeTiles, vector, hitLimit, projectileFamily
+        );
+        this.effectProfile = Objects.requireNonNull(
+                effectProfile, "projectile effect profile cannot be null");
     }
 
     @Override
@@ -342,7 +366,10 @@ public final class DirectionalProjectile extends Entity
             type.hitZombie(
                     zombie,
                     effectiveBaseDamage(),
-                    tick
+                    tick,
+                    pvz.model.entity.zombie.DamageContext.AttackDelivery.STRAIGHT,
+                    pvz.model.entity.zombie.DamageContext.ImpactMode.SINGLE_TARGET,
+                    effectProfile
             );
             hitZombies.add(zombie);
 

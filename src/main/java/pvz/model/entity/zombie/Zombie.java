@@ -18,6 +18,8 @@ public final class Zombie extends LivingEntity {
 
     private final double tilesPerSecond;
     private final double damagePerSecond;
+    private double alliedHealthMultiplier = 1;
+    private double alliedDamageMultiplier = 1;
     private final ArmorSet armorSet;
     private final ZombieSpec spec;
     private final ZombieRuntimeStats runtimeStats;
@@ -183,11 +185,30 @@ public final class Zombie extends LivingEntity {
     }
 
     public double getMaximumHealth() {
-        return runtimeStats.maxHealth();
+        return runtimeStats.maxHealth() * alliedHealthMultiplier;
     }
 
     public double getHealthRatio() {
-        return health / runtimeStats.maxHealth();
+        return health / getMaximumHealth();
+    }
+
+    public double getEffectiveEatDamagePerSecond() {
+        return damagePerSecond * alliedDamageMultiplier;
+    }
+
+    public void applyAlliedCombatBuff(double healthPercentAdd, double damagePercentAdd) {
+        if (!Double.isFinite(healthPercentAdd) || healthPercentAdd < 0
+                || !Double.isFinite(damagePercentAdd) || damagePercentAdd < 0) {
+            throw new IllegalArgumentException("allied combat buffs must be finite and non-negative");
+        }
+        if (!isAllied()) {
+            throw new IllegalStateException("combat buffs may only be applied to allied zombies");
+        }
+        double oldMaximum = getMaximumHealth();
+        alliedHealthMultiplier *= 1 + healthPercentAdd;
+        alliedDamageMultiplier *= 1 + damagePercentAdd;
+        double newMaximum = getMaximumHealth();
+        health += Math.max(0, newMaximum - oldMaximum);
     }
 
     public boolean isEating() {
@@ -521,7 +542,7 @@ public final class Zombie extends LivingEntity {
                 this,
                 opponent,
                 tick,
-                damagePerSecond,
+                getEffectiveEatDamagePerSecond(),
                 attackIntervalTicks(tick)
         );
     }
@@ -1015,7 +1036,7 @@ public final class Zombie extends LivingEntity {
     }
 
     private void bite(Plant plant) {
-        double damage = damagePerSecond;
+        double damage = getEffectiveEatDamagePerSecond();
         long tick = currentTick();
         for (ZombieBehavior behavior : behaviors) {
             damage = behavior.modifyBiteDamage(
