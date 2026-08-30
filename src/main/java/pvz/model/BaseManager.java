@@ -14,12 +14,11 @@ public abstract class BaseManager<T> {
     protected final List<T> items;
     private final Type listType;
 
-    public BaseManager(String filePath, Type listType) {
-        this.filePath = filePath;
-        this.listType = listType;
-        this.file = new File(filePath);
-
-        this.items = SaveManager.load(this.file, listType);
+    public BaseManager(String filePath,Type listType){
+        this.filePath=filePath;
+        this.listType=listType;
+        this.file=new File(filePath);
+        this.items=SaveManager.load(this.file,listType);
     }
 
     public void add(T item) {

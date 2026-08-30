@@ -139,6 +139,7 @@ public class CollectionController extends BaseController {
             view.showError(SystemMessage.COLLECTION_NOT_ENOUGH_COINS.getMessage());
         } else {
             user.addPlant(new PlayerPlant(spec.getName()));
+            user.addNews("Plant Unlocked", spec.getName() + " has been unlocked!");
             userManager.save();
             view.showSuccess(SystemMessage.COLLECTION_PLANT_PURCHASED.getMessage());
         }

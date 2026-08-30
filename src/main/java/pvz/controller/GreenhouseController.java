@@ -93,10 +93,10 @@ public class GreenhouseController extends BaseController {
         greenhouse.updateAllPots();
 
         view.showSuccess("--- Greenhouse Status ---");
-        for (int y = 1; y <= 4; y++) {
+        for (int y = 1; y <= 3; y++) {
             StringBuilder rowStr = new StringBuilder();
 
-            for (int x = 1; x <= 5; x++) {
+            for (int x = 1; x <= 4; x++) {
                 Pot pot = greenhouse.getPot(x, y);
                 String potStatus = String.format("(%d,%d):", x, y);
 
