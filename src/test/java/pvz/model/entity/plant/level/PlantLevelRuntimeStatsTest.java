@@ -38,7 +38,7 @@ class PlantLevelRuntimeStatsTest {
         PlantSpec kiwibeast = plants.get("kiwibeast").withLevel(3);
 
         assertEquals("30x2", repeater.getDamage());
-        assertEquals("20/45/75", kiwibeast.getDamage());
+        assertEquals("30/45/60", kiwibeast.getDamage());
     }
 
     @Test

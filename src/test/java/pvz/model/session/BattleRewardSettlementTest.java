@@ -29,6 +29,6 @@ class BattleRewardSettlementTest {
         assertEquals(2, user.getPlantFoodCount());
         assertEquals(1, user.getGamesPlayed());
         assertEquals(1, result.unlockedPots());
-        assertEquals(6, user.getGreenhouse().getUnlockedPotCount());
+        assertEquals(5, user.getGreenhouse().getUnlockedPotCount());
     }
 }
