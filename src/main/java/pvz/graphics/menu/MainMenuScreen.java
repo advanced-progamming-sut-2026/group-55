@@ -4,10 +4,13 @@ import com.badlogic.gdx.Game;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.math.Interpolation;
 import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
+import com.badlogic.gdx.scenes.scene2d.actions.Actions;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
+import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 
 import pvz.controller.MainMenuController;
 import pvz.graphics.BaseScreen;
@@ -23,19 +26,21 @@ public class MainMenuScreen extends BaseScreen {
     private static final float CONTENT_WIDTH = 700f, CONTENT_HEIGHT = 350f;
     private static final float PLAY_WIDTH = 200f, PLAY_HEIGHT = 55f;
     private static final float MENU_ICON_SIZE = 50f;
-    private static final float PREMIUM_TEXT_X = 70f, PREMIUM_TEXT_Y = 17f;
-    private static final float COIN_TEXT_X = 65f, COIN_TEXT_Y = 17f;
     private static final float COIN_WIDTH = 150f;
+    private static final float TEXT_Y_OFFSET = 17f;
 
     private final MainMenuController controller;
+
     private SettingsScreen settingsScreen;
     private ProfileScreen profileScreen;
     private NewsScreen newsScreen;
 
+    private Label premiumLabel;
+    private Label coinLabel;
+
     public MainMenuScreen(Game game, TextureBank textures, SpriteBatch batch,
                           Skin skin, AppState appState, UserManager userManager) {
-        super(game, textures, batch, skin, appState, userManager,
-                "IMAGE_MAINMENU_BACKGROUND");
+        super(game, textures, batch, skin, appState, userManager, "IMAGE_MAINMENU_BACKGROUND");
 
         controller = new MainMenuController(appState, userManager, new MenuView() {
             @Override
@@ -57,6 +62,7 @@ public class MainMenuScreen extends BaseScreen {
             public void showRegisterWelcome() {
             }
         });
+
         buildUI();
     }
 
@@ -87,14 +93,7 @@ public class MainMenuScreen extends BaseScreen {
         play.setPosition((WIDTH - PLAY_WIDTH) / 2f, 105f);
         stage.addActor(play);
 
-        play.addListener(new ClickListener() {
-            @Override
-            public void clicked(InputEvent event, float x, float y) {
-                game.setScreen(new GameMenuScreen(
-                        game, textures, batch, skin, appState, userManager
-                ));
-            }
-        });
+        play.addListener(click(() -> game.setScreen(new GameMenuScreen(game, textures, batch, skin, appState, userManager))));
     }
 
     private void buildLogoutButton() {
@@ -103,90 +102,81 @@ public class MainMenuScreen extends BaseScreen {
         logout.setPosition(25f, HEIGHT - 85f);
         stage.addActor(logout);
 
-        logout.addListener(new ClickListener() {
-            @Override
-            public void clicked(InputEvent event, float x, float y) {
-                try {
-                    controller.handle(new Command.MenuLogoutCommand());
-                } catch (Exception e) {
-                    showMessage(e.getMessage() != null ? e.getMessage() : "Logout failed.");
-                }
+        logout.addListener(click(() -> {
+            try {
+                controller.handle(new Command.MenuLogoutCommand());
+            } catch (Exception e) {
+                showMessage(e.getMessage() != null ? e.getMessage() : "Logout failed.");
             }
-        });
+        }));
     }
 
     private void buildCurrencies() {
         TextureRegion premiumRegion = textures.region("IMAGE_UI_GENERIC_BUTTONS_PREMIUM_NORMAL");
         TextureRegion coinRegion = textures.region("IMAGE_UI_GENERIC_BUTTONS_COIN_BUY_NORMAL");
 
-        if (premiumRegion == null)
-            throw new IllegalStateException("Texture not found: IMAGE_UI_GENERIC_BUTTONS_PREMIUM_NORMAL");
-        if (coinRegion == null)
-            throw new IllegalStateException("Texture not found: IMAGE_UI_GENERIC_BUTTONS_COIN_BUY_NORMAL");
+        if (premiumRegion == null || coinRegion == null) {
+            throw new IllegalStateException("Currency textures not found.");
+        }
 
-        float premiumWidth = premiumRegion.getRegionWidth();
-        float premiumHeight = premiumRegion.getRegionHeight();
-        float coinHeight = coinRegion.getRegionHeight();
+        premiumLabel = new Label(getPremiumCount(), skin);
+        premiumLabel.setColor(Color.WHITE);
+        Group premiumGroup = currencyGroup(premiumRegion, premiumLabel, premiumRegion.getRegionWidth(), 70f);
 
-        Image premium = new Image(premiumRegion);
-        Image coin = new Image(coinRegion);
+        coinLabel = new Label(getCoinCount(), skin);
+        coinLabel.setColor(Color.WHITE);
+        Group coinGroup = currencyGroup(coinRegion, coinLabel, COIN_WIDTH, 65f);
 
-        Group premiumGroup = new Group();
-        premiumGroup.setSize(premiumWidth, premiumHeight);
-        premiumGroup.addActor(premium);
+        premiumGroup.addListener(click(() -> {
+            if (isDebugModeEnabled()) {
+                appState.getCurrentUser().addDiamonds(100);
+                updateCurrencyLabels();
+                userManager.save();
+            }
+        }));
 
-        Group coinGroup = new Group();
-        coinGroup.setSize(COIN_WIDTH, coinHeight);
-        coin.setSize(COIN_WIDTH, coinHeight);
-        coinGroup.addActor(coin);
-
-        Label premiumCount = new Label(getPremiumCount(), skin);
-        Label coinCount = new Label(getCoinCount(), skin);
-        premiumCount.setColor(Color.WHITE);
-        coinCount.setColor(Color.WHITE);
-        premiumCount.pack();
-        coinCount.pack();
-        premiumCount.setPosition(PREMIUM_TEXT_X, PREMIUM_TEXT_Y);
-        coinCount.setPosition(COIN_TEXT_X, COIN_TEXT_Y);
-
-        premiumGroup.addActor(premiumCount);
-        coinGroup.addActor(coinCount);
+        coinGroup.addListener(click(() -> {
+            if (isDebugModeEnabled()) {
+                appState.getCurrentUser().addCoins(100);
+                updateCurrencyLabels();
+                userManager.save();
+            }
+        }));
 
         Table currencies = new Table();
-        currencies.add(premiumGroup).width(premiumWidth).height(premiumHeight).padRight(10f);
-        currencies.add(coinGroup).width(COIN_WIDTH).height(coinHeight);
+        currencies.add(premiumGroup).width(premiumRegion.getRegionWidth()).height(premiumRegion.getRegionHeight()).padRight(10f);
+        currencies.add(coinGroup).width(COIN_WIDTH).height(coinRegion.getRegionHeight());
         currencies.pack();
-        currencies.setPosition(
-                WIDTH - currencies.getWidth() - 20f,
-                HEIGHT - currencies.getHeight() - 20f
-        );
+
+        currencies.setPosition(WIDTH - currencies.getWidth() - 20f, HEIGHT - currencies.getHeight() - 20f);
         stage.addActor(currencies);
+    }
 
-        premiumGroup.addListener(new ClickListener() {
-            @Override
-            public void clicked(InputEvent event, float x, float y) {
-                if (!isDebugModeEnabled() || appState.getCurrentUser() == null) return;
+    private Group currencyGroup(TextureRegion region, Label label, float width, float textX) {
+        Group group = new Group();
+        float height = region.getRegionHeight();
+        group.setSize(width, height);
 
-                appState.getCurrentUser().addDiamonds(100);
-                premiumCount.setText(String.valueOf(appState.getCurrentUser().getDiamonds()));
-                premiumCount.pack();
-                premiumCount.setPosition(PREMIUM_TEXT_X, PREMIUM_TEXT_Y);
-                userManager.save();
-            }
-        });
+        Image image = new Image(region);
+        image.setSize(width, height);
+        group.addActor(image);
 
-        coinGroup.addListener(new ClickListener() {
-            @Override
-            public void clicked(InputEvent event, float x, float y) {
-                if (!isDebugModeEnabled() || appState.getCurrentUser() == null) return;
+        label.pack();
+        label.setPosition(textX, TEXT_Y_OFFSET);
+        group.addActor(label);
 
-                appState.getCurrentUser().addCoins(100);
-                coinCount.setText(String.valueOf(appState.getCurrentUser().getCoins()));
-                coinCount.pack();
-                coinCount.setPosition(COIN_TEXT_X, COIN_TEXT_Y);
-                userManager.save();
-            }
-        });
+        return group;
+    }
+
+    private void updateCurrencyLabels() {
+        if (premiumLabel != null) {
+            premiumLabel.setText(getPremiumCount());
+            premiumLabel.pack();
+        }
+        if (coinLabel != null) {
+            coinLabel.setText(getCoinCount());
+            coinLabel.pack();
+        }
     }
 
     private boolean isDebugModeEnabled() {
@@ -205,12 +195,9 @@ public class MainMenuScreen extends BaseScreen {
         Image cup = new Image(textures.region("IMAGE_UI_GAMECENTER_ICON"));
         leaderboard.add(cup).size(35f, 35f).center();
 
-        profile.addListener(new ClickListener() {
-            @Override
-            public void clicked(InputEvent event, float x, float y) {
-                if (profileScreen != null) profileScreen.show();
-            }
-        });
+        profile.addListener(click(() -> {
+            if (profileScreen != null) profileScreen.show();
+        }));
 
         Table bottomLeft = new Table();
         bottomLeft.add(profile).size(MENU_ICON_SIZE).padRight(6f);
@@ -237,22 +224,18 @@ public class MainMenuScreen extends BaseScreen {
         unreadMark.setPosition(0f, MENU_ICON_SIZE - 20f);
         newsGroup.addActor(unreadMark);
 
-        unreadMark.setVisible(
-                appState.getCurrentUser() != null && appState.getCurrentUser().hasUnreadNews());
-        newsGroup.addListener(new ClickListener() {
-            @Override
-            public void clicked(InputEvent event, float x, float y) {
-                if (newsScreen != null) {
-                    newsScreen.show();
-                    unreadMark.setVisible(false);
-                }
-            }
-        });
+        unreadMark.setVisible(appState.getCurrentUser() != null && appState.getCurrentUser().hasUnreadNews());
 
-        settings.addListener(new ClickListener() {
-            @Override
-            public void clicked(InputEvent event, float x, float y) {
-                if (settingsScreen != null) settingsScreen.show();}});
+        newsGroup.addListener(click(() -> {
+            if (newsScreen != null) {
+                newsScreen.show();
+                unreadMark.setVisible(false);
+            }
+        }));
+
+        settings.addListener(click(() -> {
+            if (settingsScreen != null) settingsScreen.show();
+        }));
 
         Table bottomRight = new Table();
         bottomRight.add(newsGroup).size(MENU_ICON_SIZE).padRight(8f);
@@ -288,22 +271,37 @@ public class MainMenuScreen extends BaseScreen {
     }
 
     private String getPremiumCount() {
-        return appState.getCurrentUser() == null
-                ? "0"
-                : String.valueOf(appState.getCurrentUser().getDiamonds());
+        return appState.getCurrentUser() == null ? "0" : String.valueOf(appState.getCurrentUser().getDiamonds());
     }
 
     private String getCoinCount() {
-        return appState.getCurrentUser() == null
-                ? "0"
-                : String.valueOf(appState.getCurrentUser().getCoins());
+        return appState.getCurrentUser() == null ? "0" : String.valueOf(appState.getCurrentUser().getCoins());
     }
 
     private void showMessage(String message) {
         Label label = new Label(message == null ? "Error" : message, skin);
-        label.setColor(Color.WHITE);
+        label.setColor(Color.YELLOW);
         label.pack();
-        label.setPosition((WIDTH - label.getWidth()) / 2f, 35f);
+        label.setPosition((WIDTH - label.getWidth()) / 2f, 45f);
+
+        label.getColor().a = 0f;
+        label.addAction(Actions.sequence(
+                Actions.fadeIn(0.2f),
+                Actions.moveBy(0f, 30f, 2f, Interpolation.sineOut),
+                Actions.fadeOut(0.3f),
+                Actions.removeActor()
+        ));
+
         stage.addActor(label);
+    }
+
+    private ClickListener click(Runnable action) {
+        return new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                event.stop();
+                action.run();
+            }
+        };
     }
 }

@@ -3,27 +3,24 @@ package pvz.graphics.menu;
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
-import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
-import com.badlogic.gdx.scenes.scene2d.Actor;
+import com.badlogic.gdx.math.Interpolation;
 import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
-import com.badlogic.gdx.scenes.scene2d.ui.Image;
-import com.badlogic.gdx.scenes.scene2d.ui.Label;
-import com.badlogic.gdx.scenes.scene2d.ui.Skin;
-import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
+import com.badlogic.gdx.scenes.scene2d.actions.Actions;
+import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
+import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 
 import pvz.graphics.BaseScreen;
+import pvz.graphics.actor.PlantActor;
 import pvz.libpvz.pam.PamPlayer;
 import pvz.libpvz.textures.TextureBank;
 import pvz.model.account.User;
 import pvz.model.account.UserManager;
-import pvz.model.greenhouse.Greenhouse;
-import pvz.model.greenhouse.GreenhousePlant;
-import pvz.model.greenhouse.Pot;
+import pvz.model.greenhouse.*;
 import pvz.model.service.GreenhouseService;
 import pvz.model.utils.AppState;
 
@@ -33,142 +30,194 @@ import java.util.Map;
 public class GreenhouseScreen extends BaseScreen {
 
     private static final int ROWS = 3, COLS = 4;
-    private static final float POT_SIZE = 68f, CELL_WIDTH = 128f, CELL_HEIGHT = 144f;
-    private static final float GRID_TOP_PADDING = 202f, LOCK_SIZE = 36f;
+    private static final float POT_SIZE = 68f;
+    private static final float CELL_W = 128f, CELL_H = 144f;
+    private static final float GRID_TOP = 202f;
+
+    private static final int UNLOCK_COST = 20;
+    private static final float POT_SCALE = 0.45f;
+    private static final float PLANT_ORIGIN_Y = 45f;
+    private static final float GROWING_DIRT_SIZE = 45f;
+    private static final float GEM_BADGE_SIZE = 15f;
     private static final float REFRESH_INTERVAL = 0.5f;
-    private static final float NAME_SCALE = 0.8f, TIMER_SCALE = 0.65f, READY_SCALE = 0.7f;
+    private static final float TIMER_SCALE = 0.9f;
 
-    private static final Map<String, String> PAM_PATHS = new HashMap<>();
+    private static final String POT_TEXTURE = "IMAGE_ZEN_GARDEN_GROWING_PLANT_SLOT_GROWING_PLANT_SLOT_184X161_2";
+    private static final String GROWING_TEXTURE = "IMAGE_ZEN_GARDEN_GROWING_PLANT_SLOT_GROWING_PLANT_SLOT_122X161";
+    private static final String BEE_PATH = "768/INITIAL/ZEN_GARDEN/BEE/BEE.PAM";
 
-    static {
-        PAM_PATHS.put("ALOE", "768/INITIAL/PLANT/ALOE/ALOE.PAM");
-        PAM_PATHS.put("SUNFLOWER", "768/INITIAL/PLANT/SUNFLOWER/SUNFLOWER.PAM");
-        PAM_PATHS.put("PEASHOOTER", "768/INITIAL/PLANT/PEASHOOTER/PEASHOOTER.PAM");
-        PAM_PATHS.put("WALLNUT", "768/INITIAL/PLANT/WALLNUT/WALLNUT.PAM");
-        PAM_PATHS.put("POTATO_MINE", "768/INITIAL/PLANT/POTATO_MINE/POTATO_MINE.PAM");
-        PAM_PATHS.put("CHOMPER", "768/INITIAL/PLANT/CHOMPER/CHOMPER.PAM");
-        PAM_PATHS.put("SNOW_PEA", "768/INITIAL/PLANT/SNOW_PEA/SNOW_PEA.PAM");
-        PAM_PATHS.put("REPEATER", "768/INITIAL/PLANT/REPEATER/REPEATER.PAM");
-        PAM_PATHS.put("FIRE_PEA", "768/INITIAL/PLANT/FIRE_PEASHOOTER/FIRE_PEASHOOTER.PAM");
-        PAM_PATHS.put("FIRE_PEASHOOTER", "768/INITIAL/PLANT/FIRE_PEASHOOTER/FIRE_PEASHOOTER.PAM");
-    }
+    private static final Map<String, String> PAM_CACHE = new HashMap<>();
 
-    private final Group greenhouseGroup = new Group();
     private final GreenhouseService greenhouseService;
     private final PamPlayer pamPlayer;
+
+    private final Group greenhouseGroup = new Group();
+    private Label sproutLabel;
+    private Label diamondLabel;
+    private Label coinLabel;
+
+    private final PotState[][] lastStates = new PotState[ROWS][COLS];
+    private final Label[][] timerLabels = new Label[ROWS][COLS];
+    private final Label[][] costLabels = new Label[ROWS][COLS];
+
     private float refreshTimer;
     private boolean refreshing;
 
-    public GreenhouseScreen(Game game, TextureBank textures, SpriteBatch batch, Skin skin,
-                            AppState appState, UserManager userManager,
-                            GreenhouseService greenhouseService) {
-        super(game, textures, batch, skin, appState, userManager,
-                "IMAGE_BACKGROUNDS_ZEN_GARDEN");
+    public GreenhouseScreen(
+            Game game,
+            TextureBank textures,
+            SpriteBatch batch,
+            Skin skin,
+            AppState appState,
+            UserManager userManager,
+            GreenhouseService greenhouseService
+    ) {
+        super(game, textures, batch, skin, appState, userManager, "IMAGE_BACKGROUNDS_ZEN_GARDEN");
         this.greenhouseService = greenhouseService;
         this.pamPlayer = new PamPlayer(textures, Gdx.files.internal("assets"));
         buildUI();
     }
 
     private void buildUI() {
-        buildPots();
+        greenhouseGroup.setSize(WIDTH, HEIGHT);
+        stage.addActor(greenhouseGroup);
+
+        rebuildPots(true);
         buildTopBar();
         buildCurrencies();
+        buildBee();
+    }
+
+    private void buildBee() {
+        if (!assetExists(BEE_PATH)) return;
+
+        Group group = new Group();
+        group.setBounds(WIDTH - 200f, HEIGHT - 250f, 100f, 100f);
+
+        PlantActor bee = new PlantActor(pamPlayer, BEE_PATH);
+        bee.setSize(100f, 100f);
+        group.addActor(bee);
+
+        stage.addActor(group);
+        group.toFront();
     }
 
     private void buildTopBar() {
-        float size = 55f, gap = 10f, y = HEIGHT - 80f;
+        float size = 55f;
+        float gap = 10f;
+        float y = HEIGHT - 80f;
 
-        Image back = image("IMAGE_UI_MAINMENU_BACK_BTN_NORMAL");
+        TextureRegion normal = textures.region("IMAGE_UI_MAINMENU_BACK_BTN_NORMAL");
+        TextureRegion pressed = textures.region("IMAGE_UI_MAINMENU_BACK_BTN_PRESSED");
+
+        if (normal == null) throw new IllegalStateException("Back button texture not found.");
+
+        ImageButton.ImageButtonStyle style = new ImageButton.ImageButtonStyle();
+        style.up = new TextureRegionDrawable(normal);
+        style.down = pressed == null ? style.up : new TextureRegionDrawable(pressed);
+
+        ImageButton back = new ImageButton(style);
+        back.setBounds(25f, y, size, size);
+
+        back.addListener(click(() -> game.setScreen(new GameMenuScreen(game, textures, batch, skin, appState, userManager))));
+
         Image collection = image("IMAGE_UI_HUD_ALMANACBUTTON_BUTTONS_HUD_ALMANAC_NORMAL");
-        TextButton storeButton = new TextButton("", skin, "brown");
+        collection.setBounds(25f + size + gap, y, size, size);
 
+        TextButton store = new TextButton("", skin, "brown");
         TextureRegion storeRegion = textures.region("IMAGE_UI_ALMANAC_FINDMORE_STORE");
+
         if (storeRegion != null) {
             Image storeImage = new Image(storeRegion);
-            storeImage.setSize(45f, 45f);
-            storeImage.setPosition(5f, 5f);
-            storeButton.addActor(storeImage);
+            storeImage.setBounds(5f, 5f, 45f, 45f);
+            store.addActor(storeImage);
         }
 
-        back.setSize(size, size);
-        collection.setSize(size, size);
-        storeButton.setSize(size, size);
-
-        back.setPosition(25f, y);
-        collection.setPosition(25f + size + gap, y);
-        storeButton.setPosition(25f + (size + gap) * 2f, y);
-
-        back.addListener(new ClickListener() {
-            @Override
-            public void clicked(InputEvent event, float x, float y) {
-                game.setScreen(new GameMenuScreen(
-                        game, textures, batch, skin, appState, userManager));
-            }
-        });
+        store.setBounds(25f + 2f * (size + gap), y, size, size);
 
         stage.addActor(back);
         stage.addActor(collection);
-        stage.addActor(storeButton);
-
-        back.toFront();
-        collection.toFront();
-        storeButton.toFront();
+        stage.addActor(store);
     }
 
     private void buildCurrencies() {
-        TextureRegion diamondRegion =
-                textures.region("IMAGE_UI_GENERIC_BUTTONS_PREMIUM_NORMAL");
-        TextureRegion coinRegion =
-                textures.region("IMAGE_UI_GENERIC_BUTTONS_COIN_BUY_NORMAL");
+        TextureRegion diamond = textures.region("IMAGE_UI_GENERIC_BUTTONS_PREMIUM_NORMAL");
+        TextureRegion coin = textures.region("IMAGE_UI_GENERIC_BUTTONS_COIN_BUY_NORMAL");
+        TextureRegion sprout = textures.region("IMAGE_UI_HUD_INGAME_SPROUT_ICON");
 
-        if (diamondRegion == null || coinRegion == null)
-            throw new IllegalStateException("Currency texture not found.");
-
-        float diamondWidth = diamondRegion.getRegionWidth();
-        float diamondHeight = diamondRegion.getRegionHeight();
-        float coinHeight = coinRegion.getRegionHeight();
-        float coinWidth = 150f;
-
-        Image diamond = new Image(diamondRegion);
-        Image coin = new Image(coinRegion);
-        Group diamondGroup = new Group();
-        Group coinGroup = new Group();
-
-        diamondGroup.setSize(diamondWidth, diamondHeight);
-        diamondGroup.addActor(diamond);
-
-        coin.setSize(coinWidth, coinHeight);
-        coinGroup.setSize(coinWidth, coinHeight);
-        coinGroup.addActor(coin);
-
-        Label diamondCount = new Label(getDiamondCount(), skin);
-        Label coinCount = new Label(getCoinCount(), skin);
-
-        diamondCount.setColor(Color.WHITE);
-        coinCount.setColor(Color.WHITE);
-        diamondCount.pack();
-        coinCount.pack();
-
-        diamondCount.setPosition(70f, 17f);
-        coinCount.setPosition(65f, 17f);
-
-        diamondGroup.addActor(diamondCount);
-        coinGroup.addActor(coinCount);
+        if (diamond == null || coin == null) throw new IllegalStateException("Currency texture not found.");
 
         Group currencies = new Group();
-        coinGroup.setPosition(diamondWidth + 10f, 0f);
+
+        sproutLabel = createCurrencyLabel(getStoredBoostsCount(), 1.2f);
+        Group sproutGroup = currencyGroup(sprout, sproutLabel, 100f);
+
+        diamondLabel = createCurrencyLabel(getDiamondCount(), 1f);
+        Group diamondGroup = currencyGroup(diamond, diamondLabel, diamond.getRegionWidth());
+
+        coinLabel = createCurrencyLabel(getCoinCount(), 1f);
+        Group coinGroup = currencyGroup(coin, coinLabel, 150f);
+
+        diamondGroup.setTouchable(Touchable.enabled);
+        diamondGroup.addListener(click(() -> {
+            if (isDebugModeEnabled()) {
+                appState.getCurrentUser().addDiamonds(100);
+                rebuildCurrencies();
+                userManager.save();
+            }
+        }));
+
+        coinGroup.setTouchable(Touchable.enabled);
+        coinGroup.addListener(click(() -> {
+            if (isDebugModeEnabled()) {
+                appState.getCurrentUser().addCoins(100);
+                rebuildCurrencies();
+                userManager.save();
+            }
+        }));
+
+        sproutGroup.setPosition(0f, 0f);
+        diamondGroup.setPosition(110f, 0f);
+        coinGroup.setPosition(120f + diamond.getRegionWidth(), 0f);
+
+        currencies.addActor(sproutGroup);
         currencies.addActor(diamondGroup);
         currencies.addActor(coinGroup);
 
-        currencies.setSize(
-                diamondWidth + 10f + coinWidth,
-                Math.max(diamondHeight, coinHeight));
-
-        currencies.setPosition(
-                WIDTH - currencies.getWidth() - 20f,
-                HEIGHT - currencies.getHeight() - 20f);
+        currencies.setSize(130f + diamond.getRegionWidth() + 150f, Math.max(diamond.getRegionHeight(), coin.getRegionHeight()));
+        currencies.setPosition(WIDTH - currencies.getWidth() - 20f, HEIGHT - currencies.getHeight() - 20f);
 
         stage.addActor(currencies);
+        currencies.toFront();
+    }
+
+    private boolean isDebugModeEnabled() {
+        return appState.getCurrentUser() != null && appState.getCurrentUser().isDebugMode();
+    }
+
+    private Label createCurrencyLabel(String text, float scale) {
+        Label label = new Label(text, skin);
+        label.setColor(Color.WHITE);
+        label.setFontScale(scale);
+        return label;
+    }
+
+    private Group currencyGroup(TextureRegion region, Label label, float width) {
+        Group group = new Group();
+        float height = region == null ? 55f : region.getRegionHeight();
+        group.setSize(width, height);
+
+        if (region != null) {
+            Image image = new Image(region);
+            image.setSize(width, height);
+            group.addActor(image);
+        }
+
+        label.pack();
+        label.setPosition(width * 0.5f, 17f);
+        group.addActor(label);
+
+        return group;
     }
 
     private String getDiamondCount() {
@@ -181,286 +230,409 @@ public class GreenhouseScreen extends BaseScreen {
         return user == null ? "0" : String.valueOf(user.getCoins());
     }
 
-    private void buildPots() {
-        greenhouseGroup.setSize(WIDTH, HEIGHT);
-        greenhouseGroup.setTouchable(Touchable.childrenOnly);
-        stage.addActor(greenhouseGroup);
-        rebuildPots();
+    private String getStoredBoostsCount() {
+        User user = appState.getCurrentUser();
+        return user == null || user.getStoredBoosts() == null ? "0" : String.valueOf(user.getStoredBoosts().size());
     }
 
-    private void rebuildPots() {
+    private void rebuildPots(boolean force) {
         if (refreshing) return;
-        refreshing = true;
 
+        User user = appState.getCurrentUser();
+        if (user == null || user.getGreenhouse() == null) return;
+
+        Greenhouse greenhouse = user.getGreenhouse();
+        greenhouse.updateAllPots();
+
+        if (!force && !statesChanged(greenhouse)) {
+            updateTimers(greenhouse);
+            return;
+        }
+
+        refreshing = true;
         try {
             greenhouseGroup.clearChildren();
+            clearLabels();
 
-            User user = appState.getCurrentUser();
-            if (user == null || user.getGreenhouse() == null) return;
+            float startX = (WIDTH - COLS * CELL_W) / 2f;
+            float topY = HEIGHT - GRID_TOP;
 
-            Greenhouse greenhouse = user.getGreenhouse();
-            greenhouse.updateAllPots();
+            for (int y = 1; y <= ROWS; y++) {
+                for (int x = 1; x <= COLS; x++) {
+                    Pot pot = greenhouse.getPot(x, y);
+                    if (pot != null) {
+                        Group potGroup = createPot(pot, x, y, startX, topY);
+                        greenhouseGroup.addActor(potGroup);
+                    }
+                }
+            }
 
-            float gridStartX = (WIDTH - COLS * CELL_WIDTH) / 2f;
-            float topY = HEIGHT - GRID_TOP_PADDING;
-
-            for (int y = 1; y <= ROWS; y++)
-                for (int x = 1; x <= COLS; x++)
-                    createPot(greenhouse.getPot(x, y), x, y, gridStartX, topY);
+            saveStates(greenhouse);
         } finally {
             refreshing = false;
         }
     }
 
-    private void createPot(Pot pot, int x, int y, float gridStartX, float topY) {
-        if (pot == null) return;
-
-        float cellX = gridStartX + (x - 1) * CELL_WIDTH;
-        float cellTop = topY - (y - 1) * CELL_HEIGHT;
-        float posX = cellX + (CELL_WIDTH - POT_SIZE) / 2f;
-        float posY = cellTop - CELL_HEIGHT + (CELL_HEIGHT - POT_SIZE) / 2f;
-
-        switch (pot.getState()) {
-            case LOCKED -> createLockedPot(posX, posY);
-            case EMPTY -> createEmptyPot(posX, posY, x, y);
-            case GROWING -> createGrowingPot(pot, posX, posY, x, y);
-            case READY -> createReadyPot(pot, posX, posY, x, y);
+    private void clearLabels() {
+        for (int y = 0; y < ROWS; y++) {
+            for (int x = 0; x < COLS; x++) {
+                timerLabels[y][x] = null;
+                costLabels[y][x] = null;
+            }
         }
     }
 
-    private void createLockedPot(float x, float y) {
-        TextureRegion region = textures.region("IMAGE_ZEN_GARDEN_LOCKED_POT_ICON");
-        if (region == null) return;
+    private void updateTimers(Greenhouse greenhouse) {
+        for (int y = 1; y <= ROWS; y++) {
+            for (int x = 1; x <= COLS; x++) {
+                Pot pot = greenhouse.getPot(x, y);
+                if (pot == null || pot.getState() != PotState.GROWING) continue;
 
-        Image lock = new Image(region);
-        lock.setSize(LOCK_SIZE, LOCK_SIZE);
-        lock.setPosition(
-                x + (POT_SIZE - LOCK_SIZE) / 2f,
-                y + (POT_SIZE - LOCK_SIZE) / 2f);
-        greenhouseGroup.addActor(lock);
+                GreenhousePlant plant = pot.getPlant();
+                if (plant == null) continue;
+
+                Label timer = timerLabels[y - 1][x - 1];
+                Label cost = costLabels[y - 1][x - 1];
+
+                if (timer != null) {
+                    timer.setText(plant.getExactRemainingTime());
+                    timer.pack();
+                }
+
+                if (cost != null) {
+                    cost.setText(String.valueOf(plant.getRemainingHours()));
+                    cost.pack();
+                }
+            }
+        }
     }
 
-    private Image createPotImage() {
-        TextureRegion region = textures.region(
-                "IMAGE_ZEN_GARDEN_GROWING_PLANT_SLOT_GROWING_PLANT_SLOT_184X161_2");
-        if (region == null) return null;
+    private boolean statesChanged(Greenhouse greenhouse) {
+        for (int y = 1; y <= ROWS; y++) {
+            for (int x = 1; x <= COLS; x++) {
+                Pot pot = greenhouse.getPot(x, y);
+                PotState state = pot == null ? null : pot.getState();
+                if (lastStates[y - 1][x - 1] != state) return true;
+            }
+        }
+        return false;
+    }
 
+    private void saveStates(Greenhouse greenhouse) {
+        for (int y = 1; y <= ROWS; y++) {
+            for (int x = 1; x <= COLS; x++) {
+                Pot pot = greenhouse.getPot(x, y);
+                lastStates[y - 1][x - 1] = pot == null ? null : pot.getState();
+            }
+        }
+    }
+
+    private Group createPot(Pot pot, int x, int y, float startX, float topY) {
+        float px = startX + (x - 1) * CELL_W + (CELL_W - POT_SIZE) / 2f;
+        float py = topY - y * CELL_H + (CELL_H - POT_SIZE) / 2f;
+
+        switch (pot.getState()) {
+            case LOCKED: return createLockedPot(px, py, x, y);
+            case EMPTY: return createEmptyPot(px, py, x, y);
+            case GROWING: return createGrowingPot(pot, px, py, x, y);
+            case READY: return createReadyPot(pot, px, py, x, y);
+            default: return potGroup(px, py);
+        }
+    }
+
+    private Group potGroup(float px, float py) {
+        Group group = new Group();
+        group.setBounds(px, py, POT_SIZE, POT_SIZE);
+        return group;
+    }
+
+    private Image potImage() {
+        TextureRegion region = textures.region(POT_TEXTURE);
+        if (region == null) return null;
         Image image = new Image(region);
         image.setSize(POT_SIZE, POT_SIZE);
         return image;
     }
 
-    private void createEmptyPot(float x, float y, final int potX, final int potY) {
-        Image pot = createPotImage();
-        if (pot == null) return;
+    private Group createLockedPot(float px, float py, int potX, int potY) {
+        Group group = potGroup(px, py);
+        TextureRegion region = textures.region("IMAGE_ZEN_GARDEN_BUTTON_UNLOCK_INACTIVE");
+        if (region == null) return group;
 
-        pot.setPosition(x, y);
-        pot.addListener(new ClickListener() {
-            @Override
-            public void clicked(InputEvent event, float x, float y) {
-                plant(potX, potY);
-            }
-        });
+        Image button = new Image(region);
+        button.setBounds(-15f, 13f, 95f, 42f);
+        button.addListener(click(() -> unlockPot(potX, potY)));
 
-        greenhouseGroup.addActor(pot);
-    }
+        Label cost = new Label(String.valueOf(UNLOCK_COST), skin);
+        cost.setColor(Color.WHITE);
+        cost.setPosition(32f, 25f);
 
-    private void createGrowingPot(Pot pot, float x, float y, final int potX, final int potY) {
-        Image potImage = createPotImage();
-        if (potImage == null) return;
+        group.addActor(button);
+        group.addActor(cost);
+        group.setTouchable(Touchable.childrenOnly);
 
-        Group group = createPlantGroup(x, y);
-        group.addActor(potImage);
-
-        GreenhousePlant plant = pot.getPlant();
-        if (plant != null) {
-            addPlantName(group, plant.getPlantName());
-            addTimer(group, plant.getExactRemainingTime());
-            addPamPlant(group, plant.getPlantName());
-        }
-
-        group.addListener(new ClickListener() {
-            @Override
-            public void clicked(InputEvent event, float x, float y) {
-                grow(potX, potY);
-            }
-        });
-
-        greenhouseGroup.addActor(group);
-    }
-
-    private void createReadyPot(Pot pot, float x, float y, final int potX, final int potY) {
-        Image potImage = createPotImage();
-        if (potImage == null) return;
-
-        Group group = createPlantGroup(x, y);
-        group.addActor(potImage);
-
-        GreenhousePlant plant = pot.getPlant();
-        if (plant != null) {
-            addPlantName(group, plant.getPlantName());
-            addPamPlant(group, plant.getPlantName());
-        }
-
-        addReadyLabel(group);
-
-        group.addListener(new ClickListener() {
-            @Override
-            public void clicked(InputEvent event, float x, float y) {
-                collect(potX, potY);
-            }
-        });
-
-        greenhouseGroup.addActor(group);
-    }
-
-    private Group createPlantGroup(float x, float y) {
-        Group group = new Group();
-        group.setSize(POT_SIZE, POT_SIZE);
-        group.setPosition(x, y);
         return group;
     }
 
-    private void addPamPlant(Group group, String plantName) {
-        if (plantName == null) return;
+    private Group createEmptyPot(float px, float py, int potX, int potY) {
+        Group group = potGroup(px, py);
+        Image pot = potImage();
+        if (pot == null) return group;
 
-        String key = plantName.trim().toUpperCase().replace(' ', '_');
-        String pamPath = PAM_PATHS.get(key);
-        if (pamPath == null) return;
-
-        PamActor actor = new PamActor(pamPlayer, pamPath);
-        actor.setSize(POT_SIZE * 1.35f, POT_SIZE * 1.35f);
-        actor.setPosition(
-                (POT_SIZE - actor.getWidth()) / 2f,
-                2f);
-
-        group.addActor(actor);
-        actor.toFront();
+        pot.addListener(click(() -> plant(potX, potY)));
+        group.addActor(pot);
+        return group;
     }
 
-    private void addPlantName(Group group, String name) {
-        Label label = new Label(name, skin);
-        label.setColor(Color.WHITE);
-        label.setFontScale(NAME_SCALE);
-        label.pack();
+    private Group createGrowingPot(Pot pot, float px, float py, int potX, int potY) {
+        Group group = potGroup(px, py);
+        Image potImage = potImage();
+        if (potImage != null) group.addActor(potImage);
 
-        float width = Math.min(label.getWidth(), CELL_WIDTH - 10f);
-        label.setPosition(
-                (POT_SIZE - width) / 2f,
-                POT_SIZE + 8f);
+        TextureRegion region = textures.region(GROWING_TEXTURE);
+        if (region != null) {
+            Image growing = new Image(region);
+            growing.setSize(GROWING_DIRT_SIZE, GROWING_DIRT_SIZE);
+            growing.setPosition((POT_SIZE - GROWING_DIRT_SIZE) / 2f, (POT_SIZE - GROWING_DIRT_SIZE) / 2f + 16f);
+            group.addActor(growing);
+        }
 
-        group.addActor(label);
+        GreenhousePlant plant = pot.getPlant();
+        if (plant != null) {
+            addTimer(group, plant, potX, potY);
+            addFastGrowButton(group, plant, potX, potY);
+        }
+
+        group.setTouchable(Touchable.enabled);
+        return group;
     }
 
-    private void addTimer(Group group, String time) {
-        Label label = new Label(time, skin);
+    private void addTimer(Group group, GreenhousePlant plant, int x, int y) {
+        TextureRegion region = textures.region("IMAGE_ZEN_GARDEN_FINISH_TIMER_BACKGROUND");
+        if (region != null) {
+            Image background = new Image(region);
+            background.setBounds(-2f, -22f, 55f, 25f);
+            group.addActor(background);
+        }
+
+        Label label = new Label(plant.getExactRemainingTime(), skin);
         label.setColor(Color.WHITE);
         label.setFontScale(TIMER_SCALE);
         label.pack();
-        label.setPosition(
-                (POT_SIZE - label.getWidth()) / 2f,
-                -label.getHeight() - 8f);
+        label.setPosition(3f, -19f);
+
+        timerLabels[y - 1][x - 1] = label;
         group.addActor(label);
     }
 
-    private void addReadyLabel(Group group) {
-        Label label = new Label("READY", skin);
-        label.setColor(Color.YELLOW);
-        label.setFontScale(READY_SCALE);
-        label.pack();
-        label.setPosition(
-                (POT_SIZE - label.getWidth()) / 2f,
-                -label.getHeight() - 8f);
-        group.addActor(label);
+    private void addFastGrowButton(Group group, GreenhousePlant plant, int potX, int potY) {
+        Group buttonGroup = new Group();
+        buttonGroup.setBounds(38f, -25f, 44f, 35f);
+
+        TextButton button = new TextButton("", skin, "purple");
+        button.setSize(44f, 35f);
+        buttonGroup.addActor(button);
+
+        Label cost = new Label(String.valueOf(plant.getRemainingHours()), skin);
+        cost.setColor(Color.WHITE);
+        cost.setFontScale(0.9f);
+        cost.setPosition(18f, 8f);
+        costLabels[potY - 1][potX - 1] = cost;
+        buttonGroup.addActor(cost);
+
+        TextureRegion badge = textures.region("IMAGE_ZEN_GARDEN_GEM_LARGE");
+        if (badge != null) {
+            Image image = new Image(badge);
+            image.setBounds(-5f, 19f, GEM_BADGE_SIZE, GEM_BADGE_SIZE);
+            buttonGroup.addActor(image);
+        }
+
+        buttonGroup.addListener(click(() -> grow(potX, potY)));
+        group.addActor(buttonGroup);
+    }
+
+    private Group createReadyPot(Pot pot, float px, float py, int potX, int potY) {
+        Group group = potGroup(px, py);
+        Image image = potImage();
+        if (image != null) group.addActor(image);
+
+        GreenhousePlant plant = pot.getPlant();
+        if (plant != null) {
+            addPlantAnimation(group, plant.getPlantName());
+        }
+
+        group.addListener(click(() -> collect(potX, potY)));
+        group.setTouchable(Touchable.enabled);
+        return group;
+    }
+
+    private void addPlantAnimation(Group group, String plantName) {
+        String path = findPlantPamPath(plantName);
+        if (path == null) {
+            System.out.println("Plant PAM not found: " + plantName);
+            return;
+        }
+
+        Group scaler = new Group();
+        scaler.setSize(POT_SIZE, POT_SIZE);
+        scaler.setTransform(true);
+        scaler.setOrigin(POT_SIZE / 2f, PLANT_ORIGIN_Y);
+        scaler.setScale(POT_SCALE);
+
+        PlantActor actor = new PlantActor(pamPlayer, path);
+        actor.setSize(POT_SIZE, POT_SIZE);
+
+        scaler.addActor(actor);
+        group.addActor(scaler);
+    }
+
+    private String findPlantPamPath(String plantName) {
+        if (plantName == null || plantName.isBlank()) return null;
+
+        if (PAM_CACHE.containsKey(plantName)) return PAM_CACHE.get(plantName);
+
+        String normalized = plantName.trim().toUpperCase().replace(' ', '_').replace('-', '_');
+        String compact = normalized.replace("_", "");
+
+        for (String folder : new String[]{"INITIAL", "FULL"}) {
+            String path1 = "768/" + folder + "/PLANT/" + normalized + "/" + normalized + ".PAM";
+            if (assetExists(path1)) {
+                PAM_CACHE.put(plantName, path1);
+                return path1;
+            }
+
+            String path2 = "768/" + folder + "/PLANT/" + compact + "/" + compact + ".PAM";
+            if (assetExists(path2)) {
+                PAM_CACHE.put(plantName, path2);
+                return path2;
+            }
+        }
+
+        return null;
+    }
+
+    private boolean assetExists(String path) {
+        return Gdx.files.internal("assets/IMAGES/" + path).exists()
+                || Gdx.files.internal("IMAGES/" + path).exists()
+                || Gdx.files.internal("assets/" + path).exists()
+                || Gdx.files.internal(path).exists();
+    }
+
+    private ClickListener click(Runnable action) {
+        return new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                event.stop();
+                action.run();
+            }
+        };
     }
 
     private void plant(int x, int y) {
-        User user = appState.getCurrentUser();
-        if (user == null) return;
-
-        try {
-            greenhouseService.plant(user, x, y);
-            saveAndRefresh();
-        } catch (Exception e) {
-            showError(e.getMessage());
-        }
+        execute(() -> greenhouseService.plant(appState.getCurrentUser(), x, y));
     }
 
     private void collect(int x, int y) {
+        execute(() -> {
+            User currentUser = appState.getCurrentUser();
+            if (currentUser == null || currentUser.getGreenhouse() == null) return;
+
+            int initialCoins = currentUser.getCoins();
+            int initialBoosts = currentUser.getStoredBoosts() != null ? currentUser.getStoredBoosts().size() : 0;
+
+            greenhouseService.collect(currentUser, x, y);
+
+            int finalCoins = currentUser.getCoins();
+            int finalBoosts = currentUser.getStoredBoosts() != null ? currentUser.getStoredBoosts().size() : 0;
+
+            String rewardText;
+            if (finalCoins > initialCoins) {
+                rewardText = "+ 500 Coins!";
+            } else if (finalBoosts > initialBoosts) {
+                rewardText = "+ 1 Boost!";
+            } else {
+                rewardText = "Harvested!";
+            }
+
+            showRewardNotification(rewardText);
+        });
+    }
+
+    private void grow(int x, int y) {
+        execute(() -> greenhouseService.forceGrow(appState.getCurrentUser(), x, y));
+    }
+
+    private void unlockPot(int x, int y) {
+        execute(() -> greenhouseService.unlockPot(appState.getCurrentUser(), x, y));
+    }
+
+    private void showRewardNotification(String message) {
+        Label label = new Label(message, skin);
+        label.setColor(Color.YELLOW);
+        label.setFontScale(1.3f);
+        label.pack();
+
+        label.setPosition((WIDTH - label.getWidth()) / 2f, HEIGHT / 2f + 50f);
+        label.getColor().a = 0f;
+
+        label.addAction(Actions.sequence(
+                Actions.fadeIn(0.2f),
+                Actions.moveBy(0f, 60f, 2.5f, Interpolation.sineOut),
+                Actions.fadeOut(0.3f),
+                Actions.removeActor()
+        ));
+
+        stage.addActor(label);
+    }
+
+    private void execute(Action action) {
         User user = appState.getCurrentUser();
         if (user == null) return;
 
         try {
-            greenhouseService.collect(user, x, y);
+            action.run();
             saveAndRefresh();
         } catch (Exception e) {
             showError(e.getMessage());
         }
     }
 
-    private void grow(int x, int y) {
-        User user = appState.getCurrentUser();
-        if (user == null) return;
-
-        try {
-            greenhouseService.forceGrow(user, x, y);
-            saveAndRefresh();
-        } catch (Exception e) {
-            showError(e.getMessage());
-        }
+    @FunctionalInterface
+    private interface Action {
+        void run() throws Exception;
     }
 
     private void saveAndRefresh() {
         if (!userManager.save()) {
             userManager.reload();
-            User currentUser = appState.getCurrentUser();
-
-            if (currentUser != null) {
-                User reloadedUser = userManager.find(
-                        user -> user.getUsername().equals(currentUser.getUsername()));
-                appState.setCurrentUser(reloadedUser);
+            User current = appState.getCurrentUser();
+            if (current != null) {
+                User reloaded = userManager.find(u -> u.getUsername().equals(current.getUsername()));
+                appState.setCurrentUser(reloaded);
             }
         }
-
-        rebuildPots();
+        rebuildPots(true);
         rebuildCurrencies();
     }
 
     private void rebuildCurrencies() {
-        for (int i = stage.getActors().size - 1; i >= 0; i--) {
-            Actor actor = stage.getActors().get(i);
-
-            if (actor instanceof Group group
-                    && group != greenhouseGroup
-                    && group.getWidth() > 200f
-                    && group.getY() > HEIGHT - 200f) {
-                group.remove();
-                break;
-            }
-        }
-
-        buildCurrencies();
+        if (sproutLabel != null) sproutLabel.setText(getStoredBoostsCount());
+        if (diamondLabel != null) diamondLabel.setText(getDiamondCount());
+        if (coinLabel != null) coinLabel.setText(getCoinCount());
     }
 
     private void showError(String message) {
-        if (message == null || message.isBlank())
-            message = "Greenhouse operation failed.";
-
-        System.out.println("Greenhouse error: " + message);
+        System.out.println("Greenhouse error: " + (message == null ? "" : message));
     }
 
     @Override
     public void render(float delta) {
+        textures.update();
         refreshTimer += delta;
 
         if (refreshTimer >= REFRESH_INTERVAL) {
             refreshTimer = 0f;
-
-            User user = appState.getCurrentUser();
-            if (user != null && user.getGreenhouse() != null) {
-                user.getGreenhouse().updateAllPots();
-                rebuildPots();
-            }
+            rebuildPots(false);
         }
 
         super.render(delta);
@@ -472,39 +644,9 @@ public class GreenhouseScreen extends BaseScreen {
         Gdx.input.setInputProcessor(stage);
     }
 
-    private static class PamActor extends Actor {
-
-        private final PamPlayer player;
-        private final String pamPath;
-        private float stateTime;
-
-        PamActor(PamPlayer player, String pamPath) {
-            this.player = player;
-            this.pamPath = pamPath;
-        }
-
-        @Override
-        public void act(float delta) {
-            super.act(delta);
-            stateTime += delta;
-        }
-
-        @Override
-        public void draw(Batch batch, float parentAlpha) {
-            float centerX = getX() + getWidth() / 2f;
-            float centerY = getY() + getHeight() / 2f;
-            Actor parent = getParent();
-
-            if (parent == null) return;
-
-            player.draw(
-                    batch,
-                    pamPath,
-                    "idle",
-                    stateTime,
-                    parent.getX() + centerX,
-                    parent.getY() + centerY,
-                    true);
-        }
+    @Override
+    public void resize(int width, int height) {
+        super.resize(width, height);
+        viewport.update(width, height, true);
     }
 }

@@ -41,17 +41,12 @@ public class GreenhousePlant {
         long totalSeconds = remaining / 1000;
         long hours = totalSeconds / 3600;
         long minutes = (totalSeconds % 3600) / 60;
-        long seconds = totalSeconds % 60;
 
         StringBuilder timeString = new StringBuilder();
         if (hours > 0) {
             timeString.append(hours).append("h ");
         }
-        if (minutes > 0 || hours > 0) {
             timeString.append(minutes).append("m ");
-        }
-        timeString.append(seconds).append("s");
-
         return timeString.toString().trim();
     }
 

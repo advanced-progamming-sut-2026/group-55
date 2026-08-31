@@ -14,6 +14,7 @@ import pvz.data.PlantCsvLoader;
 import pvz.data.PlantData;
 import pvz.graphics.BaseScreen;
 import pvz.libpvz.textures.TextureBank;
+import pvz.model.account.User;
 import pvz.model.account.UserManager;
 import pvz.model.service.GreenhouseService;
 import pvz.model.utils.AppState;
@@ -25,8 +26,8 @@ public class GameMenuScreen extends BaseScreen {
     private static final float WORLD_WIDTH = 200f, WORLD_HEIGHT = 380f;
     private static final float SELECTED_SCALE = 1.12f, NORMAL_SCALE = 0.82f;
     private static final float SIDE_DISTANCE = 245f, WORLD_Y = 25f, CENTER_X_OFFSET = 0f;
-    private static final float PREMIUM_TEXT_X = 70f, PREMIUM_TEXT_Y = 17f;
-    private static final float COIN_TEXT_X = 65f, COIN_TEXT_Y = 17f, COIN_WIDTH = 150f;
+    private static final float COIN_WIDTH = 150f;
+    private static final float TEXT_Y_OFFSET = 17f;
     private static final Color LOCKED_COLOR = new Color(0.45f, 0.45f, 0.45f, 1f);
 
     private final Group worldContainer = new Group();
@@ -37,6 +38,9 @@ public class GameMenuScreen extends BaseScreen {
 
     private SettingsScreen settingsScreen;
     private int currentPage = 0;
+
+    private Label premiumLabel;
+    private Label coinLabel;
 
     private final String[] worldNames = {
             "EGYPT", "BIG WAVE BEACH", "DARK AGES", "FROSTBITE CAVES", "INVASION"
@@ -87,8 +91,7 @@ public class GameMenuScreen extends BaseScreen {
             return new GreenhouseService(plantData);
         } catch (IOException e) {
             throw new IllegalStateException(
-                    "Failed to load plant data from assets/data/plants.csv",
-                    e
+                    "Failed to load plant data from assets/data/plants.csv", e
             );
         }
     }
@@ -117,48 +120,30 @@ public class GameMenuScreen extends BaseScreen {
         collection.setPosition(25f + (size + gap) * 2f, y);
         settings.setPosition(25f + (size + gap) * 3f, y);
 
-        back.addListener(new ClickListener() {
-            @Override
-            public void clicked(InputEvent event, float x, float y) {
-                game.setScreen(new MainMenuScreen(
-                        game,
-                        textures,
-                        batch,
-                        skin,
-                        appState,
-                        userManager
-                ));
-            }
-        });
+        back.addListener(click(() -> game.setScreen(new MainMenuScreen(
+                game,
+                textures,
+                batch,
+                skin,
+                appState,
+                userManager
+        ))));
 
-        greenhouse.addListener(new ClickListener() {
-            @Override
-            public void clicked(InputEvent event, float x, float y) {
-                game.setScreen(new GreenhouseScreen(
-                        game,
-                        textures,
-                        batch,
-                        skin,
-                        appState,
-                        userManager,
-                        greenhouseService
-                ));
-            }
-        });
+        greenhouse.addListener(click(() -> game.setScreen(new GreenhouseScreen(
+                game,
+                textures,
+                batch,
+                skin,
+                appState,
+                userManager,
+                greenhouseService
+        ))));
 
-        collection.addListener(new ClickListener() {
-            @Override
-            public void clicked(InputEvent event, float x, float y) {
-                // بعداً CollectionScreen
-            }
-        });
+        collection.addListener(click(() -> {
+            // بعداً CollectionScreen
+        }));
 
-        settings.addListener(new ClickListener() {
-            @Override
-            public void clicked(InputEvent event, float x, float y) {
-                settingsScreen.show();
-            }
-        });
+        settings.addListener(click(() -> settingsScreen.show()));
 
         stage.addActor(back);
         stage.addActor(greenhouse);
@@ -182,67 +167,76 @@ public class GameMenuScreen extends BaseScreen {
     }
 
     private void buildCurrencies() {
-        TextureRegion premiumRegion =
-                textures.region("IMAGE_UI_GENERIC_BUTTONS_PREMIUM_NORMAL");
-
-        TextureRegion coinRegion =
-                textures.region("IMAGE_UI_GENERIC_BUTTONS_COIN_BUY_NORMAL");
+        TextureRegion premiumRegion = textures.region("IMAGE_UI_GENERIC_BUTTONS_PREMIUM_NORMAL");
+        TextureRegion coinRegion = textures.region("IMAGE_UI_GENERIC_BUTTONS_COIN_BUY_NORMAL");
 
         if (premiumRegion == null || coinRegion == null) {
-            throw new IllegalStateException("Currency texture not found.");
+            throw new IllegalStateException("Currency textures not found.");
         }
 
-        float premiumWidth = premiumRegion.getRegionWidth();
-        float premiumHeight = premiumRegion.getRegionHeight();
-        float coinHeight = coinRegion.getRegionHeight();
+        premiumLabel = new Label(getPremiumCount(), skin);
+        premiumLabel.setColor(Color.WHITE);
+        Group premiumGroup = currencyGroup(premiumRegion, premiumLabel, premiumRegion.getRegionWidth(), 70f);
 
-        Image premium = new Image(premiumRegion);
-        Image coin = new Image(coinRegion);
+        coinLabel = new Label(getCoinCount(), skin);
+        coinLabel.setColor(Color.WHITE);
+        Group coinGroup = currencyGroup(coinRegion, coinLabel, COIN_WIDTH, 65f);
 
-        Group premiumGroup = new Group();
-        Group coinGroup = new Group();
+        premiumGroup.addListener(click(() -> {
+            if (isDebugModeEnabled()) {
+                appState.getCurrentUser().addDiamonds(100);
+                updateCurrencyLabels();
+                userManager.save();
+            }
+        }));
 
-        premiumGroup.setSize(premiumWidth, premiumHeight);
-        premiumGroup.addActor(premium);
-
-        coinGroup.setSize(COIN_WIDTH, coinHeight);
-        coin.setSize(COIN_WIDTH, coinHeight);
-        coinGroup.addActor(coin);
-
-        Label premiumCount = new Label(getPremiumCount(), skin);
-        Label coinCount = new Label(getCoinCount(), skin);
-
-        premiumCount.setColor(Color.WHITE);
-        coinCount.setColor(Color.WHITE);
-
-        premiumCount.pack();
-        coinCount.pack();
-
-        premiumCount.setPosition(PREMIUM_TEXT_X, PREMIUM_TEXT_Y);
-        coinCount.setPosition(COIN_TEXT_X, COIN_TEXT_Y);
-
-        premiumGroup.addActor(premiumCount);
-        coinGroup.addActor(coinCount);
+        coinGroup.addListener(click(() -> {
+            if (isDebugModeEnabled()) {
+                appState.getCurrentUser().addCoins(100);
+                updateCurrencyLabels();
+                userManager.save();
+            }
+        }));
 
         Table currencies = new Table();
-
-        currencies.add(premiumGroup)
-                .width(premiumWidth)
-                .height(premiumHeight)
-                .padRight(10f);
-
-        currencies.add(coinGroup)
-                .width(COIN_WIDTH)
-                .height(coinHeight);
-
+        currencies.add(premiumGroup).width(premiumRegion.getRegionWidth()).
+                height(premiumRegion.getRegionHeight()).padRight(10f);
+        currencies.add(coinGroup).width(COIN_WIDTH).height(coinRegion.getRegionHeight());
         currencies.pack();
 
-        currencies.setPosition(
-                WIDTH - currencies.getWidth() - 20f,
-                HEIGHT - currencies.getHeight() - 20f
-        );
-
+        currencies.setPosition(WIDTH - currencies.getWidth() - 20f, HEIGHT - currencies.getHeight() - 20f);
         stage.addActor(currencies);
+    }
+
+    private Group currencyGroup(TextureRegion region, Label label, float width, float textX) {
+        Group group = new Group();
+        float height = region.getRegionHeight();
+        group.setSize(width, height);
+
+        Image image = new Image(region);
+        image.setSize(width, height);
+        group.addActor(image);
+
+        label.pack();
+        label.setPosition(textX, TEXT_Y_OFFSET);
+        group.addActor(label);
+
+        return group;
+    }
+
+    private void updateCurrencyLabels() {
+        if (premiumLabel != null) {
+            premiumLabel.setText(getPremiumCount());
+            premiumLabel.pack();
+        }
+        if (coinLabel != null) {
+            coinLabel.setText(getCoinCount());
+            coinLabel.pack();
+        }
+    }
+
+    private boolean isDebugModeEnabled() {
+        return appState.getCurrentUser() != null && appState.getCurrentUser().isDebugMode();
     }
 
     private String getPremiumCount() {
@@ -282,19 +276,14 @@ public class GameMenuScreen extends BaseScreen {
 
         final int worldIndex = index;
 
-        world.addListener(new ClickListener() {
-            @Override
-            public void clicked(InputEvent event, float x, float y) {
-                currentPage = worldIndex;
-                updateWorlds();
+        world.addListener(click(() -> {
+            currentPage = worldIndex;
+            updateWorlds();
 
-                appState.setSelectedChapter(
-                        worldNames[worldIndex].toLowerCase()
-                );
-
-                event.stop();
-            }
-        });
+            appState.setSelectedChapter(
+                    worldNames[worldIndex].toLowerCase()
+            );
+        }));
 
         worlds[index] = world;
         worldContainer.addActor(world);
@@ -353,5 +342,15 @@ public class GameMenuScreen extends BaseScreen {
                 );
             }
         }
+    }
+
+    private ClickListener click(Runnable action) {
+        return new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                event.stop();
+                action.run();
+            }
+        };
     }
 }
