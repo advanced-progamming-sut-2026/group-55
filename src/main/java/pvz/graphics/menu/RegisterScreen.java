@@ -13,6 +13,7 @@ import pvz.libpvz.textures.TextureBank;
 import pvz.model.account.UserManager;
 import pvz.model.command.RegisterCommand;
 import pvz.model.utils.AppState;
+import pvz.model.utils.MenuName;
 import pvz.view.MenuView;
 
 public class RegisterScreen extends BaseScreen {
@@ -387,5 +388,11 @@ public class RegisterScreen extends BaseScreen {
                 Actions.fadeOut(.3f),
                 Actions.removeActor()
         ));
+    }
+
+    @Override
+    public void show() {
+        super.show();
+        appState.setCurrentMenu(MenuName.REGISTER);
     }
 }

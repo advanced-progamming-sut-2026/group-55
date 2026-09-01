@@ -18,6 +18,7 @@ import pvz.libpvz.textures.TextureBank;
 import pvz.model.account.UserManager;
 import pvz.model.command.Command;
 import pvz.model.utils.AppState;
+import pvz.model.utils.MenuName;
 import pvz.view.MenuView;
 
 public class MainMenuScreen extends BaseScreen {
@@ -229,7 +230,10 @@ public class MainMenuScreen extends BaseScreen {
         newsGroup.addListener(click(() -> {
             if (newsScreen != null) {
                 newsScreen.show();
-                unreadMark.setVisible(false);
+                unreadMark.setVisible(
+                        appState.getCurrentUser() != null
+                                && appState.getCurrentUser().hasUnreadNews()
+                );
             }
         }));
 
@@ -247,7 +251,13 @@ public class MainMenuScreen extends BaseScreen {
     }
 
     private void buildSettingsOverlay() {
-        settingsScreen = new SettingsScreen(textures, skin, appState, userManager);
+        settingsScreen = new SettingsScreen(
+                textures,
+                skin,
+                appState,
+                userManager,
+                MenuName.MAIN
+        );
         settingsScreen.setSize(WIDTH, HEIGHT);
         settingsScreen.setPosition(0f, 0f);
         settingsScreen.setVisible(false);
@@ -263,7 +273,7 @@ public class MainMenuScreen extends BaseScreen {
     }
 
     private void buildNewsOverlay() {
-        newsScreen = new NewsScreen(textures, skin, appState);
+        newsScreen = new NewsScreen(textures, skin, appState, userManager);
         newsScreen.setSize(WIDTH, HEIGHT);
         newsScreen.setPosition(0f, 0f);
         newsScreen.setVisible(false);
@@ -303,5 +313,26 @@ public class MainMenuScreen extends BaseScreen {
                 action.run();
             }
         };
+    }
+
+    @Override
+    public void show() {
+        super.show();
+        appState.setCurrentMenu(MenuName.MAIN);
+        updateCurrencyLabels();
+    }
+
+    @Override
+    public void dispose() {
+        if (settingsScreen != null) {
+            settingsScreen.dispose();
+        }
+        if (profileScreen != null) {
+            profileScreen.dispose();
+        }
+        if (newsScreen != null) {
+            newsScreen.dispose();
+        }
+        super.dispose();
     }
 }

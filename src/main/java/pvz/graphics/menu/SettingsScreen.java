@@ -18,6 +18,7 @@ import pvz.model.account.User;
 import pvz.model.account.UserManager;
 import pvz.model.command.SettingsCommand;
 import pvz.model.utils.AppState;
+import pvz.model.utils.MenuName;
 import pvz.view.MenuView;
 
 public class SettingsScreen extends Group {
@@ -30,16 +31,25 @@ public class SettingsScreen extends Group {
     private final Skin skin;
     private final AppState appState;
     private final UserManager userManager;
+    private final MenuName parentMenu;
     private final Table contentTable;
 
     private Image overlay;
     private Label saveMessage;
+    private Texture overlayTexture;
 
-    public SettingsScreen(TextureBank textures, Skin skin, AppState appState, UserManager userManager) {
+    public SettingsScreen(
+            TextureBank textures,
+            Skin skin,
+            AppState appState,
+            UserManager userManager,
+            MenuName parentMenu
+    ) {
         this.textures = textures;
         this.skin = skin;
         this.appState = appState;
         this.userManager = userManager;
+        this.parentMenu = parentMenu;
         contentTable = new Table();
 
         controller = new SettingsController(appState, userManager, new MenuView() {
@@ -110,9 +120,9 @@ public class SettingsScreen extends Group {
         Pixmap pixmap = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
         pixmap.setColor(Color.BLACK);
         pixmap.fill();
-        Texture texture = new Texture(pixmap);
+        overlayTexture = new Texture(pixmap);
         pixmap.dispose();
-        return new TextureRegionDrawable(texture);
+        return new TextureRegionDrawable(overlayTexture);
     }
 
     private void showSettings() {
@@ -234,8 +244,11 @@ public class SettingsScreen extends Group {
 
         save.addListener(new ClickListener() {
             @Override public void clicked(InputEvent event, float x, float y) {
-                userManager.save();
-                showSaveMessage();
+                if (userManager.save()) {
+                    showSaveMessage("Changes saved.", Color.WHITE);
+                } else {
+                    showSaveMessage("Failed to save changes.", Color.RED);
+                }
             }
         });
     }
@@ -244,9 +257,10 @@ public class SettingsScreen extends Group {
         return new TextButton(text, skin);
     }
 
-    private void showSaveMessage() {
+    private void showSaveMessage(String message, Color color) {
         saveMessage.clearActions();
-        saveMessage.setText("Changes saved.");
+        saveMessage.setText(message);
+        saveMessage.setColor(color);
         saveMessage.setVisible(true);
         saveMessage.getColor().a = 1f;
 
@@ -263,6 +277,7 @@ public class SettingsScreen extends Group {
     public void show() {
         if (appState.getCurrentUser() != null) showSettings();
 
+        appState.setCurrentMenu(MenuName.SETTINGS);
         overlay.setSize(getWidth(), getHeight());
         overlay.getColor().a = OVERLAY_ALPHA;
         setVisible(true);
@@ -271,5 +286,13 @@ public class SettingsScreen extends Group {
 
     public void hide() {
         setVisible(false);
+        appState.setCurrentMenu(parentMenu);
+    }
+
+    public void dispose() {
+        if (overlayTexture != null) {
+            overlayTexture.dispose();
+            overlayTexture = null;
+        }
     }
 }

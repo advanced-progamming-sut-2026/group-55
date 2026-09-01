@@ -1,5 +1,6 @@
 package pvz.graphics.actor;
 
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import pvz.libpvz.pam.PamPlayer;
@@ -8,6 +9,7 @@ public class PlantActor extends Actor {
 
     private final PamPlayer pamPlayer;
     private final String pamPath;
+    private final Color previousBatchColor = new Color();
 
     private float stateTime;
 
@@ -28,8 +30,17 @@ public class PlantActor extends Actor {
             return;
         }
 
-        float centerX = getWidth() / 2f;
-        float dirtY = 45f;
+        float centerX = getX() + getWidth() / 2f;
+        float dirtY = getY() + 45f;
+        Color color = getColor();
+
+        previousBatchColor.set(batch.getColor());
+        batch.setColor(
+                color.r,
+                color.g,
+                color.b,
+                color.a * parentAlpha
+        );
 
         pamPlayer.draw(
                 batch,
@@ -40,6 +51,8 @@ public class PlantActor extends Actor {
                 dirtY,
                 true
         );
+
+        batch.setColor(previousBatchColor);
     }
 
     public void resetAnimation() {

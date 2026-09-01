@@ -15,6 +15,7 @@ import pvz.model.command.Command;
 import pvz.model.command.LoginCommand;
 import pvz.model.service.AuthService;
 import pvz.model.utils.AppState;
+import pvz.model.utils.MenuName;
 import pvz.model.utils.SystemMessage;
 import pvz.view.MenuView;
 
@@ -174,6 +175,7 @@ public class LoginScreen extends BaseScreen {
     }
 
     private void buildLoginForm() {
+        controller.cancelRecovery();
         form.clear();
         addTitle("LOGIN");
 
@@ -455,5 +457,11 @@ public class LoginScreen extends BaseScreen {
                         Actions.removeActor()
                 )
         );
+    }
+
+    @Override
+    public void show() {
+        super.show();
+        appState.setCurrentMenu(MenuName.LOGIN);
     }
 }

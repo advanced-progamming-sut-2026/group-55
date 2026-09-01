@@ -15,7 +15,9 @@ import com.badlogic.gdx.utils.Align;
 import pvz.libpvz.textures.TextureBank;
 import pvz.model.account.NewsItem;
 import pvz.model.account.User;
+import pvz.model.account.UserManager;
 import pvz.model.utils.AppState;
+import pvz.model.utils.MenuName;
 
 public class NewsScreen extends Group {
 
@@ -25,12 +27,20 @@ public class NewsScreen extends Group {
     private final TextureBank textures;
     private final Skin skin;
     private final AppState appState;
+    private final UserManager userManager;
     private final Table newsTable;
+    private Texture overlayTexture;
 
-    public NewsScreen(TextureBank textures, Skin skin, AppState appState) {
+    public NewsScreen(
+            TextureBank textures,
+            Skin skin,
+            AppState appState,
+            UserManager userManager
+    ) {
         this.textures = textures;
         this.skin = skin;
         this.appState = appState;
+        this.userManager = userManager;
         this.newsTable = new Table();
 
         setSize(1280f, 720f);
@@ -101,10 +111,10 @@ public class NewsScreen extends Group {
         pixmap.setColor(Color.BLACK);
         pixmap.fill();
 
-        Texture texture = new Texture(pixmap);
+        overlayTexture = new Texture(pixmap);
         pixmap.dispose();
 
-        return new TextureRegionDrawable(new TextureRegion(texture));
+        return new TextureRegionDrawable(new TextureRegion(overlayTexture));
     }
 
     private void refreshNews() {
@@ -162,16 +172,35 @@ public class NewsScreen extends Group {
 
     public void show() {
         refreshNews();
+        appState.setCurrentMenu(MenuName.NEWS);
         setVisible(true);
         toFront();
 
         User user = appState.getCurrentUser();
         if (user != null && user.hasUnreadNews()) {
+            String username = user.getUsername();
             user.markAllAsRead();
+
+            if (!userManager.save()) {
+                userManager.reload();
+                User reloadedUser = userManager.find(
+                        candidate -> candidate.getUsername().equals(username)
+                );
+                appState.setCurrentUser(reloadedUser);
+                refreshNews();
+            }
         }
     }
 
     public void hide() {
         setVisible(false);
+        appState.setCurrentMenu(MenuName.MAIN);
+    }
+
+    public void dispose() {
+        if (overlayTexture != null) {
+            overlayTexture.dispose();
+            overlayTexture = null;
+        }
     }
 }

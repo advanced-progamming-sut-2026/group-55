@@ -18,6 +18,7 @@ import pvz.model.account.User;
 import pvz.model.account.UserManager;
 import pvz.model.service.GreenhouseService;
 import pvz.model.utils.AppState;
+import pvz.model.utils.MenuName;
 
 import java.io.IOException;
 
@@ -29,6 +30,7 @@ public class GameMenuScreen extends BaseScreen {
     private static final float COIN_WIDTH = 150f;
     private static final float TEXT_Y_OFFSET = 17f;
     private static final Color LOCKED_COLOR = new Color(0.45f, 0.45f, 0.45f, 1f);
+    static final String PLANT_DATA_PATH = "assets/Data/plants.csv";
 
     private final Group worldContainer = new Group();
     private final Image[] worlds = new Image[5];
@@ -43,19 +45,19 @@ public class GameMenuScreen extends BaseScreen {
     private Label coinLabel;
 
     private final String[] worldNames = {
-            "EGYPT", "BIG WAVE BEACH", "DARK AGES", "FROSTBITE CAVES", "INVASION"
+            "ANCIENT EGYPT", "FROSTBITE CAVES", "BIG WAVE BEACH", "DARK AGES", "INVASION"
+    };
+
+    private final String[] worldIds = {
+            "ancient-egypt", "frostbite-caves", "big-wave-beach", "dark-ages", null
     };
 
     private final String[] worldTextures = {
             "IMAGE_UI_UNIVERSE_WORLDS_EGYPT",
+            "IMAGE_UI_UNIVERSE_WORLDS_ICEAGE",
             "IMAGE_UI_UNIVERSE_WORLDS_BEACH",
             "IMAGE_UI_UNIVERSE_WORLDS_DARK",
-            "IMAGE_UI_UNIVERSE_WORLDS_ICEAGE",
             "IMAGE_UI_UNIVERSE_INVASION_UNIVERSE_PORTAL_INVASION_UNIVERSE_PORTAL_367X839"
-    };
-
-    private final boolean[] unlockedWorlds = {
-            true, false, false, false, false
     };
 
     public GameMenuScreen(
@@ -86,12 +88,12 @@ public class GameMenuScreen extends BaseScreen {
     private GreenhouseService createGreenhouseService() {
         try {
             PlantData plantData =
-                    PlantCsvLoader.load("assets/data/plants.csv");
+                    PlantCsvLoader.load(PLANT_DATA_PATH);
 
             return new GreenhouseService(plantData);
         } catch (IOException e) {
             throw new IllegalStateException(
-                    "Failed to load plant data from assets/data/plants.csv", e
+                    "Failed to load plant data from " + PLANT_DATA_PATH, e
             );
         }
     }
@@ -156,7 +158,8 @@ public class GameMenuScreen extends BaseScreen {
                 textures,
                 skin,
                 appState,
-                userManager
+                userManager,
+                MenuName.GAME
         );
 
         settingsScreen.setSize(WIDTH, HEIGHT);
@@ -280,9 +283,9 @@ public class GameMenuScreen extends BaseScreen {
             currentPage = worldIndex;
             updateWorlds();
 
-            appState.setSelectedChapter(
-                    worldNames[worldIndex].toLowerCase()
-            );
+            if (isWorldUnlocked(worldIndex)) {
+                appState.setSelectedChapter(worldIds[worldIndex]);
+            }
         }));
 
         worlds[index] = world;
@@ -310,7 +313,7 @@ public class GameMenuScreen extends BaseScreen {
             );
 
             worlds[i].setColor(
-                    unlockedWorlds[i]
+                    isWorldUnlocked(i)
                             ? Color.WHITE
                             : LOCKED_COLOR
             );
@@ -327,7 +330,7 @@ public class GameMenuScreen extends BaseScreen {
 
             if (worldLabels[i] != null) {
                 worldLabels[i].setColor(
-                        unlockedWorlds[i]
+                        isWorldUnlocked(i)
                                 ? Color.WHITE
                                 : Color.DARK_GRAY
                 );
@@ -342,6 +345,29 @@ public class GameMenuScreen extends BaseScreen {
                 );
             }
         }
+    }
+
+    private boolean isWorldUnlocked(int index) {
+        User user = appState.getCurrentUser();
+        String worldId = worldIds[index];
+        return user != null
+                && worldId != null
+                && user.isChapterUnlocked(worldId);
+    }
+
+    @Override
+    public void show() {
+        super.show();
+        appState.setCurrentMenu(MenuName.GAME);
+        updateWorlds();
+    }
+
+    @Override
+    public void dispose() {
+        if (settingsScreen != null) {
+            settingsScreen.dispose();
+        }
+        super.dispose();
     }
 
     private ClickListener click(Runnable action) {

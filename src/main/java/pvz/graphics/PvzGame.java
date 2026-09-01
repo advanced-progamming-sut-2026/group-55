@@ -2,6 +2,7 @@ package pvz.graphics;
 
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
@@ -70,8 +71,23 @@ public class PvzGame extends Game {
     }
 
     @Override
+    public void setScreen(Screen screen) {
+        Screen previousScreen = getScreen();
+        super.setScreen(screen);
+
+        if (previousScreen != null && previousScreen != screen) {
+            previousScreen.dispose();
+        }
+    }
+
+    @Override
     public void dispose() {
+        Screen currentScreen = getScreen();
         super.dispose();
+
+        if (currentScreen != null) {
+            currentScreen.dispose();
+        }
 
         if (textures != null) {
             textures.dispose();
@@ -79,6 +95,10 @@ public class PvzGame extends Game {
 
         if (batch != null) {
             batch.dispose();
+        }
+
+        if (skin != null) {
+            skin.dispose();
         }
     }
 }
