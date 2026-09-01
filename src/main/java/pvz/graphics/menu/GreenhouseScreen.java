@@ -34,7 +34,6 @@ public class GreenhouseScreen extends BaseScreen {
     private static final float CELL_W = 128f, CELL_H = 144f;
     private static final float GRID_TOP = 202f;
 
-    private static final int UNLOCK_COST = 20;
     private static final float POT_SCALE = 0.45f;
     private static final float PLANT_ORIGIN_Y = 45f;
     private static final float GROWING_DIRT_SIZE = 45f;
@@ -119,7 +118,8 @@ public class GreenhouseScreen extends BaseScreen {
         ImageButton back = new ImageButton(style);
         back.setBounds(25f, y, size, size);
 
-        back.addListener(click(() -> game.setScreen(new GameMenuScreen(game, textures, batch, skin, appState, userManager))));
+        back.addListener(click(() -> game.setScreen(new GameMenuScreen
+                (game, textures, batch, skin, appState, userManager))));
 
         Image collection = image("IMAGE_UI_HUD_ALMANACBUTTON_BUTTONS_HUD_ALMANAC_NORMAL");
         collection.setBounds(25f + size + gap, y, size, size);
@@ -137,6 +137,9 @@ public class GreenhouseScreen extends BaseScreen {
 
         stage.addActor(back);
         stage.addActor(collection);
+
+        store.addListener(click(() -> game.setScreen(new ShopScreen(
+                game, textures, batch, skin, appState, userManager, greenhouseService))));
         stage.addActor(store);
     }
 
@@ -161,7 +164,7 @@ public class GreenhouseScreen extends BaseScreen {
         diamondGroup.setTouchable(Touchable.enabled);
         diamondGroup.addListener(click(() -> {
             if (isDebugModeEnabled()) {
-                appState.getCurrentUser().addDiamonds(100);
+                appState.getCurrentUser().addDiamonds(1000);
                 rebuildCurrencies();
                 userManager.save();
             }
@@ -170,7 +173,7 @@ public class GreenhouseScreen extends BaseScreen {
         coinGroup.setTouchable(Touchable.enabled);
         coinGroup.addListener(click(() -> {
             if (isDebugModeEnabled()) {
-                appState.getCurrentUser().addCoins(100);
+                appState.getCurrentUser().addCoins(1000);
                 rebuildCurrencies();
                 userManager.save();
             }
@@ -332,7 +335,7 @@ public class GreenhouseScreen extends BaseScreen {
         float py = topY - y * CELL_H + (CELL_H - POT_SIZE) / 2f;
 
         switch (pot.getState()) {
-            case LOCKED: return createLockedPot(px, py, x, y);
+            case LOCKED: return createLockedPot(px, py);
             case EMPTY: return createEmptyPot(px, py, x, y);
             case GROWING: return createGrowingPot(pot, px, py, x, y);
             case READY: return createReadyPot(pot, px, py, x, y);
@@ -354,23 +357,17 @@ public class GreenhouseScreen extends BaseScreen {
         return image;
     }
 
-    private Group createLockedPot(float px, float py, int potX, int potY) {
+    private Group createLockedPot(float px, float py) {
         Group group = potGroup(px, py);
-        TextureRegion region = textures.region("IMAGE_ZEN_GARDEN_BUTTON_UNLOCK_INACTIVE");
-        if (region == null) return group;
-
-        Image button = new Image(region);
-        button.setBounds(-15f, 13f, 95f, 42f);
-        button.addListener(click(() -> unlockPot(potX, potY)));
-
-        Label cost = new Label(String.valueOf(UNLOCK_COST), skin);
-        cost.setColor(Color.WHITE);
-        cost.setPosition(32f, 25f);
-
-        group.addActor(button);
-        group.addActor(cost);
-        group.setTouchable(Touchable.childrenOnly);
-
+        TextureRegion region = textures.region("IMAGE_ZEN_GARDEN_LOCKED_POT_ICON");
+        if (region != null) {
+            Image lockImage = new Image(region);
+            float lockSize = 40f;
+            lockImage.setSize(lockSize, lockSize);
+            lockImage.setPosition((POT_SIZE - lockSize) / 2f, (POT_SIZE - lockSize) / 2f);
+            group.addActor(lockImage);
+        }
+        group.setTouchable(Touchable.disabled);
         return group;
     }
 
@@ -560,10 +557,6 @@ public class GreenhouseScreen extends BaseScreen {
 
     private void grow(int x, int y) {
         execute(() -> greenhouseService.forceGrow(appState.getCurrentUser(), x, y));
-    }
-
-    private void unlockPot(int x, int y) {
-        execute(() -> greenhouseService.unlockPot(appState.getCurrentUser(), x, y));
     }
 
     private void showRewardNotification(String message) {
