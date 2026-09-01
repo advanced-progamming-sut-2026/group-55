@@ -16,6 +16,7 @@ import pvz.model.entity.plant.plantfood.PlantFoodSupport;
 public class GreenhouseService {
     private static final long MARIGOLD_GROW_TIME = 7200000L; // 2 hours
     private static final long NORMAL_PLANT_GROW_TIME = 28800000L; // 8 hours
+    private static final int UNLOCK_COST_DIAMONDS = 20;
     private final Random random = new Random();
     private final PlantData plantData;
 
@@ -85,6 +86,24 @@ public class GreenhouseService {
 
         pot.getPlant().forceReady();
         user.getGreenhouse().updateAllPots();
+    }
+
+    public void unlockPot(User user, int x, int y) throws Exception {
+        Greenhouse greenhouse = user.getGreenhouse();
+        greenhouse.updateAllPots();
+        Pot pot = greenhouse.getPot(x, y);
+
+        if (pot == null)
+            throw new Exception(SystemMessage.GREENHOUSE_INVALID_COORDINATES.getMessage());
+        if (!pot.isLocked())
+            throw new Exception("Pot is already unlocked.");
+
+        if (!user.spendDiamonds(UNLOCK_COST_DIAMONDS)) {
+            throw new Exception(SystemMessage.GREENHOUSE_NOT_ENOUGH_DIAMONDS.getMessage());
+        }
+
+        pot.unlock();
+        greenhouse.updateAllPots();
     }
 
     private void validatePotForPlanting(Pot pot) throws Exception {
