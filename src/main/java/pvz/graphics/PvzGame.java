@@ -1,5 +1,7 @@
 package pvz.graphics;
 
+import java.io.IOException;
+
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
@@ -18,12 +20,22 @@ public class PvzGame extends Game {
     private SpriteBatch batch;
     private TextureBank textures;
     private Skin skin;
+    private GameDataContext gameData;
 
     private final AppState appState = new AppState();
     private final UserManager userManager = new UserManager("save.json");
 
     @Override
     public void create() {
+
+        try {
+            gameData = GameDataContext.loadDefault();
+        } catch (IOException | IllegalArgumentException exception) {
+            throw new IllegalStateException(
+                    "Failed to load game data.",
+                    exception
+            );
+        }
 
         batch = new SpriteBatch();
         skin = PvzSkin.get();
@@ -68,6 +80,13 @@ public class PvzGame extends Game {
 
     public UserManager getUserManager() {
         return userManager;
+    }
+
+    public GameDataContext getGameData() {
+        if (gameData == null) {
+            throw new IllegalStateException("Game data is not loaded.");
+        }
+        return gameData;
     }
 
     @Override

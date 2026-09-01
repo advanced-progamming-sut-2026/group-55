@@ -1,6 +1,5 @@
 package pvz.graphics.menu;
 
-import com.badlogic.gdx.Game;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
@@ -10,17 +9,21 @@ import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.utils.Align;
 
-import pvz.data.PlantCsvLoader;
-import pvz.data.PlantData;
 import pvz.graphics.BaseScreen;
+import pvz.graphics.PvzGame;
 import pvz.libpvz.textures.TextureBank;
 import pvz.model.account.User;
 import pvz.model.account.UserManager;
+import pvz.model.adventure.ChapterSpec;
+import pvz.model.adventure.LevelCatalog;
+import pvz.model.adventure.LevelSpec;
 import pvz.model.service.GreenhouseService;
 import pvz.model.utils.AppState;
 import pvz.model.utils.MenuName;
 
-import java.io.IOException;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 public class GameMenuScreen extends BaseScreen {
 
@@ -30,38 +33,30 @@ public class GameMenuScreen extends BaseScreen {
     private static final float COIN_WIDTH = 150f;
     private static final float TEXT_Y_OFFSET = 17f;
     private static final Color LOCKED_COLOR = new Color(0.45f, 0.45f, 0.45f, 1f);
-    static final String PLANT_DATA_PATH = "assets/Data/plants.csv";
+    private static final Map<String, String> WORLD_TEXTURES = Map.of(
+            "ancient-egypt", "IMAGE_UI_UNIVERSE_WORLDS_EGYPT",
+            "frostbite-caves", "IMAGE_UI_UNIVERSE_WORLDS_ICEAGE",
+            "big-wave-beach", "IMAGE_UI_UNIVERSE_WORLDS_BEACH",
+            "dark-ages", "IMAGE_UI_UNIVERSE_WORLDS_DARK"
+    );
 
     private final Group worldContainer = new Group();
-    private final Image[] worlds = new Image[5];
-    private final Label[] worldLabels = new Label[5];
-
+    private final List<ChapterSpec> chapters;
+    private final LevelCatalog levelCatalog;
+    private final Image[] worlds;
+    private final Label[] worldLabels;
     private final GreenhouseService greenhouseService;
 
     private SettingsScreen settingsScreen;
-    private int currentPage = 0;
+    private int currentPage;
 
     private Label premiumLabel;
     private Label coinLabel;
-
-    private final String[] worldNames = {
-            "ANCIENT EGYPT", "FROSTBITE CAVES", "BIG WAVE BEACH", "DARK AGES", "INVASION"
-    };
-
-    private final String[] worldIds = {
-            "ancient-egypt", "frostbite-caves", "big-wave-beach", "dark-ages", null
-    };
-
-    private final String[] worldTextures = {
-            "IMAGE_UI_UNIVERSE_WORLDS_EGYPT",
-            "IMAGE_UI_UNIVERSE_WORLDS_ICEAGE",
-            "IMAGE_UI_UNIVERSE_WORLDS_BEACH",
-            "IMAGE_UI_UNIVERSE_WORLDS_DARK",
-            "IMAGE_UI_UNIVERSE_INVASION_UNIVERSE_PORTAL_INVASION_UNIVERSE_PORTAL_367X839"
-    };
+    private TextButton enterChapterButton;
+    private Label statusLabel;
 
     public GameMenuScreen(
-            Game game,
+            PvzGame game,
             TextureBank textures,
             SpriteBatch batch,
             Skin skin,
@@ -78,24 +73,22 @@ public class GameMenuScreen extends BaseScreen {
                 "IMAGE_MAINMENU_BACKGROUND"
         );
 
-        this.greenhouseService = createGreenhouseService();
+        this.levelCatalog = game.getGameData()
+                .adventureData()
+                .catalog();
+        this.chapters = levelCatalog.chapters();
+        if (chapters.isEmpty()) {
+            throw new IllegalStateException("No chapters are configured.");
+        }
+        this.worlds = new Image[chapters.size()];
+        this.worldLabels = new Label[chapters.size()];
+        this.greenhouseService = game.getGameData()
+                .greenhouseService();
+        this.currentPage = selectedChapterIndex();
 
         buildUI();
         buildSettingsOverlay();
         updateWorlds();
-    }
-
-    private GreenhouseService createGreenhouseService() {
-        try {
-            PlantData plantData =
-                    PlantCsvLoader.load(PLANT_DATA_PATH);
-
-            return new GreenhouseService(plantData);
-        } catch (IOException e) {
-            throw new IllegalStateException(
-                    "Failed to load plant data from " + PLANT_DATA_PATH, e
-            );
-        }
     }
 
     private void buildUI() {
@@ -259,17 +252,39 @@ public class GameMenuScreen extends BaseScreen {
         worldContainer.setPosition(0f, 150f);
         stage.addActor(worldContainer);
 
-        for (int i = 0; i < worldTextures.length; i++) {
+        for (int i = 0; i < chapters.size(); i++) {
             createWorld(i);
         }
+
+        enterChapterButton = new TextButton(
+                "VIEW LEVELS",
+                skin,
+                "green"
+        );
+        enterChapterButton.setBounds(
+                (WIDTH - 220f) / 2f,
+                50f,
+                220f,
+                55f
+        );
+        enterChapterButton.addListener(click(this::enterCurrentChapter));
+        stage.addActor(enterChapterButton);
+
+        statusLabel = new Label("", skin);
+        statusLabel.setColor(Color.YELLOW);
+        statusLabel.setAlignment(Align.center);
+        statusLabel.setBounds(240f, 15f, WIDTH - 480f, 30f);
+        stage.addActor(statusLabel);
     }
 
     private void createWorld(int index) {
-        TextureRegion region = textures.region(worldTextures[index]);
+        ChapterSpec chapter = chapters.get(index);
+        String textureName = textureFor(chapter);
+        TextureRegion region = textures.region(textureName);
 
         if (region == null) {
             throw new IllegalStateException(
-                    "Texture not found: " + worldTextures[index]
+                    "Texture not found: " + textureName
             );
         }
 
@@ -281,25 +296,20 @@ public class GameMenuScreen extends BaseScreen {
 
         world.addListener(click(() -> {
             currentPage = worldIndex;
+            statusLabel.setText("");
             updateWorlds();
-
-            if (isWorldUnlocked(worldIndex)) {
-                appState.setSelectedChapter(worldIds[worldIndex]);
-            }
         }));
 
         worlds[index] = world;
         worldContainer.addActor(world);
 
-        if (index < 4) {
-            Label name = new Label(worldNames[index], skin);
-            name.setAlignment(Align.center);
-            name.setSize(WORLD_WIDTH, 40f);
-            name.setOrigin(Align.center);
+        Label name = new Label(worldLabelText(index), skin);
+        name.setAlignment(Align.center);
+        name.setSize(WORLD_WIDTH, 60f);
+        name.setOrigin(Align.center);
 
-            worldLabels[index] = name;
-            worldContainer.addActor(name);
-        }
+        worldLabels[index] = name;
+        worldContainer.addActor(name);
     }
 
     private void updateWorlds() {
@@ -329,6 +339,7 @@ public class GameMenuScreen extends BaseScreen {
             worlds[i].setPosition(x, WORLD_Y);
 
             if (worldLabels[i] != null) {
+                worldLabels[i].setText(worldLabelText(i));
                 worldLabels[i].setColor(
                         isWorldUnlocked(i)
                                 ? Color.WHITE
@@ -345,14 +356,95 @@ public class GameMenuScreen extends BaseScreen {
                 );
             }
         }
+
+        updateEnterChapterButton();
     }
 
     private boolean isWorldUnlocked(int index) {
         User user = appState.getCurrentUser();
-        String worldId = worldIds[index];
         return user != null
-                && worldId != null
-                && user.isChapterUnlocked(worldId);
+                && user.isChapterUnlocked(chapters.get(index).id());
+    }
+
+    private int selectedChapterIndex() {
+        String selectedChapter = appState.getSelectedChapter();
+        if (selectedChapter == null) {
+            return 0;
+        }
+        for (int index = 0; index < chapters.size(); index++) {
+            if (chapters.get(index).id().equalsIgnoreCase(selectedChapter)) {
+                return index;
+            }
+        }
+        return 0;
+    }
+
+    private String textureFor(ChapterSpec chapter) {
+        String textureName = WORLD_TEXTURES.get(chapter.id());
+        if (textureName == null) {
+            throw new IllegalStateException(
+                    "No world texture configured for chapter: "
+                            + chapter.id()
+            );
+        }
+        return textureName;
+    }
+
+    private String worldLabelText(int index) {
+        ChapterSpec chapter = chapters.get(index);
+        List<LevelSpec> levels = levelCatalog.levelsInChapter(chapter.id());
+        User user = appState.getCurrentUser();
+        long completed = user == null
+                ? 0
+                : levels.stream()
+                        .filter(level -> user.getAdventureProgress()
+                                .isLevelCompleted(level.id()))
+                        .count();
+        return chapter.name().toUpperCase(Locale.ROOT)
+                + "\n"
+                + completed
+                + "/"
+                + levels.size();
+    }
+
+    private void updateEnterChapterButton() {
+        boolean unlocked = isWorldUnlocked(currentPage);
+        boolean hasLevels = !levelCatalog.levelsInChapter(
+                chapters.get(currentPage).id()
+        ).isEmpty();
+
+        enterChapterButton.setDisabled(!unlocked || !hasLevels);
+        if (!unlocked) {
+            enterChapterButton.setText("LOCKED");
+        } else if (!hasLevels) {
+            enterChapterButton.setText("NO LEVELS");
+        } else {
+            enterChapterButton.setText("VIEW LEVELS");
+        }
+    }
+
+    private void enterCurrentChapter() {
+        ChapterSpec chapter = chapters.get(currentPage);
+        if (!isWorldUnlocked(currentPage)) {
+            statusLabel.setText("Complete the previous chapter first.");
+            return;
+        }
+        if (levelCatalog.levelsInChapter(chapter.id()).isEmpty()) {
+            statusLabel.setText("No levels are configured for this chapter.");
+            return;
+        }
+
+        appState.setSelectedChapter(chapter.id());
+        appState.setSelectedLevelId(null);
+        game.setScreen(new LevelSelectionScreen(
+                game,
+                textures,
+                batch,
+                skin,
+                appState,
+                userManager,
+                chapter
+        ));
     }
 
     @Override

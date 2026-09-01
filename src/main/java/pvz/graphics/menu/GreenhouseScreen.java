@@ -1,6 +1,5 @@
 package pvz.graphics.menu;
 
-import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
@@ -15,6 +14,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 
 import pvz.graphics.BaseScreen;
+import pvz.graphics.PvzGame;
 import pvz.graphics.actor.PlantActor;
 import pvz.libpvz.pam.PamPlayer;
 import pvz.libpvz.textures.TextureBank;
@@ -65,7 +65,7 @@ public class GreenhouseScreen extends BaseScreen {
     private boolean refreshing;
 
     public GreenhouseScreen(
-            Game game,
+            PvzGame game,
             TextureBank textures,
             SpriteBatch batch,
             Skin skin,

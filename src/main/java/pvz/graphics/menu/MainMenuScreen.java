@@ -1,6 +1,5 @@
 package pvz.graphics.menu;
 
-import com.badlogic.gdx.Game;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
@@ -14,6 +13,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 
 import pvz.controller.MainMenuController;
 import pvz.graphics.BaseScreen;
+import pvz.graphics.PvzGame;
 import pvz.libpvz.textures.TextureBank;
 import pvz.model.account.UserManager;
 import pvz.model.command.Command;
@@ -39,7 +39,7 @@ public class MainMenuScreen extends BaseScreen {
     private Label premiumLabel;
     private Label coinLabel;
 
-    public MainMenuScreen(Game game, TextureBank textures, SpriteBatch batch,
+    public MainMenuScreen(PvzGame game, TextureBank textures, SpriteBatch batch,
                           Skin skin, AppState appState, UserManager userManager) {
         super(game, textures, batch, skin, appState, userManager, "IMAGE_MAINMENU_BACKGROUND");
 

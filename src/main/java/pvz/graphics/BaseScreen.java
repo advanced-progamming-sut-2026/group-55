@@ -1,6 +1,5 @@
 package pvz.graphics;
 
-import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.ScreenAdapter;
 import com.badlogic.gdx.graphics.GL20;
@@ -22,7 +21,7 @@ public abstract class BaseScreen extends ScreenAdapter {
     protected static final float WIDTH = 1280f;
     protected static final float HEIGHT = 720f;
 
-    protected final Game game;
+    protected final PvzGame game;
     protected final TextureBank textures;
     protected final SpriteBatch batch;
     protected final Skin skin;
@@ -34,7 +33,7 @@ public abstract class BaseScreen extends ScreenAdapter {
     protected final TextureRegion background;
 
     protected BaseScreen(
-            Game game,
+            PvzGame game,
             TextureBank textures,
             SpriteBatch batch,
             Skin skin,

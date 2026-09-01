@@ -1,6 +1,5 @@
 package pvz.graphics.menu;
 
-import com.badlogic.gdx.Game;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.actions.Actions;
@@ -9,6 +8,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 
 import pvz.controller.RegisterController;
 import pvz.graphics.BaseScreen;
+import pvz.graphics.PvzGame;
 import pvz.libpvz.textures.TextureBank;
 import pvz.model.account.UserManager;
 import pvz.model.command.RegisterCommand;
@@ -34,7 +34,7 @@ public class RegisterScreen extends BaseScreen {
     private String username, password, passwordConfirm, nickname, email, gender;
 
     public RegisterScreen(
-            Game game,
+            PvzGame game,
             TextureBank textures,
             com.badlogic.gdx.graphics.g2d.SpriteBatch batch,
             Skin skin,
