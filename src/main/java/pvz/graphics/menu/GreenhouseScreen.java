@@ -75,7 +75,7 @@ public class GreenhouseScreen extends BaseScreen {
     ) {
         super(game, textures, batch, skin, appState, userManager, "IMAGE_BACKGROUNDS_ZEN_GARDEN");
         this.greenhouseService = greenhouseService;
-        this.pamPlayer = new PamPlayer(textures, Gdx.files.internal("assets"));
+        this.pamPlayer = game.getAnimationService().player();
         buildUI();
     }
 

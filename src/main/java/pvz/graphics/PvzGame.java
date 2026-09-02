@@ -9,9 +9,15 @@ import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 
+import pvz.graphics.asset.PamAnimationService;
 import pvz.graphics.menu.TitleScreen;
 import pvz.libpvz.textures.TextureBank;
 import pvz.model.account.UserManager;
+import pvz.model.entity.plant.PlantFactory;
+import pvz.model.entity.zombie.ZombieFactory;
+import pvz.model.session.GameRuntime;
+import pvz.model.session.GameSessionConfigFactory;
+import pvz.model.session.GameSessionFactory;
 import pvz.model.utils.AppState;
 import pvz.skin.PvzSkin;
 
@@ -21,6 +27,9 @@ public class PvzGame extends Game {
     private TextureBank textures;
     private Skin skin;
     private GameDataContext gameData;
+    private GameRuntime gameRuntime;
+    private GameSessionConfigFactory gameSessionConfigFactory;
+    private PamAnimationService animationService;
 
     private final AppState appState = new AppState();
     private final UserManager userManager = new UserManager("save.json");
@@ -37,6 +46,19 @@ public class PvzGame extends Game {
             );
         }
 
+        PlantFactory plantFactory = new PlantFactory(
+                gameData.plantData().byName()
+        );
+        ZombieFactory zombieFactory = new ZombieFactory(
+                gameData.zombieData()
+        );
+        gameRuntime = new GameRuntime(
+                new GameSessionFactory(plantFactory, zombieFactory)
+        );
+        gameSessionConfigFactory = new GameSessionConfigFactory(
+                gameData.adventureData()
+        );
+
         batch = new SpriteBatch();
         skin = PvzSkin.get();
 
@@ -44,6 +66,10 @@ public class PvzGame extends Game {
 
         textures = new TextureBank(
                 "768",
+                assetsFolder
+        );
+        animationService = new PamAnimationService(
+                textures,
                 assetsFolder
         );
 
@@ -89,6 +115,31 @@ public class PvzGame extends Game {
         return gameData;
     }
 
+    public GameRuntime getGameRuntime() {
+        if (gameRuntime == null) {
+            throw new IllegalStateException("Game runtime is not initialized.");
+        }
+        return gameRuntime;
+    }
+
+    public GameSessionConfigFactory getGameSessionConfigFactory() {
+        if (gameSessionConfigFactory == null) {
+            throw new IllegalStateException(
+                    "Game session config factory is not initialized."
+            );
+        }
+        return gameSessionConfigFactory;
+    }
+
+    public PamAnimationService getAnimationService() {
+        if (animationService == null) {
+            throw new IllegalStateException(
+                    "Animation service is not initialized."
+            );
+        }
+        return animationService;
+    }
+
     @Override
     public void setScreen(Screen screen) {
         Screen previousScreen = getScreen();
@@ -106,6 +157,10 @@ public class PvzGame extends Game {
 
         if (currentScreen != null) {
             currentScreen.dispose();
+        }
+
+        if (animationService != null) {
+            animationService.dispose();
         }
 
         if (textures != null) {

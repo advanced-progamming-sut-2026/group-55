@@ -9,13 +9,23 @@ public class PlantActor extends Actor {
 
     private final PamPlayer pamPlayer;
     private final String pamPath;
+    private final String clipName;
     private final Color previousBatchColor = new Color();
 
     private float stateTime;
 
     public PlantActor(PamPlayer pamPlayer, String pamPath) {
+        this(pamPlayer, pamPath, "idle");
+    }
+
+    public PlantActor(
+            PamPlayer pamPlayer,
+            String pamPath,
+            String clipName
+    ) {
         this.pamPlayer = pamPlayer;
         this.pamPath = pamPath;
+        this.clipName = clipName;
     }
 
     @Override
@@ -45,7 +55,7 @@ public class PlantActor extends Actor {
         pamPlayer.draw(
                 batch,
                 pamPath,
-                "idle",
+                clipName,
                 stateTime,
                 centerX,
                 dirtY,

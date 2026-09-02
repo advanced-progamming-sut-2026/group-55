@@ -36,6 +36,7 @@ public class Plant extends LivingEntity {
     private int row;
 
     private long lastActionTick;
+    private long lastActionStartedTick = Long.MIN_VALUE;
     private final long actionIntervalTicks;
 
     private final PlantBehavior behavior;
@@ -246,6 +247,16 @@ public class Plant extends LivingEntity {
 
     public PlantSpec getSpec() {
         return spec;
+    }
+
+    /** Read-only action state used by battle presentation code. */
+    public boolean hasOngoingAction() {
+        return behavior.hasOngoingAction();
+    }
+
+    /** Tick of the last real action start; placement does not count. */
+    public long getLastActionStartedTick() {
+        return lastActionStartedTick;
     }
 
     public boolean hasTag(PlantTag tag) {
@@ -520,7 +531,7 @@ public class Plant extends LivingEntity {
         }
 
         lastActionTick = tick;
-
         behavior.startAction(tick);
+        lastActionStartedTick = tick;
     }
 }

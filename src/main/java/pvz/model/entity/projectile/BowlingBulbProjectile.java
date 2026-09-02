@@ -128,6 +128,14 @@ public final class BowlingBulbProjectile
         return y;
     }
 
+    public ProjectileType getProjectileType() {
+        return type;
+    }
+
+    public boolean isExplosiveProjectile() {
+        return isExplosive();
+    }
+
     @Override
     public void update(long tick) {
         double previousX = x;

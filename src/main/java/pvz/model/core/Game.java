@@ -1,6 +1,7 @@
 package pvz.model.core;
 
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
@@ -117,6 +118,33 @@ public final class Game {
 
     public int getRegisteredObjectCount() {
         return updatables.size();
+    }
+
+
+    /**
+     * Returns an immutable, type-filtered snapshot of the objects currently
+     * driven by the game loop. This is intentionally read-only so presentation
+     * code can observe short-lived runtime entities such as projectiles without
+     * gaining access to the loop's mutable registration set.
+     */
+    public <T extends Updatable> List<T> getRegisteredObjects(
+            Class<T> type
+    ) {
+        Objects.requireNonNull(type, "type cannot be null");
+
+        Set<T> snapshot = new LinkedHashSet<>();
+        for (Updatable updatable : updatables) {
+            if (!pendingRemovals.contains(updatable)
+                    && type.isInstance(updatable)) {
+                snapshot.add(type.cast(updatable));
+            }
+        }
+        for (Updatable updatable : pendingRegistrations) {
+            if (type.isInstance(updatable)) {
+                snapshot.add(type.cast(updatable));
+            }
+        }
+        return List.copyOf(snapshot);
     }
 
 

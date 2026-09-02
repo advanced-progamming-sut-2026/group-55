@@ -98,6 +98,10 @@ public final class LobbedProjectile extends Entity {
         return shot.appliesButterStun();
     }
 
+    public ProjectileType getProjectileType() {
+        return shot.projectileType();
+    }
+
     @Override
     public void update(long tick) {
         if (impacted) {

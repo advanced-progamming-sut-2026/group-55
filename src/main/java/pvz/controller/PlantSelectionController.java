@@ -541,6 +541,28 @@ public class PlantSelectionController extends BaseController {
         boostedPlants.clear();
     }
 
+    public List<String> getSelectedPlants() {
+        return List.copyOf(selectedPlants);
+    }
+
+    public Set<String> getBoostedPlants() {
+        return Set.copyOf(boostedPlants);
+    }
+
+    public int getMaxSlots() {
+        return maxSlots;
+    }
+
+    public boolean isPlantSelected(String plantName) {
+        return plantName != null && isSelected(plantName);
+    }
+
+    public boolean isPlantBoosted(String plantName, User user) {
+        return plantName != null
+                && user != null
+                && isAlreadyBoosted(normalizeName(plantName), user);
+    }
+
     @Override
     protected void handleMenuExit() {
         resetSelection();

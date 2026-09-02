@@ -183,8 +183,15 @@ public final class LevelSelectionScreen extends BaseScreen {
 
         appState.setSelectedChapter(chapter.id());
         appState.setSelectedLevelId(level.id());
-        statusLabel.setColor(Color.GREEN);
-        statusLabel.setText("Selected: " + level.name());
+        game.setScreen(new PlantSelectionScreen(
+                game,
+                textures,
+                batch,
+                skin,
+                appState,
+                userManager,
+                level
+        ));
     }
 
     private void buildStatusLabel() {
