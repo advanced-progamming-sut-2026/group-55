@@ -31,6 +31,7 @@ public abstract class BaseScreen extends ScreenAdapter {
     protected final Viewport viewport;
     protected final Stage stage;
     protected final TextureRegion background;
+    private boolean disposed;
 
     protected BaseScreen(
             PvzGame game,
@@ -119,6 +120,13 @@ public abstract class BaseScreen extends ScreenAdapter {
 
     @Override
     public void dispose() {
+        if (disposed) {
+            return;
+        }
+        disposed = true;
+        stage.cancelTouchFocus();
+        stage.setScrollFocus(null);
+        stage.setKeyboardFocus(null);
         stage.dispose();
     }
 }

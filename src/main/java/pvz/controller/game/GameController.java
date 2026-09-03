@@ -261,7 +261,7 @@ public final class GameController {
     }
 
     private String collectSun(Sun sun, int x, int y) {
-        SunCollectionOutcome outcome = world.collectSun(sun);
+        SunCollectionOutcome outcome = world.collectSun(sun, x, y);
 
         if (outcome == SunCollectionOutcome.EXPLODED) {
             return "radioactive sun exploded at ("

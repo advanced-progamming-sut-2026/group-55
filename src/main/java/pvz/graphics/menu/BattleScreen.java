@@ -6,7 +6,11 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.scenes.scene2d.Actor;
+import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
+import com.badlogic.gdx.scenes.scene2d.InputListener;
+import com.badlogic.gdx.scenes.scene2d.Touchable;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
@@ -20,20 +24,26 @@ import java.util.Locale;
 import java.util.Map;
 import pvz.graphics.BaseScreen;
 import pvz.graphics.PvzGame;
+import pvz.graphics.actor.BattleSeedPacketActor;
+import pvz.graphics.actor.BattleToolButtonActor;
 import pvz.graphics.actor.BattlefieldActor;
 import pvz.graphics.asset.PlantVisualResolver;
 import pvz.graphics.asset.ZombieVisualResolver;
 import pvz.graphics.battle.BattleTickClock;
+import pvz.graphics.battle.BattleToolState;
+import pvz.graphics.battle.SeedPacketState;
 import pvz.libpvz.textures.TextureBank;
 import pvz.model.account.User;
 import pvz.model.account.UserManager;
+import pvz.model.adventure.ChapterSpec;
 import pvz.model.adventure.LevelProgressService;
+import pvz.model.adventure.LevelSpec;
 import pvz.model.core.Game;
 import pvz.model.core.GameEvents;
-import pvz.model.entity.collectible.Collectible;
 import pvz.model.entity.collectible.sun.Sun;
+import pvz.model.entity.collectible.sun.SunCollectionOutcome;
 import pvz.model.entity.plant.PlantSpec;
-import pvz.model.session.BattleRewardSettlement;
+import pvz.model.session.BattleOutcomeSettlement;
 import pvz.model.session.GameRuntime;
 import pvz.model.session.GameSession;
 import pvz.model.session.GameSessionConfig;
@@ -55,14 +65,13 @@ public final class BattleScreen extends BaseScreen {
     private final GameRuntime runtime;
     private final GameSessionConfig restartConfig;
     private final BattleTickClock tickClock = new BattleTickClock();
-    private final BattleRewardSettlement rewardSettlement =
-            new BattleRewardSettlement();
-    private final LevelProgressService progressService;
+    private final BattleOutcomeSettlement outcomeSettlement;
     private final PlantVisualResolver plantVisuals;
     private final ZombieVisualResolver zombieVisuals;
     private final TextureRegion backgroundLeft;
     private final TextureRegion backgroundRight;
-    private final Map<String, TextButton> seedButtons = new LinkedHashMap<>();
+    private final Map<String, BattleSeedPacketActor> seedPackets =
+            new LinkedHashMap<>();
 
     private GameSession session;
     private BattlefieldActor battlefield;
@@ -73,6 +82,10 @@ public final class BattleScreen extends BaseScreen {
     private Label resultTitle;
     private Label resultDetails;
     private TextButton pauseButton;
+    private TextButton resultRetryButton;
+    private BattleToolButtonActor shovelButton;
+    private BattleToolButtonActor plantFoodButton;
+    private Actor pauseInputBlocker;
     private Table pausePanel;
     private Table resultPanel;
 
@@ -83,6 +96,8 @@ public final class BattleScreen extends BaseScreen {
     private boolean resultHandled;
     private boolean rewardsSettled;
     private boolean rewardsSaved;
+    private BattleOutcomeSettlement.Result settlementResult;
+    private boolean disposed;
 
     public BattleScreen(
             PvzGame game,
@@ -99,8 +114,10 @@ public final class BattleScreen extends BaseScreen {
         runtime = game.getGameRuntime();
         session = runtime.session();
         restartConfig = session.config();
-        progressService = new LevelProgressService(
-                game.getGameData().adventureData().catalog()
+        outcomeSettlement = new BattleOutcomeSettlement(
+                new LevelProgressService(
+                        game.getGameData().adventureData().catalog()
+                )
         );
         plantVisuals = new PlantVisualResolver(
                 textures,
@@ -122,6 +139,8 @@ public final class BattleScreen extends BaseScreen {
     }
 
     private void buildUi() {
+        addHudBackdrop(8f, 666f, 1264f, 48f, 0.82f);
+
         pauseButton = new TextButton("PAUSE", skin, "brown");
         pauseButton.setBounds(15f, 670f, 95f, 40f);
         pauseButton.addListener(click(this::togglePause));
@@ -137,10 +156,32 @@ public final class BattleScreen extends BaseScreen {
         waveLabel.setBounds(690f, 670f, 570f, 42f);
         stage.addActor(waveLabel);
 
+        addHudBackdrop(105f, 576f, 1162f, 88f, 0.76f);
         buildSeedBank();
+        addHudBackdrop(8f, 5f, 1264f, 70f, 0.82f);
         buildBottomControls();
+        buildPauseInputBlocker();
         buildPausePanel();
         buildResultPanel();
+    }
+
+    private void addHudBackdrop(
+            float x,
+            float y,
+            float width,
+            float height,
+            float alpha
+    ) {
+        Table backdrop = new Table();
+        backdrop.setBackground(skin.getDrawable(
+                "image_ui_dialog_asset_inner_bkgd_10"
+        ));
+        backdrop.setColor(1f, 1f, 1f, alpha);
+        backdrop.setBounds(x, y, width, height);
+        backdrop.setTouchable(
+                com.badlogic.gdx.scenes.scene2d.Touchable.disabled
+        );
+        stage.addActor(backdrop);
     }
 
     private void buildSeedBank() {
@@ -149,45 +190,55 @@ public final class BattleScreen extends BaseScreen {
         seeds.defaults().pad(3f);
 
         for (String plantName : restartConfig.selectedPlants()) {
-            TextButton seed = new TextButton("", skin, "brown");
-            seed.getLabel().setWrap(true);
-            seed.getLabel().setAlignment(Align.center);
-            seed.addListener(click(() -> selectPlant(plantName)));
-            seedButtons.put(plantName, seed);
-            seeds.add(seed).size(136f, 66f);
+            BattleSeedPacketActor packet = new BattleSeedPacketActor(
+                    skin,
+                    plantName,
+                    plantVisuals.preview(plantName),
+                    () -> selectPlant(plantName)
+            );
+            seedPackets.put(plantName, packet);
+            seeds.add(packet).size(
+                    BattleSeedPacketActor.PACKET_WIDTH,
+                    BattleSeedPacketActor.PACKET_HEIGHT
+            );
         }
 
         ScrollPane seedScroll = new ScrollPane(seeds, skin);
         seedScroll.setFadeScrollBars(false);
         seedScroll.setScrollingDisabled(false, true);
-        seedScroll.setBounds(112f, 588f, 1148f, 74f);
+        seedScroll.setBounds(112f, 584f, 1148f, 78f);
         stage.addActor(seedScroll);
     }
 
     private void buildBottomControls() {
-        TextButton shovel = new TextButton("SHOVEL", skin, "brown");
-        shovel.setBounds(15f, 18f, 115f, 48f);
-        shovel.addListener(click(() -> selectTool(
-                BattlefieldActor.ToolMode.SHOVEL
-        )));
-        stage.addActor(shovel);
+        shovelButton = new BattleToolButtonActor(
+                skin,
+                BattleToolButtonActor.IconType.SHOVEL,
+                "SHOVEL",
+                () -> selectTool(BattlefieldActor.ToolMode.SHOVEL)
+        );
+        shovelButton.setBounds(15f, 12f, 128f, 58f);
+        stage.addActor(shovelButton);
 
-        TextButton plantFood = new TextButton("PLANT FOOD", skin, "brown");
-        plantFood.setBounds(138f, 18f, 145f, 48f);
-        plantFood.addListener(click(() -> selectTool(
-                BattlefieldActor.ToolMode.PLANT_FOOD
-        )));
-        stage.addActor(plantFood);
+        plantFoodButton = new BattleToolButtonActor(
+                skin,
+                BattleToolButtonActor.IconType.PLANT_FOOD,
+                "PLANT FOOD",
+                () -> selectTool(BattlefieldActor.ToolMode.PLANT_FOOD)
+        );
+        plantFoodButton.setBounds(151f, 12f, 158f, 58f);
+        stage.addActor(plantFoodButton);
 
         toolLabel = new Label("", skin);
-        toolLabel.setAlignment(Align.center);
-        toolLabel.setBounds(290f, 42f, 190f, 24f);
+        toolLabel.setAlignment(Align.left);
+        toolLabel.setFontScale(0.78f);
+        toolLabel.setBounds(320f, 43f, 360f, 24f);
         stage.addActor(toolLabel);
 
         statusLabel = new Label("Mission started. Select a seed packet.", skin);
         statusLabel.setAlignment(Align.center);
         statusLabel.setWrap(true);
-        statusLabel.setBounds(290f, 5f, 615f, 40f);
+        statusLabel.setBounds(320f, 5f, 585f, 38f);
         stage.addActor(statusLabel);
 
         User user = appState.getCurrentUser();
@@ -213,6 +264,34 @@ public final class BattleScreen extends BaseScreen {
         cooldown.addListener(click(() -> execute("cheat remove-cooldown")));
         debug.add(cooldown).size(105f, 45f);
         stage.addActor(debug);
+    }
+
+    /** Blocks every gameplay control while leaving the top pause button free. */
+    private void buildPauseInputBlocker() {
+        pauseInputBlocker = new Actor();
+        pauseInputBlocker.setBounds(0f, 0f, WIDTH, 666f);
+        pauseInputBlocker.setTouchable(Touchable.enabled);
+        pauseInputBlocker.addListener(new InputListener() {
+            @Override
+            public boolean touchDown(
+                    InputEvent event,
+                    float x,
+                    float y,
+                    int pointer,
+                    int button
+            ) {
+                event.stop();
+                return true;
+            }
+
+            @Override
+            public boolean mouseMoved(InputEvent event, float x, float y) {
+                event.stop();
+                return true;
+            }
+        });
+        pauseInputBlocker.setVisible(false);
+        stage.addActor(pauseInputBlocker);
     }
 
     private void buildPausePanel() {
@@ -247,7 +326,7 @@ public final class BattleScreen extends BaseScreen {
         resultPanel.setBackground(skin.getDrawable(
                 "image_ui_dialog_asset_inner_bkgd_10"
         ));
-        resultPanel.setBounds(380f, 170f, 520f, 370f);
+        resultPanel.setBounds(380f, 135f, 520f, 450f);
         resultPanel.defaults().pad(7f);
 
         resultTitle = new Label("", skin);
@@ -258,24 +337,21 @@ public final class BattleScreen extends BaseScreen {
         resultDetails = new Label("", skin);
         resultDetails.setAlignment(Align.center);
         resultDetails.setWrap(true);
-        resultPanel.add(resultDetails).width(455f).height(110f).row();
+        resultPanel.add(resultDetails).width(455f).height(190f).row();
 
-        TextButton retry = new TextButton("RETRY", skin, "green");
-        retry.addListener(click(this::restartBattle));
-        resultPanel.add(retry).size(300f, 58f).row();
+        resultRetryButton = new TextButton("RETRY", skin, "green");
+        resultRetryButton.addListener(click(this::restartBattle));
+        resultPanel.add(resultRetryButton).size(300f, 58f).row();
 
         TextButton exit = new TextButton("EXIT", skin, "brown");
-        exit.addListener(click(this::exitBattle));
+        exit.addListener(click(this::exitFinishedBattle));
         resultPanel.add(exit).size(300f, 58f);
         resultPanel.setVisible(false);
         stage.addActor(resultPanel);
     }
 
     private void bindBattlefield() {
-        if (battlefield != null) {
-            battlefield.remove();
-            battlefield.dispose();
-        }
+        disposeBattlefield();
         battlefield = new BattlefieldActor(
                 session,
                 textures,
@@ -290,8 +366,16 @@ public final class BattleScreen extends BaseScreen {
                     }
 
                     @Override
-                    public void hovered(int column, int row) {
-                        collectSunAt(column, row);
+                    public SunCollectionOutcome collectSun(
+                            Sun sun,
+                            int collectionColumn,
+                            int collectionRow
+                    ) {
+                        return collectSunFromBattlefield(
+                                sun,
+                                collectionColumn,
+                                collectionRow
+                        );
                     }
                 }
         );
@@ -299,6 +383,7 @@ public final class BattleScreen extends BaseScreen {
         battlefield.setSelectedPlant(selectedPlant);
         battlefield.setToolMode(toolMode);
         battlefield.setShowGrid(showGrid());
+        battlefield.setPaused(paused);
         stage.getRoot().addActorAt(0, battlefield);
     }
 
@@ -338,20 +423,58 @@ public final class BattleScreen extends BaseScreen {
         }
     }
 
-    private void collectSunAt(int column, int row) {
-        if (paused || !runtime.isActive()
-                || !session.board().inBounds(column, row)) {
+    private SunCollectionOutcome collectSunFromBattlefield(
+            Sun sun,
+            int collectionColumn,
+            int collectionRow
+    ) {
+        if (paused || !runtime.isActive() || sun == null || sun.isRemoved()) {
+            return null;
+        }
+
+        int value = sun.getValue();
+        SunCollectionOutcome outcome;
+        try {
+            outcome = session.world().collectSun(
+                    sun,
+                    collectionColumn,
+                    collectionRow
+            );
+        } catch (IllegalStateException | IllegalArgumentException exception) {
+            return null;
+        }
+
+        showSunCollectionStatus(
+                outcome,
+                value,
+                collectionColumn,
+                collectionRow
+        );
+        handleFinishedBattleIfNeeded();
+        updateUi();
+        return outcome;
+    }
+
+    private void showSunCollectionStatus(
+            SunCollectionOutcome outcome,
+            int value,
+            int column,
+            int row
+    ) {
+        if (outcome == SunCollectionOutcome.EXPLODED) {
+            showStatus(
+                    "Radioactive sun exploded at (" + column + ", " + row
+                            + "); no sun was added.",
+                    false
+            );
             return;
         }
-        for (Collectible collectible : session.world().getCollectibles()) {
-            if (collectible instanceof Sun sun
-                    && !sun.isRemoved()
-                    && sun.getTileX() == column
-                    && sun.getTileY() == row) {
-                execute("collect sun -l (" + column + "," + row + ")");
-                return;
-            }
-        }
+        showStatus(
+                "Collected " + value + " sun; you now have "
+                        + session.resources().sunBank().getBalance()
+                        + " sun.",
+                false
+        );
     }
 
     private void selectPlant(String plantName) {
@@ -374,6 +497,12 @@ public final class BattleScreen extends BaseScreen {
 
     private void selectTool(BattlefieldActor.ToolMode mode) {
         if (paused || !runtime.isActive()) {
+            return;
+        }
+        if (mode == BattlefieldActor.ToolMode.PLANT_FOOD
+                && session.resources().getPlantFoodCount() <= 0) {
+            showStatus("You do not have any Plant Food.", true);
+            updateUi();
             return;
         }
         if (toolMode == mode && selectedPlant == null) {
@@ -399,6 +528,7 @@ public final class BattleScreen extends BaseScreen {
         }
         String response = runtime.handle(command);
         showStatus(response, isErrorResponse(response));
+        handleFinishedBattleIfNeeded();
         updateUi();
         return response;
     }
@@ -414,9 +544,13 @@ public final class BattleScreen extends BaseScreen {
     }
 
     private void advanceBattle(float delta) {
-        if (!runtime.isActive() || resultHandled) {
+        if (resultHandled) {
             return;
         }
+        if (handleFinishedBattleIfNeeded() || !runtime.isActive()) {
+            return;
+        }
+
         int ticks = tickClock.consume(delta, gameSpeed(), paused);
         if (ticks <= 0) {
             return;
@@ -425,9 +559,7 @@ public final class BattleScreen extends BaseScreen {
         try {
             session.advance(ticks);
         } catch (RuntimeException exception) {
-            paused = true;
-            pausePanel.setVisible(true);
-            pauseButton.setText("RESUME");
+            setBattlePaused(true);
             showStatus(
                     "Battle paused after an error: " + exception.getMessage(),
                     true
@@ -439,111 +571,250 @@ public final class BattleScreen extends BaseScreen {
         if (!events.isEmpty()) {
             showStatus(events.get(events.size() - 1), false);
         }
-        if (runtime.isFinished()) {
-            handleFinishedBattle();
-        }
+        handleFinishedBattleIfNeeded();
     }
 
-    private void handleFinishedBattle() {
-        if (resultHandled) {
-            return;
+    private boolean handleFinishedBattleIfNeeded() {
+        if (resultHandled || !runtime.isFinished()) {
+            return resultHandled;
         }
-        resultHandled = true;
-        paused = true;
-        settleRewardsAndProgress();
 
         GameSessionStatus status = runtime.status();
-        resultTitle.setText(status == GameSessionStatus.WON
-                ? "LEVEL COMPLETE"
-                : "ZOMBIES ATE YOUR BRAINS");
-        resultTitle.setColor(status == GameSessionStatus.WON
-                ? Color.GREEN
-                : Color.RED);
-        resultDetails.setText(
-                "Level: " + restartConfig.levelId()
-                        + "\nTick: " + session.game().getCurrentTick()
-                        + "\nCoins: "
-                        + session.battleWallet().getCollectedCoins()
-                        + "   Diamonds: "
-                        + session.battleWallet().getCollectedDiamonds()
-                        + (rewardsSaved
-                        ? "\nProgress and battle rewards were saved."
-                        : "\nBattle ended, but saving needs attention.")
+        if (status != GameSessionStatus.WON
+                && status != GameSessionStatus.LOST) {
+            return false;
+        }
+
+        resultHandled = true;
+        setBattlePaused(true);
+
+        boolean saved = settleRewardsAndProgress(
+                status == GameSessionStatus.WON
         );
+
+        configureResultPanel(status);
         pausePanel.setVisible(false);
         resultPanel.setVisible(true);
+        resultPanel.toFront();
+        pauseButton.setText("ENDED");
         pauseButton.setDisabled(true);
+
+        if (status == GameSessionStatus.WON) {
+            showStatus(
+                    saved
+                            ? "Level complete. Rewards and progress saved."
+                            : "Level complete, but saving needs attention.",
+                    !saved
+            );
+        } else {
+            showStatus(
+                    saved
+                            ? "Battle lost. Collected rewards saved."
+                            : "Battle lost, but saving needs attention.",
+                    true
+            );
+        }
+        return true;
     }
 
-    private void settleRewardsAndProgress() {
-        if (rewardsSettled) {
+    private void configureResultPanel(GameSessionStatus status) {
+        boolean won = status == GameSessionStatus.WON;
+        resultTitle.setText(won
+                ? "LEVEL COMPLETE"
+                : "ZOMBIES ATE YOUR BRAINS");
+        resultTitle.setColor(won ? Color.GREEN : Color.RED);
+
+        StringBuilder details = new StringBuilder();
+        details.append(won
+                ? "All waves were cleared."
+                : "A zombie broke through the final defense.");
+        details.append("\nLevel: ").append(restartConfig.levelId());
+        details.append("\nTime: ").append(formatBattleTime());
+        details.append("   Wave: ")
+                .append(session.waveManager().getCurrentWaveNumber())
+                .append('/')
+                .append(session.waveManager().getTotalWaves());
+        details.append("\nCoins: +")
+                .append(session.battleWallet().getCollectedCoins());
+        details.append("   Diamonds: +")
+                .append(session.battleWallet().getCollectedDiamonds());
+
+        if (won) {
+            appendWinSettlementDetails(details);
+        } else if (rewardsSettled) {
+            details.append(rewardsSaved
+                    ? "\nCoins and Diamonds saved for this attempt."
+                    : "\nRewards are settled; saving is still pending.");
+            details.append(
+                    "\nRETRY starts a fresh attempt. EXIT returns "
+                            + "remaining Plant Food before leaving."
+            );
+        } else {
+            details.append("\nRewards were not settled; retry is disabled.");
+            details.append("\nUse EXIT to retry settlement and saving.");
+        }
+
+        resultDetails.setText(details.toString());
+        boolean retryAllowed = !won && rewardsSettled;
+        resultRetryButton.setVisible(retryAllowed);
+        resultRetryButton.setDisabled(!retryAllowed);
+    }
+
+    private void appendWinSettlementDetails(StringBuilder details) {
+        if (!rewardsSettled || settlementResult == null) {
+            details.append("\nRewards were not settled.");
             return;
         }
+
+        details.append(settlementResult.newlyCompleted()
+                ? "\nProgress: first clear recorded."
+                : "\nProgress: level was already completed.");
+
+        if (settlementResult.unlockedChapterId() != null) {
+            details.append(" Unlocked chapter: ")
+                    .append(settlementResult.unlockedChapterId())
+                    .append('.');
+        } else if (settlementResult.unlockedLevelId() != null) {
+            details.append(" Unlocked level: ")
+                    .append(settlementResult.unlockedLevelId())
+                    .append('.');
+        }
+
+        details.append(rewardsSaved
+                ? "\nRewards and progress saved."
+                : "\nSave pending; use EXIT to retry saving.");
+    }
+
+    private String formatBattleTime() {
+        return String.format(
+                Locale.ROOT,
+                "%.1fs",
+                session.game().getElapsedSeconds()
+        );
+    }
+
+    private boolean settleRewardsAndProgress(boolean returnPlantFood) {
         User user = appState.getCurrentUser();
         if (user == null) {
             showStatus("No logged-in user; rewards were not saved.", true);
-            return;
+            return false;
         }
 
-        try {
-            if (runtime.status() == GameSessionStatus.WON) {
-                progressService.completeLevel(user, restartConfig.levelId());
+        if (!rewardsSettled) {
+            try {
+                settlementResult = outcomeSettlement.settle(
+                        runtime.status(),
+                        restartConfig.levelId(),
+                        session.resources(),
+                        user,
+                        returnPlantFood
+                );
+                rewardsSettled = true;
+            } catch (ArithmeticException
+                    | IllegalArgumentException
+                    | IllegalStateException exception) {
+                showStatus(
+                        "Could not settle battle: " + exception.getMessage(),
+                        true
+                );
+                return false;
             }
-            rewardSettlement.settle(session.resources(), user);
-            rewardsSettled = true;
-            if (!userManager.save()) {
-                showStatus("Could not save battle rewards.", true);
-                return;
+        } else if (returnPlantFood
+                && !session.resources().isPlantFoodReturned()) {
+            try {
+                int returned = outcomeSettlement.returnRemainingPlantFood(
+                        session.resources(),
+                        user
+                );
+                if (returned > 0) {
+                    rewardsSaved = false;
+                }
+            } catch (IllegalStateException exception) {
+                showStatus(
+                        "Could not return Plant Food: "
+                                + exception.getMessage(),
+                        true
+                );
+                return false;
             }
-            rewardsSaved = true;
-        } catch (ArithmeticException | IllegalStateException exception) {
-            showStatus("Could not settle battle: " + exception.getMessage(), true);
         }
+
+        return saveSettledRewards();
+    }
+
+    private boolean saveSettledRewards() {
+        if (!rewardsSettled) {
+            return false;
+        }
+        if (rewardsSaved) {
+            return true;
+        }
+
+        rewardsSaved = userManager.save();
+        if (!rewardsSaved) {
+            showStatus("Could not save battle rewards.", true);
+        }
+        return rewardsSaved;
     }
 
     private void togglePause() {
         if (resultHandled || !runtime.isActive()) {
             return;
         }
-        paused = !paused;
-        pausePanel.setVisible(paused);
-        pauseButton.setText(paused ? "RESUME" : "PAUSE");
-        if (!paused) {
-            tickClock.reset();
-        }
+        setBattlePaused(!paused);
     }
 
     private void restartBattle() {
-        if (runtime.isActive()) {
-            runtime.abort();
-        }
-        if (runtime.isFinished()) {
-            runtime.clear();
-        }
-
         if (rewardsSettled) {
-            User user = appState.getCurrentUser();
-            if (user != null) {
-                user.clearPlantFood();
-                userManager.save();
+            if (session.resources().isPlantFoodReturned()) {
+                showStatus(
+                        "This attempt has already returned persistent "
+                                + "resources; exit instead of retrying.",
+                        true
+                );
+                return;
+            }
+            if (!saveSettledRewards()) {
+                showStatus(
+                        "Retry is blocked until battle rewards are saved.",
+                        true
+                );
+                return;
             }
         }
 
-        startRuntime();
+        stage.cancelTouchFocus();
+        if (battlefield != null) {
+            battlefield.setPaused(true);
+        }
+
+        try {
+            restartRuntime();
+        } catch (RuntimeException exception) {
+            setBattlePaused(true);
+            showStatus(
+                    "Could not restart level: " + exception.getMessage(),
+                    true
+            );
+            return;
+        }
         session = runtime.session();
         selectedPlant = null;
         toolMode = BattlefieldActor.ToolMode.PLANT;
-        paused = false;
         resultHandled = false;
         rewardsSettled = false;
         rewardsSaved = false;
+        settlementResult = null;
         tickClock.reset();
         GameEvents.drain();
         pausePanel.setVisible(false);
         resultPanel.setVisible(false);
+        resultRetryButton.setVisible(true);
+        resultRetryButton.setDisabled(false);
         pauseButton.setDisabled(false);
         pauseButton.setText("PAUSE");
         bindBattlefield();
+        setBattlePaused(false);
         showStatus("Level restarted.", false);
         updateUi();
     }
@@ -552,18 +823,49 @@ public final class BattleScreen extends BaseScreen {
         if (runtime.isActive()) {
             runtime.abort();
         }
-        if (runtime.isFinished() && !rewardsSettled) {
-            settleRewardsAndProgress();
+        if (!runtime.isFinished()) {
+            return;
         }
-        if (rewardsSettled && !rewardsSaved) {
-            rewardsSaved = userManager.save();
+        if (!settleRewardsAndProgress(true)) {
+            return;
         }
-        if (runtime.isFinished()) {
-            runtime.clear();
-        }
+
+        runtime.clear();
         appState.setSelectedLevelId(null);
         game.setScreen(new GameMenuScreen(
                 game, textures, batch, skin, appState, userManager
+        ));
+    }
+
+    private void exitFinishedBattle() {
+        if (!resultHandled || !runtime.isFinished()) {
+            return;
+        }
+        if (!settleRewardsAndProgress(true)) {
+            configureResultPanel(runtime.status());
+            return;
+        }
+
+        runtime.clear();
+
+        LevelSpec level = game.getGameData()
+                .adventureData()
+                .catalog()
+                .requireLevel(restartConfig.levelId());
+        ChapterSpec chapter = game.getGameData()
+                .adventureData()
+                .catalog()
+                .findChapter(level.chapterId());
+        if (chapter == null) {
+            throw new IllegalStateException(
+                    "missing chapter for level: " + level.id()
+            );
+        }
+
+        appState.setSelectedChapter(chapter.id());
+        appState.setSelectedLevelId(null);
+        game.setScreen(new LevelSelectionScreen(
+                game, textures, batch, skin, appState, userManager, chapter
         ));
     }
 
@@ -581,26 +883,48 @@ public final class BattleScreen extends BaseScreen {
                         + "   TICK " + session.game().getCurrentTick()
                         + "   SPEED x" + gameSpeed()
         );
-        if (toolMode == BattlefieldActor.ToolMode.PLANT
-                && selectedPlant == null) {
-            toolLabel.setText("MODE: NONE");
-        } else if (toolMode == BattlefieldActor.ToolMode.PLANT) {
-            toolLabel.setText("PLANT: " + selectedPlant.toUpperCase(Locale.ROOT));
-        } else {
-            toolLabel.setText("MODE: " + toolMode.name().replace('_', ' '));
-        }
+        updateToolControls();
         battlefield.setShowGrid(showGrid());
         battlefield.setSelectedPlant(selectedPlant);
-        updateSeedButtons();
+        updateSeedPackets();
     }
 
-    private void updateSeedButtons() {
-        for (Map.Entry<String, TextButton> entry : seedButtons.entrySet()) {
+    private void updateToolControls() {
+        BattleToolState.View view = BattleToolState.resolve(
+                currentToolSelection(),
+                selectedPlant,
+                session.resources().getPlantFoodCount()
+        );
+        toolLabel.setText(view.selectionText());
+        shovelButton.update(view.shovel());
+        plantFoodButton.update(view.plantFood());
+    }
+
+    private BattleToolState.Selection currentToolSelection() {
+        if (toolMode == BattlefieldActor.ToolMode.PLANT) {
+            return selectedPlant == null
+                    ? BattleToolState.Selection.NONE
+                    : BattleToolState.Selection.PLANT;
+        }
+        return toolMode == BattlefieldActor.ToolMode.SHOVEL
+                ? BattleToolState.Selection.SHOVEL
+                : BattleToolState.Selection.PLANT_FOOD;
+    }
+
+    private void updateSeedPackets() {
+        for (Map.Entry<String, BattleSeedPacketActor> entry
+                : seedPackets.entrySet()) {
             String plantName = entry.getKey();
-            TextButton button = entry.getValue();
+            BattleSeedPacketActor packet = entry.getValue();
             PlantSpec spec = effectiveSpec(plantName);
             if (spec == null) {
-                button.setText(plantName + "\nDATA MISSING");
+                packet.update(
+                        0,
+                        new SeedPacketState.View(
+                                SeedPacketState.Availability.UNAVAILABLE,
+                                "DATA MISSING"
+                        )
+                );
                 continue;
             }
 
@@ -611,21 +935,15 @@ public final class BattleScreen extends BaseScreen {
                     plantName,
                     rechargeTicks
             );
-            String readiness = remaining == 0
-                    ? "READY"
-                    : "CD " + String.format(
-                            Locale.ROOT,
-                            "%.1fs",
-                            remaining / (double) Game.TICKS_PER_SECOND
-                    );
-            button.setText(
-                    plantName.toUpperCase(Locale.ROOT)
-                            + "\n" + spec.getCost() + " SUN   " + readiness
+            SeedPacketState.View state = SeedPacketState.resolve(
+                    plantName.equals(selectedPlant)
+                            && toolMode == BattlefieldActor.ToolMode.PLANT,
+                    spec.getCost(),
+                    session.resources().sunBank().getBalance(),
+                    remaining,
+                    Game.TICKS_PER_SECOND
             );
-            button.setColor(plantName.equals(selectedPlant)
-                    && toolMode == BattlefieldActor.ToolMode.PLANT
-                    ? Color.GOLD
-                    : Color.WHITE);
+            packet.update(spec.getCost(), state);
         }
     }
 
@@ -644,9 +962,9 @@ public final class BattleScreen extends BaseScreen {
         );
     }
 
-    private void startRuntime() {
+    private void restartRuntime() {
         User user = appState.getCurrentUser();
-        runtime.start(
+        runtime.restart(
                 restartConfig,
                 zombieSpec -> {
                     if (user != null
@@ -655,6 +973,25 @@ public final class BattleScreen extends BaseScreen {
                     }
                 }
         );
+    }
+
+    private void setBattlePaused(boolean shouldPause) {
+        paused = shouldPause;
+        if (shouldPause) {
+            stage.cancelTouchFocus();
+            stage.setScrollFocus(null);
+            stage.setKeyboardFocus(null);
+        } else {
+            tickClock.reset();
+        }
+        if (pauseInputBlocker != null) {
+            pauseInputBlocker.setVisible(shouldPause);
+        }
+        if (battlefield != null) {
+            battlefield.setPaused(shouldPause);
+        }
+        pausePanel.setVisible(shouldPause && !resultHandled);
+        pauseButton.setText(shouldPause ? "RESUME" : "PAUSE");
     }
 
     private int gameSpeed() {
@@ -728,6 +1065,7 @@ public final class BattleScreen extends BaseScreen {
 
     @Override
     public void render(float delta) {
+        handleFinishedBattleIfNeeded();
         if (!resultHandled
                 && (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)
                 || Gdx.input.isKeyJustPressed(Input.Keys.SPACE))) {
@@ -747,11 +1085,121 @@ public final class BattleScreen extends BaseScreen {
     }
 
     @Override
-    public void dispose() {
-        if (battlefield != null) {
-            battlefield.dispose();
-            battlefield = null;
+    public void pause() {
+        if (!resultHandled && runtime.isActive()) {
+            setBattlePaused(true);
         }
+    }
+
+    @Override
+    public void resume() {
+        tickClock.reset();
+    }
+
+    private void returnPlantFoodBeforeTerminalDispose() {
+        if (!resultHandled
+                || !session.isFinished()
+                || !rewardsSettled
+                || session.resources().isPlantFoodReturned()) {
+            return;
+        }
+
+        User user = appState.getCurrentUser();
+        if (user == null) {
+            return;
+        }
+
+        try {
+            int returned = outcomeSettlement.returnRemainingPlantFood(
+                    session.resources(),
+                    user
+            );
+            if (returned > 0) {
+                rewardsSaved = false;
+            }
+        } catch (IllegalStateException ignored) {
+            // A final save retry below is still safe for already-settled data.
+        }
+    }
+
+    @Override
+    public void dispose() {
+        if (disposed) {
+            return;
+        }
+        disposed = true;
+
+        returnPlantFoodBeforeTerminalDispose();
+        if (rewardsSettled && !rewardsSaved) {
+            rewardsSaved = userManager.save();
+        }
+
+        stage.cancelTouchFocus();
+        stage.setScrollFocus(null);
+        stage.setKeyboardFocus(null);
+
+        disposeBattlefield();
+        disposeSeedPackets();
+        disposeToolButtons();
+        clearActorCallbacks(stage.getRoot());
+        clearActorReferences();
         super.dispose();
+    }
+
+    private void disposeBattlefield() {
+        if (battlefield == null) {
+            return;
+        }
+        BattlefieldActor oldBattlefield = battlefield;
+        battlefield = null;
+        oldBattlefield.dispose();
+    }
+
+    private void disposeSeedPackets() {
+        for (BattleSeedPacketActor packet : seedPackets.values()) {
+            packet.dispose();
+        }
+        seedPackets.clear();
+    }
+
+    private void disposeToolButtons() {
+        if (shovelButton != null) {
+            shovelButton.dispose();
+            shovelButton = null;
+        }
+        if (plantFoodButton != null) {
+            plantFoodButton.dispose();
+            plantFoodButton = null;
+        }
+    }
+
+    /**
+     * Severs screen-capturing callbacks from every remaining stage actor.
+     * Drawables and TextureRegions are deliberately left alone because they
+     * are owned by the shared Skin/TextureBank rather than this battle.
+     */
+    private static void clearActorCallbacks(Actor actor) {
+        actor.clearActions();
+        actor.clearListeners();
+        if (actor instanceof Group group) {
+            for (Actor child : group.getChildren()) {
+                clearActorCallbacks(child);
+            }
+        }
+    }
+
+    private void clearActorReferences() {
+        pauseInputBlocker = null;
+        pausePanel = null;
+        resultPanel = null;
+        pauseButton = null;
+        resultRetryButton = null;
+        hudLabel = null;
+        waveLabel = null;
+        statusLabel = null;
+        toolLabel = null;
+        resultTitle = null;
+        resultDetails = null;
+        selectedPlant = null;
     }
 }

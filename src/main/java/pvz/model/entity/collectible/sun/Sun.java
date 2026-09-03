@@ -22,7 +22,7 @@ public final class Sun extends Collectible {
 
     private final double targetX;
     private final double targetY;
-
+    private final long spawnTick;
     private final long landingTick;
 
     private SunType type;
@@ -49,6 +49,7 @@ public final class Sun extends Collectible {
         this.value = value;
         this.targetX = targetX;
         this.targetY = targetY;
+        this.spawnTick = spawnTick;
         this.landingTick = landingTick;
         this.state = Objects.requireNonNull(state);
 
@@ -249,8 +250,30 @@ public final class Sun extends Collectible {
     public double getTargetY() {
         return targetY;
     }
-    
+
+    public long getSpawnTick() {
+        return spawnTick;
+    }
+
     public long getLandingTick() {
         return landingTick;
+    }
+
+    /**
+     * Returns the model-driven progress of a sky sun from spawn to landing.
+     * Non-sky suns are already available and therefore return {@code 1.0}.
+     */
+    public double getFallProgress(long tick) {
+        if (source != SunSource.SKY) {
+            return 1.0;
+        }
+
+        long duration = landingTick - spawnTick;
+        if (duration <= 0L) {
+            return 1.0;
+        }
+
+        double progress = (tick - spawnTick) / (double) duration;
+        return Math.max(0.0, Math.min(1.0, progress));
     }
 }

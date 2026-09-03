@@ -24,6 +24,11 @@ public final class SunShroomProfile implements SunProfile {
         this(plantedTick, 0);
     }
 
+    @Override
+    public int getGrowthStage(long currentTick) {
+        return getCurrentStage(currentTick);
+    }
+
     public int getCurrentStage(long currentTick) {
         if (forcedFinalStage) {
             return 3;

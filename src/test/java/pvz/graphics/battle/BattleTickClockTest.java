@@ -31,6 +31,18 @@ class BattleTickClockTest {
     }
 
     @Test
+    void resumeResetDropsPartialTimeFromBeforePause() {
+        BattleTickClock clock = new BattleTickClock();
+
+        assertEquals(0, clock.consume(0.07f, 1, false));
+        assertEquals(0, clock.consume(5f, 1, true));
+        clock.reset();
+
+        assertEquals(0, clock.consume(0.04f, 1, false));
+        assertEquals(1, clock.consume(0.07f, 1, false));
+    }
+
+    @Test
     void capsCatchUpWorkAfterAStalledFrame() {
         BattleTickClock clock = new BattleTickClock();
 

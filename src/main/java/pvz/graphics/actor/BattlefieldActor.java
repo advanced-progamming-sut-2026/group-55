@@ -27,7 +27,12 @@ import pvz.graphics.asset.PamAnimationRenderer;
 import pvz.graphics.asset.PamAnimationService;
 import pvz.graphics.asset.PlantVisualResolver;
 import pvz.graphics.asset.ProjectileVisualResolver;
+import pvz.graphics.asset.SunVisualResolver;
 import pvz.graphics.asset.ZombieVisualResolver;
+import pvz.graphics.battle.BattleCellTargeting;
+import pvz.graphics.battle.DamageFlashTracker;
+import pvz.graphics.battle.HealthBarLayout;
+import pvz.graphics.battle.SunShroomAnimationController;
 import pvz.libpvz.textures.TextureBank;
 import pvz.model.core.Game;
 import pvz.model.core.World;
@@ -38,8 +43,11 @@ import pvz.model.entity.Entity;
 import pvz.model.entity.collectible.Collectible;
 import pvz.model.entity.collectible.plantfood.PlantFood;
 import pvz.model.entity.collectible.sun.Sun;
+import pvz.model.entity.collectible.sun.SunCollectionOutcome;
+import pvz.model.entity.collectible.sun.SunSource;
 import pvz.model.entity.plant.Plant;
 import pvz.model.entity.plant.PlantCategory;
+import pvz.model.entity.plant.behavior.capability.GrowthStageCapability;
 import pvz.model.entity.plant.behavior.capability.PlantActivationCapability;
 import pvz.model.entity.projectile.BowlingBulbProjectile;
 import pvz.model.entity.projectile.LobbedProjectile;
@@ -54,6 +62,9 @@ public final class BattlefieldActor extends Actor implements Disposable {
     private static final String MOWER_TEXTURE =
             "IMAGE_MOWERS_MOWER_EGYPT_MOWER_EGYPT_96X63";
     private static final String SUN_TEXTURE = "IMAGE_EFFECTS_SUN_SUN_78X78";
+    private static final float SUN_LANDING_Y_IN_CELL = 0.62f;
+    private static final float SKY_SUN_START_MARGIN_IN_CELL = 0.58f;
+    private static final float SUN_CLICK_SUPPRESSION_SECONDS = 0.22f;
 
     private final GameSession session;
     private final Board board;
@@ -68,15 +79,20 @@ public final class BattlefieldActor extends Actor implements Disposable {
     private final ZombieVisualResolver zombieVisuals;
     private final ProjectileVisualResolver projectileVisuals =
             new ProjectileVisualResolver();
+    private final SunVisualResolver sunVisuals = new SunVisualResolver();
     private final TextureBank textures;
     private final PamAnimationService animationService;
     private final PamAnimationRenderer animationRenderer;
     private final CellListener cellListener;
+    private final InputListener inputListener;
     private final Map<String, TextureRegion> plantPreviewCache = new HashMap<>();
     private final Map<PlantAnimationKey, String> plantClipCache = new HashMap<>();
-    private final Set<PlantAnimationKey> plantClipRequests = new HashSet<>();
+    private final Map<PlantAnimationKey, PamAnimationService.AnimationRequest>
+            plantClipRequests = new HashMap<>();
     private final Map<Plant, PlantPlayback> plantPlaybacks =
             new IdentityHashMap<>();
+    private final Set<String> sunShroomPreloadedPamPaths =
+            new HashSet<>();
     private final Map<Zombie, ZombiePlayback> zombiePlaybacks =
             new IdentityHashMap<>();
     private final List<ZombieDeathPlayback> zombieDeaths = new ArrayList<>();
@@ -84,6 +100,10 @@ public final class BattlefieldActor extends Actor implements Disposable {
             new IdentityHashMap<>();
     private final List<ProjectileImpactPlayback> projectileImpacts =
             new ArrayList<>();
+    private final List<SunExplosionPlayback> sunExplosions =
+            new ArrayList<>();
+    private final DamageFlashTracker<Object> damageFlashes =
+            new DamageFlashTracker<>();
     private final Map<String, TextureRegion> projectileTextureCache =
             new HashMap<>();
     private final Color oldBatchColor = new Color();
@@ -92,8 +112,16 @@ public final class BattlefieldActor extends Actor implements Disposable {
     private int hoverColumn = -1;
     private int hoverRow = -1;
     private String selectedPlant;
+    private Plant selectedPlantCandidate;
     private ToolMode toolMode = ToolMode.PLANT;
     private boolean showGrid;
+    private boolean paused;
+    private boolean radioactiveExplosionPreloaded;
+    private int nextSunExplosionVariant;
+    private float sunClickSuppressionTime;
+    private float lastSunCollectX;
+    private float lastSunCollectY;
+    private boolean disposed;
 
     public BattlefieldActor(
             GameSession session,
@@ -142,13 +170,22 @@ public final class BattlefieldActor extends Actor implements Disposable {
         sun = textures.region(SUN_TEXTURE);
 
         setTouchable(com.badlogic.gdx.scenes.scene2d.Touchable.enabled);
-        addListener(createInputListener());
+        inputListener = createInputListener();
+        addListener(inputListener);
     }
 
     @Override
     public void act(float delta) {
+        if (paused || disposed) {
+            return;
+        }
         super.act(delta);
         float elapsed = Math.max(0f, delta);
+        sunClickSuppressionTime = Math.max(
+                0f, sunClickSuppressionTime - elapsed
+        );
+        damageFlashes.advance(elapsed);
+        observeDamage();
         plantPlaybacks.values().forEach(playback -> playback.advance(elapsed));
 
         Set<Plant> livePlants = Collections.newSetFromMap(
@@ -182,10 +219,59 @@ public final class BattlefieldActor extends Actor implements Disposable {
         zombieDeaths.removeIf(ZombieDeathPlayback::finished);
 
         updateProjectilePlaybacks(elapsed);
+        sunExplosions.forEach(explosion -> explosion.advance(elapsed));
+        sunExplosions.removeIf(SunExplosionPlayback::finished);
+    }
+
+    private void observeDamage() {
+        Set<Object> live = Collections.newSetFromMap(
+                new IdentityHashMap<>()
+        );
+
+        for (Plant plant : world.getPlants()) {
+            live.add(plant);
+            damageFlashes.observe(plant, plant.getHealth());
+        }
+        for (Zombie zombie : world.getZombies()) {
+            live.add(zombie);
+            damageFlashes.observe(zombie, zombieDurability(zombie));
+        }
+        for (int column = 1; column <= board.getCols(); column++) {
+            for (int row = 1; row <= board.getRows(); row++) {
+                Tile tile = board.getTile(column, row);
+                if (!tile.hasDestructibleContent()) {
+                    continue;
+                }
+                live.add(tile);
+                damageFlashes.observe(tile, tileDurability(tile));
+            }
+        }
+
+        damageFlashes.retainKeys(live);
+    }
+
+    private static double zombieDurability(Zombie zombie) {
+        double armor = zombie.getArmorSet().layers().stream()
+                .mapToDouble(layer -> layer.remainingHealth())
+                .sum();
+        return zombie.getHealth() + armor;
+    }
+
+    private static double tileDurability(Tile tile) {
+        double overlays = tile.getOverlays().stream()
+                .mapToDouble(overlay -> overlay.getRemainingHealth())
+                .sum();
+        return tile.getHealth() + overlays;
     }
 
     public void setSelectedPlant(String selectedPlant) {
+        if (Objects.equals(this.selectedPlant, selectedPlant)) {
+            return;
+        }
         this.selectedPlant = selectedPlant;
+        selectedPlantCandidate = selectedPlant == null
+                ? null
+                : session.createPlant(selectedPlant);
     }
 
     public void setToolMode(ToolMode toolMode) {
@@ -196,10 +282,26 @@ public final class BattlefieldActor extends Actor implements Disposable {
         this.showGrid = showGrid;
     }
 
+    public void setPaused(boolean paused) {
+        if (disposed) {
+            return;
+        }
+        this.paused = paused;
+        setTouchable(paused
+                ? com.badlogic.gdx.scenes.scene2d.Touchable.disabled
+                : com.badlogic.gdx.scenes.scene2d.Touchable.enabled);
+        if (paused) {
+            hoverColumn = -1;
+            hoverRow = -1;
+            sunClickSuppressionTime = 0f;
+        }
+    }
+
     @Override
     public void draw(Batch batch, float parentAlpha) {
         oldBatchColor.set(batch.getColor());
         drawLawn(batch, parentAlpha);
+        drawHoverSurface(batch, parentAlpha);
         drawTombstones(batch, parentAlpha);
         drawMowers(batch, parentAlpha);
         drawPlants(batch, parentAlpha);
@@ -207,7 +309,9 @@ public final class BattlefieldActor extends Actor implements Disposable {
         drawProjectiles(batch, parentAlpha);
         drawProjectileImpacts(batch, parentAlpha);
         drawCollectibles(batch, parentAlpha);
-        drawHover(batch, parentAlpha);
+        drawSunExplosions(batch, parentAlpha);
+        drawHealthBars(batch, parentAlpha);
+        drawHoverIndicator(batch, parentAlpha);
         batch.setColor(oldBatchColor);
     }
 
@@ -248,13 +352,45 @@ public final class BattlefieldActor extends Actor implements Disposable {
                 float bottom = cellBottom(row) + cellHeight() * 0.06f;
                 float width = cellWidth() * 0.64f;
                 float height = cellHeight() * 0.86f;
+                float healthRatio = (float) Math.max(
+                        0d,
+                        Math.min(
+                                1d,
+                                tile.getHealth()
+                                        / TileType.TOMBSTONE.getInitialHealth()
+                        )
+                );
                 if (tombstone != null) {
-                    batch.setColor(1f, 1f, 1f, parentAlpha);
+                    float brightness = 0.58f + healthRatio * 0.42f;
+                    batch.setColor(
+                            brightness,
+                            brightness,
+                            brightness,
+                            parentAlpha
+                    );
                     drawFit(batch, tombstone, left, bottom, width, height);
                 } else {
                     setColor(batch, 0.40f, 0.40f, 0.42f, parentAlpha);
                     batch.draw(solid, left, bottom, width, height);
                 }
+                drawTombstoneCracks(
+                        batch,
+                        left,
+                        bottom,
+                        width,
+                        height,
+                        healthRatio,
+                        parentAlpha
+                );
+                drawDamageFlash(
+                        batch,
+                        left,
+                        bottom,
+                        width,
+                        height,
+                        damageFlashes.intensity(tile),
+                        parentAlpha
+                );
             }
         }
     }
@@ -290,38 +426,112 @@ public final class BattlefieldActor extends Actor implements Disposable {
 
             String pamPath = plantVisuals.animationPath(plant.getName());
             String idleClip = plantVisuals.animationClip(plant.getName());
-            PlantAnimationState state = animationState(plant);
-            String clipName = resolveClip(pamPath, idleClip, state);
             PlantPlayback playback = plantPlaybacks.computeIfAbsent(
                     plant,
                     ignored -> new PlantPlayback()
             );
+
+            long tick = session.game().getCurrentTick();
+            SunShroomAnimationController.Selection sunShroomSelection =
+                    sunShroomSelection(plant, pamPath, playback, tick);
+
+            String clipName;
+            String referenceClip;
+            boolean loop;
+            if (sunShroomSelection != null) {
+                clipName = sunShroomSelection.clip();
+                referenceClip = sunShroomSelection.referenceClip();
+                loop = sunShroomSelection.loop();
+            } else {
+                PlantAnimationState state = animationState(plant);
+                clipName = resolveClip(pamPath, idleClip, state);
+                referenceClip = idleClip;
+                loop = true;
+            }
             playback.use(pamPath, clipName);
 
-            if (pamPath != null && animationRenderer.draw(
+            if (plant.isPlantFoodActive(tick)) {
+                drawPlantFoodAura(
+                        batch,
+                        left,
+                        bottom,
+                        width,
+                        height,
+                        tick,
+                        parentAlpha
+                );
+            }
+
+            boolean animated = pamPath != null && animationRenderer.draw(
                     batch,
                     pamPath,
                     clipName,
-                    idleClip,
+                    referenceClip,
                     playback.stateTime(),
                     left,
                     bottom,
                     width,
                     height,
+                    parentAlpha,
+                    false,
+                    loop,
+                    Color.WHITE,
+                    Map.of()
+            );
+            if (!animated) {
+                TextureRegion preview = preview(plant.getName());
+                if (preview != null) {
+                    batch.setColor(1f, 1f, 1f, parentAlpha);
+                    drawFit(batch, preview, left, bottom, width, height);
+                } else {
+                    setColor(batch, 0.20f, 0.75f, 0.18f, parentAlpha);
+                    batch.draw(solid, left, bottom, width, height);
+                }
+            }
+
+            drawDamageFlash(
+                    batch,
+                    left,
+                    bottom,
+                    width,
+                    height,
+                    damageFlashes.intensity(plant),
                     parentAlpha
-            )) {
-                continue;
-            }
+            );
+        }
+    }
 
-            TextureRegion preview = preview(plant.getName());
+    private SunShroomAnimationController.Selection sunShroomSelection(
+            Plant plant,
+            String pamPath,
+            PlantPlayback playback,
+            long currentTick
+    ) {
+        if (!SunShroomAnimationController.supports(plant.getName())) {
+            return null;
+        }
 
-            if (preview != null) {
-                batch.setColor(1f, 1f, 1f, parentAlpha);
-                drawFit(batch, preview, left, bottom, width, height);
-            } else {
-                setColor(batch, 0.20f, 0.75f, 0.18f, parentAlpha);
-                batch.draw(solid, left, bottom, width, height);
-            }
+        preloadSunShroomClips(pamPath);
+
+        GrowthStageCapability growth = plant.behaviorCapability(
+                GrowthStageCapability.class
+        );
+        int stage = growth == null ? 1 : growth.getGrowthStage(currentTick);
+
+        return playback.sunShroom().select(
+                stage,
+                plant.isPlantFoodActive(currentTick),
+                plant.getLastActionStartedTick(),
+                playback.stateTime()
+        );
+    }
+
+    private void preloadSunShroomClips(String pamPath) {
+        if (pamPath == null || !sunShroomPreloadedPamPaths.add(pamPath)) {
+            return;
+        }
+        for (String clip : SunShroomAnimationController.clipsToPreload()) {
+            animationRenderer.preload(pamPath, clip);
         }
     }
 
@@ -368,15 +578,22 @@ public final class BattlefieldActor extends Actor implements Disposable {
             return resolved;
         }
 
-        if (plantClipRequests.add(key)) {
-            animationService.prepareFirstAvailable(
-                    pamPath,
-                    clipCandidates(state, idleClip),
-                    clip -> plantClipCache.put(
-                            key,
-                            clip == null ? idleClip : clip
-                    )
-            );
+        if (!plantClipRequests.containsKey(key)) {
+            PamAnimationService.AnimationRequest request =
+                    animationService.prepareFirstAvailable(
+                            pamPath,
+                            clipCandidates(state, idleClip),
+                            clip -> {
+                                plantClipRequests.remove(key);
+                                if (!disposed) {
+                                    plantClipCache.put(
+                                            key,
+                                            clip == null ? idleClip : clip
+                                    );
+                                }
+                            }
+                    );
+            plantClipRequests.put(key, request);
         }
         return idleClip;
     }
@@ -462,17 +679,15 @@ public final class BattlefieldActor extends Actor implements Disposable {
                 batch.draw(solid, left, bottom, width, height);
             }
 
-            float barWidth = Math.min(cellWidth() * 0.72f, 64f);
-            float barLeft = centerX - barWidth / 2f;
-            float barBottom = centerY + cellHeight() * 0.43f;
-            setColor(batch, 0.08f, 0.08f, 0.08f, 0.88f * parentAlpha);
-            batch.draw(solid, barLeft, barBottom, barWidth, 5f);
-            setColor(batch, allied ? 0.30f : 0.25f,
-                    allied ? 0.72f : 0.90f,
-                    allied ? 1f : 0.25f, parentAlpha);
-            batch.draw(solid, barLeft, barBottom,
-                    barWidth * (float) Math.max(0d, zombie.getHealthRatio()),
-                    5f);
+            drawDamageFlash(
+                    batch,
+                    left,
+                    bottom,
+                    width,
+                    height,
+                    damageFlashes.intensity(zombie),
+                    parentAlpha
+            );
 
             if (!animated) {
                 oldFontColor.set(font.getColor());
@@ -737,42 +952,301 @@ public final class BattlefieldActor extends Actor implements Disposable {
 
     private void drawCollectibles(Batch batch, float parentAlpha) {
         for (Collectible collectible : world.getCollectibles()) {
-            float size = Math.min(cellWidth(), cellHeight()) * 0.48f;
-            float centerX = getX() + (float) collectible.getX() * cellWidth();
-            float centerY = cellBottom(collectible.getTileY()) + cellHeight() * 0.62f;
-            float left = centerX - size / 2f;
-            float bottom = centerY - size / 2f;
-
-            if (collectible instanceof Sun && sun != null) {
-                batch.setColor(1f, 1f, 1f, parentAlpha);
-                drawFit(batch, sun, left, bottom, size, size);
-            } else if (collectible instanceof PlantFood) {
-                setColor(batch, 0.15f, 0.95f, 0.35f, parentAlpha);
-                batch.draw(solid, left, bottom, size, size);
-            } else {
-                setColor(batch, 1f, 0.90f, 0.05f, parentAlpha);
-                batch.draw(solid, left, bottom, size, size);
+            if (collectible instanceof Sun battleSun) {
+                drawSun(batch, battleSun, parentAlpha);
+                continue;
             }
+            drawNonSunCollectible(batch, collectible, parentAlpha);
         }
     }
 
-    private void drawHover(Batch batch, float parentAlpha) {
-        if (!board.inBounds(hoverColumn, hoverRow)) {
+    private void drawSun(Batch batch, Sun battleSun, float parentAlpha) {
+        long tick = session.game().getCurrentTick();
+        SunVisualResolver.Visual visual = sunVisuals.resolve(battleSun, tick);
+        SunPlacement placement = sunPlacement(battleSun, visual, tick);
+        if (battleSun.isRadioactiveWhileFalling()) {
+            preloadRadioactiveExplosion();
+            drawRadioactiveSunAura(batch, placement, tick, parentAlpha);
+        }
+
+        float left = getX() + placement.left();
+        float bottom = getY() + placement.bottom();
+        float ageSeconds = Math.max(0L, tick - battleSun.getSpawnTick())
+                / (float) Game.TICKS_PER_SECOND;
+        boolean animated = animationRenderer.draw(
+                batch,
+                visual.pamPath(),
+                visual.clipName(),
+                ageSeconds,
+                left,
+                bottom,
+                placement.size(),
+                placement.size(),
+                parentAlpha,
+                false,
+                true,
+                visual.tint(),
+                Map.of()
+        );
+        if (!animated) {
+            drawSunFallback(batch, placement, visual.tint(), parentAlpha);
+        }
+    }
+
+    private void drawRadioactiveSunAura(
+            Batch batch,
+            SunPlacement placement,
+            long tick,
+            float parentAlpha
+    ) {
+        float ageSeconds = Math.max(0L, tick)
+                / (float) Game.TICKS_PER_SECOND;
+        float pulse = 0.5f + 0.5f
+                * (float) Math.sin(ageSeconds * Math.PI * 3.4f);
+        float radius = placement.size() * (1.12f + pulse * 0.20f);
+        float thickness = Math.max(2f, radius * 0.055f);
+        float centerX = getX() + placement.centerX();
+        float centerY = getY() + placement.centerY();
+        float outerAlpha = (0.13f + pulse * 0.11f) * parentAlpha;
+        float innerAlpha = (0.20f + pulse * 0.12f) * parentAlpha;
+
+        setColor(batch, 0.64f, 0.12f, 1.00f, outerAlpha);
+        drawRadioactiveRays(batch, centerX, centerY, radius, thickness, 0f);
+        setColor(batch, 0.90f, 0.62f, 1.00f, innerAlpha);
+        drawRadioactiveRays(
+                batch,
+                centerX,
+                centerY,
+                radius * 0.74f,
+                Math.max(2f, thickness * 0.72f),
+                22.5f
+        );
+    }
+
+    private void drawRadioactiveRays(
+            Batch batch,
+            float centerX,
+            float centerY,
+            float size,
+            float thickness,
+            float rotation
+    ) {
+        drawRotated(
+                batch, solid, centerX - size / 2f, centerY - thickness / 2f,
+                size, thickness, rotation
+        );
+        drawRotated(
+                batch, solid, centerX - size / 2f, centerY - thickness / 2f,
+                size, thickness, rotation + 45f
+        );
+        drawRotated(
+                batch, solid, centerX - size / 2f, centerY - thickness / 2f,
+                size, thickness, rotation + 90f
+        );
+        drawRotated(
+                batch, solid, centerX - size / 2f, centerY - thickness / 2f,
+                size, thickness, rotation + 135f
+        );
+    }
+
+    private void drawSunFallback(
+            Batch batch,
+            SunPlacement placement,
+            Color tint,
+            float parentAlpha
+    ) {
+        if (sun == null) {
             return;
         }
-        // PLANT without a selected packet is the neutral state.
-        if (toolMode == ToolMode.PLANT && selectedPlant == null) {
+        batch.setColor(tint.r, tint.g, tint.b, tint.a * parentAlpha);
+        drawFit(
+                batch,
+                sun,
+                getX() + placement.left(),
+                getY() + placement.bottom(),
+                placement.size(),
+                placement.size()
+        );
+    }
+
+    private void drawNonSunCollectible(
+            Batch batch,
+            Collectible collectible,
+            float parentAlpha
+    ) {
+        float size = Math.min(cellWidth(), cellHeight()) * 0.48f;
+        float centerX = getX() + (float) collectible.getX() * cellWidth();
+        float centerY = cellBottom(collectible.getTileY())
+                + cellHeight() * SUN_LANDING_Y_IN_CELL;
+        float left = centerX - size / 2f;
+        float bottom = centerY - size / 2f;
+
+        if (collectible instanceof PlantFood) {
+            setColor(batch, 0.15f, 0.95f, 0.35f, parentAlpha);
+        } else {
+            setColor(batch, 1f, 0.90f, 0.05f, parentAlpha);
+        }
+        batch.draw(solid, left, bottom, size, size);
+    }
+
+    private SunPlacement sunPlacement(
+            Sun battleSun,
+            SunVisualResolver.Visual visual,
+            long tick
+    ) {
+        float size = Math.min(cellWidth(), cellHeight())
+                * visual.sizeInCell();
+        float centerX = (float) battleSun.getTargetX() * cellWidth();
+        float targetY = targetSunCenterY(battleSun);
+        if (battleSun.getSource() == SunSource.PLANT) {
+            targetY = modelSunCenterY(battleSun);
+        }
+        float centerY = targetY;
+
+        if (battleSun.isFalling()) {
+            centerY = fallingSunCenterY(battleSun, size, targetY, tick);
+        } else if (battleSun.getSource() == SunSource.PLANT) {
+            centerY += sunVisuals.plantPopOffsetInCells(battleSun, tick)
+                    * cellHeight();
+        }
+
+        return SunPlacement.centered(centerX, centerY, size);
+    }
+
+    private float targetSunCenterY(Sun battleSun) {
+        return getHeight() - (float) battleSun.getTargetY() * cellHeight()
+                + (SUN_LANDING_Y_IN_CELL - 0.5f) * cellHeight();
+    }
+
+    private float modelSunCenterY(Sun battleSun) {
+        return getHeight() - (float) battleSun.getTargetY() * cellHeight();
+    }
+
+    private float fallingSunCenterY(
+            Sun battleSun,
+            float size,
+            float targetY,
+            long tick
+    ) {
+        float progress = (float) battleSun.getFallProgress(tick);
+        float eased = progress * progress * (3f - 2f * progress);
+        float startY = getHeight() + size * SKY_SUN_START_MARGIN_IN_CELL;
+        return startY + (targetY - startY) * eased;
+    }
+
+    private void preloadRadioactiveExplosion() {
+        if (radioactiveExplosionPreloaded) {
+            return;
+        }
+        radioactiveExplosionPreloaded = true;
+        for (String clip : sunVisuals.explosionClips()) {
+            animationRenderer.preload(sunVisuals.explosionPamPath(), clip);
+        }
+    }
+
+    private void drawSunExplosions(Batch batch, float parentAlpha) {
+        for (SunExplosionPlayback explosion : sunExplosions) {
+            drawSunExplosion(batch, explosion, parentAlpha);
+        }
+    }
+
+    private void drawSunExplosion(
+            Batch batch,
+            SunExplosionPlayback explosion,
+            float parentAlpha
+    ) {
+        float centerX = getX() + explosion.targetX() * cellWidth();
+        float centerY = getY() + targetSunCenterY(explosion.targetY());
+        float width = cellWidth() * sunVisuals.explosionSizeInCells();
+        float height = cellHeight() * sunVisuals.explosionSizeInCells();
+        float left = centerX - width / 2f;
+        float bottom = centerY - height / 2f;
+        Color tint = sunVisuals.explosionTint();
+        drawRadioactiveExplosionAura(
+                batch, explosion, centerX, centerY, parentAlpha
+        );
+
+        boolean animated = animationRenderer.draw(
+                batch,
+                sunVisuals.explosionPamPath(),
+                explosion.clipName(),
+                explosion.stateTime(),
+                left,
+                bottom,
+                width,
+                height,
+                parentAlpha,
+                false,
+                false,
+                tint,
+                Map.of()
+        );
+        if (!animated) {
+            drawSunExplosionFallback(
+                    batch, explosion, centerX, centerY, parentAlpha
+            );
+        }
+    }
+
+    private void drawRadioactiveExplosionAura(
+            Batch batch,
+            SunExplosionPlayback explosion,
+            float centerX,
+            float centerY,
+            float parentAlpha
+    ) {
+        float progress = explosion.progress();
+        float size = Math.min(cellWidth(), cellHeight())
+                * (1.25f + progress * 1.85f);
+        float thickness = Math.max(3f, size * 0.07f);
+        float alpha = (1f - progress) * 0.32f * parentAlpha;
+        setColor(batch, 0.72f, 0.20f, 1.00f, alpha);
+        drawRadioactiveRays(
+                batch, centerX, centerY, size, thickness, progress * 70f
+        );
+    }
+
+    private float targetSunCenterY(float targetY) {
+        return getHeight() - targetY * cellHeight()
+                + (SUN_LANDING_Y_IN_CELL - 0.5f) * cellHeight();
+    }
+
+    private void drawSunExplosionFallback(
+            Batch batch,
+            SunExplosionPlayback explosion,
+            float centerX,
+            float centerY,
+            float parentAlpha
+    ) {
+        float progress = explosion.progress();
+        float size = Math.min(cellWidth(), cellHeight())
+                * (1.15f + progress * 1.65f);
+        float alpha = (1f - progress) * 0.82f * parentAlpha;
+        Color tint = sunVisuals.explosionTint();
+        setColor(batch, tint.r, tint.g, tint.b, alpha);
+        drawRotated(
+                batch, solid, centerX - size / 2f, centerY - size * 0.07f,
+                size, size * 0.14f, progress * 95f
+        );
+        drawRotated(
+                batch, solid, centerX - size / 2f, centerY - size * 0.07f,
+                size, size * 0.14f, 60f + progress * 95f
+        );
+        drawRotated(
+                batch, solid, centerX - size / 2f, centerY - size * 0.07f,
+                size, size * 0.14f, 120f + progress * 95f
+        );
+    }
+
+    private void drawHoverSurface(Batch batch, float parentAlpha) {
+        if (!hasActiveHoverTarget()) {
             return;
         }
         float left = cellLeft(hoverColumn);
         float bottom = cellBottom(hoverRow);
-
-        Color tint = switch (toolMode) {
-            case PLANT -> Color.LIME;
-            case SHOVEL -> Color.RED;
-            case PLANT_FOOD -> Color.PURPLE;
-        };
-        setColor(batch, tint.r, tint.g, tint.b, 0.28f * parentAlpha);
+        boolean valid = isHoverTargetValid();
+        Color tint = valid ? Color.LIME : Color.RED;
+        setColor(batch, tint.r, tint.g, tint.b, 0.25f * parentAlpha);
         batch.draw(solid, left, bottom, cellWidth(), cellHeight());
 
         if (toolMode != ToolMode.PLANT || selectedPlant == null) {
@@ -782,10 +1256,255 @@ public final class BattlefieldActor extends Actor implements Disposable {
         if (preview == null) {
             return;
         }
-        batch.setColor(1f, 1f, 1f, 0.55f * parentAlpha);
+        if (valid) {
+            batch.setColor(1f, 1f, 1f, 0.68f * parentAlpha);
+        } else {
+            batch.setColor(1f, 0.34f, 0.34f, 0.54f * parentAlpha);
+        }
         drawFit(batch, preview, left + cellWidth() * 0.14f,
                 bottom + cellHeight() * 0.08f,
                 cellWidth() * 0.72f, cellHeight() * 0.82f);
+    }
+
+    private void drawHoverIndicator(Batch batch, float parentAlpha) {
+        if (!hasActiveHoverTarget()) {
+            return;
+        }
+        float left = cellLeft(hoverColumn);
+        float bottom = cellBottom(hoverRow);
+        boolean valid = isHoverTargetValid();
+        Color tint = valid ? Color.LIME : Color.RED;
+        drawHoverBorder(batch, left, bottom, tint, parentAlpha);
+        drawValidityMark(batch, left, bottom, valid, parentAlpha);
+    }
+
+    private boolean hasActiveHoverTarget() {
+        return board.inBounds(hoverColumn, hoverRow)
+                && (toolMode != ToolMode.PLANT || selectedPlant != null);
+    }
+
+    private void drawHealthBars(Batch batch, float parentAlpha) {
+        drawPlantHealthBars(batch, parentAlpha);
+        drawZombieHealthBars(batch, parentAlpha);
+    }
+
+    private void drawPlantHealthBars(Batch batch, float parentAlpha) {
+        float barWidth = Math.min(cellWidth() * 0.58f, 48f);
+        float barHeight = 6f;
+        HealthBarLayout.Bounds bounds = healthBarBounds();
+
+        for (Plant plant : world.getPlants()) {
+            double maximum = plant.getSpec().getBaseHp();
+            float ratio = HealthBarLayout.clampRatio(
+                    maximum <= 0d ? 0d : plant.getHealth() / maximum
+            );
+            if (ratio >= 0.999f
+                    || board.getTopPlant(
+                            plant.getTileX(), plant.getTileY()
+                    ) != plant) {
+                continue;
+            }
+
+            float centerX = cellLeft(plant.getTileX()) + cellWidth() / 2f;
+            HealthBarLayout.Bar bar = HealthBarLayout.clampCentered(
+                    centerX,
+                    cellBottom(plant.getTileY()) + 5f,
+                    barWidth,
+                    barHeight,
+                    bounds
+            );
+            drawHealthBar(batch, bar, ratio, false, parentAlpha);
+        }
+    }
+
+    private void drawZombieHealthBars(Batch batch, float parentAlpha) {
+        float barWidth = Math.min(cellWidth() * 0.58f, 48f);
+        float barHeight = 6f;
+        float laneStep = barHeight + 2f;
+        HealthBarLayout.Bounds bounds = healthBarBounds();
+        Map<Integer, List<Zombie>> byRow = new HashMap<>();
+
+        for (Zombie zombie : world.getZombies()) {
+            byRow.computeIfAbsent(
+                    zombie.getTileY(), ignored -> new ArrayList<>()
+            ).add(zombie);
+        }
+
+        for (int row = 1; row <= board.getRows(); row++) {
+            List<Zombie> zombies = byRow.get(row);
+            if (zombies == null) {
+                continue;
+            }
+            zombies.sort((first, second) -> Double.compare(
+                    first.getX(), second.getX()
+            ));
+            float[] occupiedUntil = {
+                    Float.NEGATIVE_INFINITY,
+                    Float.NEGATIVE_INFINITY,
+                    Float.NEGATIVE_INFINITY,
+                    Float.NEGATIVE_INFINITY,
+                    Float.NEGATIVE_INFINITY
+            };
+
+            for (Zombie zombie : zombies) {
+                float centerX = getX() + (float) zombie.getX() * cellWidth();
+                HealthBarLayout.Bar horizontal =
+                        HealthBarLayout.clampCentered(
+                                centerX,
+                                bounds.bottom(),
+                                barWidth,
+                                barHeight,
+                                bounds
+                        );
+                int lane = HealthBarLayout.reserveLane(
+                        horizontal.left(),
+                        horizontal.right(),
+                        occupiedUntil,
+                        3f
+                );
+                float desiredBottom = cellBottom(row) + cellHeight()
+                        - barHeight - 4f - lane * laneStep;
+                HealthBarLayout.Bar bar =
+                        HealthBarLayout.clampCentered(
+                                centerX,
+                                desiredBottom,
+                                barWidth,
+                                barHeight,
+                                bounds
+                        );
+                drawHealthBar(
+                        batch,
+                        bar,
+                        HealthBarLayout.clampRatio(zombie.getHealthRatio()),
+                        zombie.isAllied(),
+                        parentAlpha
+                );
+            }
+        }
+    }
+
+    private HealthBarLayout.Bounds healthBarBounds() {
+        return new HealthBarLayout.Bounds(
+                getX(), getY(), getWidth(), getHeight()
+        );
+    }
+
+    private void drawHealthBar(
+            Batch batch,
+            HealthBarLayout.Bar bar,
+            float ratio,
+            boolean allied,
+            float parentAlpha
+    ) {
+        setColor(batch, 0.05f, 0.05f, 0.05f, 0.90f * parentAlpha);
+        batch.draw(
+                solid,
+                bar.left(),
+                bar.bottom(),
+                bar.width(),
+                bar.height()
+        );
+
+        float inset = 1f;
+        float innerWidth = Math.max(0f, bar.width() - inset * 2f);
+        if (allied) {
+            setColor(batch, 0.28f, 0.72f, 1f, parentAlpha);
+        } else if (ratio > 0.60f) {
+            setColor(batch, 0.24f, 0.90f, 0.25f, parentAlpha);
+        } else if (ratio > 0.30f) {
+            setColor(batch, 1f, 0.76f, 0.12f, parentAlpha);
+        } else {
+            setColor(batch, 0.95f, 0.20f, 0.16f, parentAlpha);
+        }
+        batch.draw(
+                solid,
+                bar.left() + inset,
+                bar.bottom() + inset,
+                innerWidth * ratio,
+                Math.max(0f, bar.height() - inset * 2f)
+        );
+    }
+
+    private boolean isHoverTargetValid() {
+        return switch (toolMode) {
+            case PLANT -> BattleCellTargeting.canPlant(
+                    session,
+                    selectedPlant,
+                    selectedPlantCandidate,
+                    hoverColumn,
+                    hoverRow
+            );
+            case SHOVEL -> BattleCellTargeting.canShovel(
+                    board,
+                    hoverColumn,
+                    hoverRow
+            );
+            case PLANT_FOOD -> BattleCellTargeting.canUsePlantFood(
+                    session,
+                    hoverColumn,
+                    hoverRow
+            );
+        };
+    }
+
+    private void drawHoverBorder(
+            Batch batch,
+            float left,
+            float bottom,
+            Color tint,
+            float parentAlpha
+    ) {
+        float border = 3f;
+        setColor(batch, tint.r, tint.g, tint.b, 0.90f * parentAlpha);
+        batch.draw(solid, left, bottom, cellWidth(), border);
+        batch.draw(solid, left, bottom + cellHeight() - border,
+                cellWidth(), border);
+        batch.draw(solid, left, bottom, border, cellHeight());
+        batch.draw(solid, left + cellWidth() - border, bottom,
+                border, cellHeight());
+    }
+
+    private void drawValidityMark(
+            Batch batch,
+            float left,
+            float bottom,
+            boolean valid,
+            float parentAlpha
+    ) {
+        float size = Math.min(cellWidth(), cellHeight()) * 0.22f;
+        float centerX = left + cellWidth() - size * 0.82f;
+        float centerY = bottom + cellHeight() - size * 0.82f;
+        float lineHeight = Math.max(2.5f, size * 0.16f);
+        setColor(batch, 1f, 1f, 1f, 0.94f * parentAlpha);
+
+        if (valid) {
+            drawRotated(batch, solid,
+                    centerX - size * 0.48f,
+                    centerY - lineHeight * 0.70f,
+                    size * 0.43f,
+                    lineHeight,
+                    -45f);
+            drawRotated(batch, solid,
+                    centerX - size * 0.13f,
+                    centerY - lineHeight * 0.55f,
+                    size * 0.72f,
+                    lineHeight,
+                    45f);
+            return;
+        }
+
+        drawRotated(batch, solid,
+                centerX - size * 0.50f,
+                centerY - lineHeight / 2f,
+                size,
+                lineHeight,
+                45f);
+        drawRotated(batch, solid,
+                centerX - size * 0.50f,
+                centerY - lineHeight / 2f,
+                size,
+                lineHeight,
+                -45f);
     }
 
     private TextureRegion preview(String plantName) {
@@ -800,8 +1519,13 @@ public final class BattlefieldActor extends Actor implements Disposable {
         return new InputListener() {
             @Override
             public boolean mouseMoved(InputEvent event, float x, float y) {
+                if (paused || disposed) {
+                    return false;
+                }
                 updateHover(x, y);
-                cellListener.hovered(hoverColumn, hoverRow);
+                if (collectSunUnderPointer(x, y)) {
+                    rememberSunCollection(x, y);
+                }
                 return true;
             }
 
@@ -813,10 +1537,17 @@ public final class BattlefieldActor extends Actor implements Disposable {
                     int pointer,
                     int button
             ) {
-                if (button != Input.Buttons.LEFT) {
+                if (paused || disposed || button != Input.Buttons.LEFT) {
                     return false;
                 }
                 updateHover(x, y);
+                if (collectSunUnderPointer(x, y)) {
+                    rememberSunCollection(x, y);
+                    return true;
+                }
+                if (shouldSuppressCellClick(x, y)) {
+                    return true;
+                }
                 if (board.inBounds(hoverColumn, hoverRow)) {
                     cellListener.clicked(hoverColumn, hoverRow);
                     return true;
@@ -836,6 +1567,87 @@ public final class BattlefieldActor extends Actor implements Disposable {
                 hoverRow = -1;
             }
         };
+    }
+
+    private void rememberSunCollection(float x, float y) {
+        lastSunCollectX = x;
+        lastSunCollectY = y;
+        sunClickSuppressionTime = SUN_CLICK_SUPPRESSION_SECONDS;
+    }
+
+    private boolean shouldSuppressCellClick(float x, float y) {
+        if (sunClickSuppressionTime <= 0f) {
+            return false;
+        }
+        float radius = Math.min(cellWidth(), cellHeight()) * 0.35f;
+        float deltaX = x - lastSunCollectX;
+        float deltaY = y - lastSunCollectY;
+        if (deltaX * deltaX + deltaY * deltaY > radius * radius) {
+            return false;
+        }
+        sunClickSuppressionTime = 0f;
+        return true;
+    }
+
+    private boolean collectSunUnderPointer(float x, float y) {
+        Sun battleSun = sunAtPointer(x, y);
+        if (battleSun == null
+                || !board.inBounds(hoverColumn, hoverRow)) {
+            return false;
+        }
+
+        int collectionColumn = hoverColumn;
+        int collectionRow = hoverRow;
+        SunCollectionOutcome outcome = cellListener.collectSun(
+                battleSun,
+                collectionColumn,
+                collectionRow
+        );
+        if (outcome == null) {
+            return false;
+        }
+        if (outcome == SunCollectionOutcome.EXPLODED) {
+            startRadioactiveExplosion(collectionColumn, collectionRow);
+        }
+        return true;
+    }
+
+    private Sun sunAtPointer(float x, float y) {
+        long tick = session.game().getCurrentTick();
+        Sun best = null;
+        float bestDistanceSquared = Float.MAX_VALUE;
+
+        for (Collectible collectible : world.getCollectibles()) {
+            if (!(collectible instanceof Sun battleSun)
+                    || battleSun.isRemoved()) {
+                continue;
+            }
+            SunVisualResolver.Visual visual = sunVisuals.resolve(
+                    battleSun, tick
+            );
+            SunPlacement placement = sunPlacement(battleSun, visual, tick);
+            if (!placement.contains(x, y, sunVisuals.hitboxScale())) {
+                continue;
+            }
+
+            float distanceSquared = placement.distanceSquaredTo(x, y);
+            if (distanceSquared < bestDistanceSquared) {
+                best = battleSun;
+                bestDistanceSquared = distanceSquared;
+            }
+        }
+        return best;
+    }
+
+    private void startRadioactiveExplosion(int column, int row) {
+        preloadRadioactiveExplosion();
+        String clip = sunVisuals.explosionClip(nextSunExplosionVariant++);
+        sunExplosions.add(new SunExplosionPlayback(
+                column - 0.5f,
+                row - 0.5f,
+                clip,
+                sunVisuals.explosionDurationSeconds()
+        ));
     }
 
     private void updateHover(float x, float y) {
@@ -865,6 +1677,151 @@ public final class BattlefieldActor extends Actor implements Disposable {
 
     private float cellBottom(int row) {
         return getY() + (board.getRows() - row) * cellHeight();
+    }
+
+    private void drawPlantFoodAura(
+            Batch batch,
+            float left,
+            float bottom,
+            float width,
+            float height,
+            long tick,
+            float parentAlpha
+    ) {
+        float pulse = 0.5f + 0.5f
+                * (float) Math.sin(tick * 0.36f);
+        float centerX = left + width / 2f;
+        float centerY = bottom + height / 2f;
+        float rayWidth = width * (0.72f + pulse * 0.16f);
+        float rayHeight = Math.max(2f, height * 0.055f);
+        float alpha = (0.20f + pulse * 0.10f) * parentAlpha;
+
+        setColor(batch, 0.66f, 1f, 0.22f, alpha);
+        drawRotated(
+                batch,
+                solid,
+                centerX - rayWidth / 2f,
+                centerY - rayHeight / 2f,
+                rayWidth,
+                rayHeight,
+                0f
+        );
+        drawRotated(
+                batch,
+                solid,
+                centerX - rayWidth / 2f,
+                centerY - rayHeight / 2f,
+                rayWidth,
+                rayHeight,
+                60f
+        );
+        drawRotated(
+                batch,
+                solid,
+                centerX - rayWidth / 2f,
+                centerY - rayHeight / 2f,
+                rayWidth,
+                rayHeight,
+                120f
+        );
+    }
+
+    private void drawDamageFlash(
+            Batch batch,
+            float left,
+            float bottom,
+            float width,
+            float height,
+            float intensity,
+            float parentAlpha
+    ) {
+        if (intensity <= 0f) {
+            return;
+        }
+
+        float centerX = left + width / 2f;
+        float centerY = bottom + height * 0.58f;
+        float size = Math.min(width, height)
+                * (0.30f + intensity * 0.22f);
+        float lineHeight = Math.max(2f, size * 0.10f);
+        float alpha = Math.min(1f, intensity) * parentAlpha;
+
+        setColor(batch, 1f, 0.98f, 0.78f, alpha * 0.88f);
+        drawRotated(
+                batch,
+                solid,
+                centerX - size / 2f,
+                centerY - lineHeight / 2f,
+                size,
+                lineHeight,
+                45f
+        );
+        drawRotated(
+                batch,
+                solid,
+                centerX - size / 2f,
+                centerY - lineHeight / 2f,
+                size,
+                lineHeight,
+                -45f
+        );
+        setColor(batch, 1f, 1f, 1f, alpha);
+        batch.draw(
+                solid,
+                centerX - size * 0.12f,
+                centerY - size * 0.12f,
+                size * 0.24f,
+                size * 0.24f
+        );
+    }
+
+    private void drawTombstoneCracks(
+            Batch batch,
+            float left,
+            float bottom,
+            float width,
+            float height,
+            float healthRatio,
+            float parentAlpha
+    ) {
+        if (healthRatio > 0.66f) {
+            return;
+        }
+
+        float lineWidth = Math.max(2f, width * 0.035f);
+        float centerX = left + width * 0.52f;
+        float centerY = bottom + height * 0.58f;
+        setColor(batch, 0.18f, 0.13f, 0.10f, 0.78f * parentAlpha);
+        drawRotated(
+                batch,
+                solid,
+                centerX - width * 0.15f,
+                centerY,
+                width * 0.30f,
+                lineWidth,
+                -55f
+        );
+        drawRotated(
+                batch,
+                solid,
+                centerX - width * 0.03f,
+                centerY - height * 0.16f,
+                height * 0.22f,
+                lineWidth,
+                -112f
+        );
+        if (healthRatio > 0.33f) {
+            return;
+        }
+        drawRotated(
+                batch,
+                solid,
+                centerX - width * 0.28f,
+                centerY - height * 0.20f,
+                width * 0.34f,
+                lineWidth,
+                28f
+        );
     }
 
     private static void setColor(
@@ -939,6 +1896,44 @@ public final class BattlefieldActor extends Actor implements Disposable {
 
     @Override
     public void dispose() {
+        if (disposed) {
+            return;
+        }
+        disposed = true;
+        paused = true;
+        setTouchable(com.badlogic.gdx.scenes.scene2d.Touchable.disabled);
+        hoverColumn = -1;
+        hoverRow = -1;
+        selectedPlant = null;
+        selectedPlantCandidate = null;
+
+        removeListener(inputListener);
+        clearActions();
+        clearListeners();
+        remove();
+
+        for (PamAnimationService.AnimationRequest request
+                : plantClipRequests.values()) {
+            request.cancel();
+        }
+        plantClipRequests.clear();
+        animationRenderer.dispose();
+
+        plantPreviewCache.clear();
+        plantClipCache.clear();
+        sunShroomPreloadedPamPaths.clear();
+        plantPlaybacks.clear();
+        zombiePlaybacks.clear();
+        zombieDeaths.clear();
+        projectilePlaybacks.clear();
+        projectileImpacts.clear();
+        sunExplosions.clear();
+        projectileTextureCache.clear();
+        damageFlashes.clear();
+
+        // solidTexture belongs only to this battle actor. Regions from the
+        // shared TextureBank (plants, zombies, projectiles, mower, sun, ...)
+        // are references only and must remain alive for the next screen.
         solidTexture.dispose();
     }
 
@@ -964,6 +1959,7 @@ public final class BattlefieldActor extends Actor implements Disposable {
         private String pamPath;
         private String clipName;
         private float stateTime;
+        private SunShroomAnimationController sunShroom;
 
         private void use(String requestedPath, String requestedClip) {
             if (Objects.equals(pamPath, requestedPath)
@@ -981,6 +1977,13 @@ public final class BattlefieldActor extends Actor implements Disposable {
 
         private float stateTime() {
             return stateTime;
+        }
+
+        private SunShroomAnimationController sunShroom() {
+            if (sunShroom == null) {
+                sunShroom = new SunShroomAnimationController();
+            }
+            return sunShroom;
         }
     }
 
@@ -1175,9 +2178,89 @@ public final class BattlefieldActor extends Actor implements Disposable {
         private float sizeInCells() { return sizeInCells; }
     }
 
+    private record SunPlacement(
+            float left,
+            float bottom,
+            float size,
+            float centerX,
+            float centerY
+    ) {
+        private static SunPlacement centered(
+                float centerX,
+                float centerY,
+                float size
+        ) {
+            return new SunPlacement(
+                    centerX - size / 2f,
+                    centerY - size / 2f,
+                    size,
+                    centerX,
+                    centerY
+            );
+        }
+
+        private boolean contains(float x, float y, float hitboxScale) {
+            float half = size * hitboxScale / 2f;
+            return x >= centerX - half
+                    && x <= centerX + half
+                    && y >= centerY - half
+                    && y <= centerY + half;
+        }
+
+        private float distanceSquaredTo(float x, float y) {
+            float deltaX = x - centerX;
+            float deltaY = y - centerY;
+            return deltaX * deltaX + deltaY * deltaY;
+        }
+    }
+
+    private static final class SunExplosionPlayback {
+        private final float targetX;
+        private final float targetY;
+        private final String clipName;
+        private final float duration;
+        private float stateTime;
+
+        private SunExplosionPlayback(
+                float targetX,
+                float targetY,
+                String clipName,
+                float duration
+        ) {
+            this.targetX = targetX;
+            this.targetY = targetY;
+            this.clipName = Objects.requireNonNull(clipName);
+            this.duration = duration;
+        }
+
+        private void advance(float delta) {
+            stateTime += delta;
+        }
+
+        private boolean finished() {
+            return stateTime >= duration;
+        }
+
+        private float progress() {
+            if (duration <= 0f) {
+                return 1f;
+            }
+            return Math.min(1f, stateTime / duration);
+        }
+
+        private float targetX() { return targetX; }
+        private float targetY() { return targetY; }
+        private String clipName() { return clipName; }
+        private float stateTime() { return stateTime; }
+    }
+
     public interface CellListener {
         void clicked(int column, int row);
 
-        void hovered(int column, int row);
+        SunCollectionOutcome collectSun(
+                Sun sun,
+                int collectionColumn,
+                int collectionRow
+        );
     }
 }

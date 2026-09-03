@@ -60,6 +60,14 @@ public final class Board implements Updatable {
         return plantPlacementManager.plant(x, y, plant);
     }
 
+    /** Read-only placement check used by graphical previews. */
+    public boolean canPlant(int x, int y, Plant plant) {
+        Objects.requireNonNull(plant, "plant cannot be null");
+        return inBounds(x, y)
+                && !groundOccupancy.isOccupied(x, y)
+                && plantPlacementManager.canPlant(x, y, plant);
+    }
+
     public Plant getTopPlant(int x, int y) {
         return plantPlacementManager.getTopPlant(x, y);
     }

@@ -11,6 +11,7 @@ import pvz.model.entity.plant.category.explosive.TransientActionWindow;
 import pvz.model.entity.plant.lifecycle.PlantThreat;
 import pvz.model.entity.plant.level.PlantUpgradeType;
 import pvz.model.entity.plant.plantfood.PlantFoodVolley;
+import pvz.model.entity.plant.behavior.capability.GrowthStageCapability;
 import pvz.model.entity.plant.behavior.capability.PlantFoodCapability;
 import pvz.model.entity.plant.behavior.capability.SunProductionCapability;
 import pvz.model.entity.plant.behavior.capability.TransientEffectCapability;
@@ -20,6 +21,7 @@ public final class SunProducerBehavior
         extends AbstractPlantBehavior
         implements PlantFoodCapability,
         SunProductionCapability,
+        GrowthStageCapability,
         ZombieEdibilityCapability,
         TransientEffectCapability {
 
@@ -113,6 +115,12 @@ public final class SunProducerBehavior
         List<Integer> drops = profile.getPlantFoodDrops(currentTick);
 
         schedulePlantFoodSuns(drops, currentTick, durationTicks);
+    }
+
+    @Override
+    public int getGrowthStage(long currentTick) {
+        ensurePlaced();
+        return profile == null ? 1 : profile.getGrowthStage(currentTick);
     }
 
     @Override

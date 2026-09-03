@@ -4,6 +4,7 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.utils.Disposable;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -11,20 +12,31 @@ import java.util.Objects;
 import java.util.Set;
 
 /** Draws prepared PAM clips fitted inside an arbitrary world-space box. */
-public final class PamAnimationRenderer {
+public final class PamAnimationRenderer implements Disposable {
     private final PamAnimationService animations;
     private final Map<AnimationKey, Rectangle> boundsCache = new HashMap<>();
     private final Set<AnimationKey> requested = new HashSet<>();
     private final Set<AnimationKey> failed = new HashSet<>();
+    private final Map<AnimationKey, PamAnimationService.AnimationRequest> requests =
+            new HashMap<>();
     private final Color previousColor = new Color();
     private final Matrix4 previousTransform = new Matrix4();
     private final Matrix4 fittedTransform = new Matrix4();
+    private boolean disposed;
 
     public PamAnimationRenderer(PamAnimationService animations) {
         this.animations = Objects.requireNonNull(
                 animations,
                 "animation service cannot be null"
         );
+    }
+
+    /** Starts preparing a clip without drawing it yet. */
+    public void preload(String pamPath, String clipName) {
+        if (disposed) {
+            return;
+        }
+        request(new AnimationKey(pamPath, clipName));
     }
 
     /**
@@ -150,6 +162,9 @@ public final class PamAnimationRenderer {
             Color tint,
             Map<String, Boolean> partsVisibility
     ) {
+        if (disposed) {
+            return false;
+        }
         AnimationKey activeKey = new AnimationKey(pamPath, clipName);
         AnimationKey referenceKey = new AnimationKey(
                 pamPath,
@@ -167,27 +182,24 @@ public final class PamAnimationRenderer {
             return false;
         }
 
-        float scale = Math.min(
-                boxWidth / referenceBounds.width,
-                boxHeight / referenceBounds.height
+        Fit fit = fitReference(
+                referenceBounds,
+                x,
+                y,
+                boxWidth,
+                boxHeight,
+                flipX
         );
-        float fittedWidth = referenceBounds.width * scale;
-        float anchorX = flipX
-                ? x + (boxWidth + fittedWidth) / 2f
-                        + referenceBounds.x * scale
-                : x + (boxWidth - fittedWidth) / 2f
-                        - referenceBounds.x * scale;
-        // PAM stores vertical bounds in its source (downward-positive)
-        // coordinate system. PamPlayer flips that axis while drawing, so the
-        // anchor must add the bounds center instead of subtracting bounds.y.
-        float anchorY = y + boxHeight / 2f
-                + (referenceBounds.y + referenceBounds.height / 2f) * scale;
 
         previousColor.set(batch.getColor());
         previousTransform.set(batch.getTransformMatrix());
         fittedTransform.set(previousTransform)
-                .translate(anchorX, anchorY, 0f)
-                .scale(flipX ? -scale : scale, scale, 1f);
+                .translate(fit.anchorX(), fit.anchorY(), 0f)
+                .scale(
+                        flipX ? -fit.scale() : fit.scale(),
+                        fit.scale(),
+                        1f
+                );
 
         try {
             Color safeTint = tint == null ? Color.WHITE : tint;
@@ -219,17 +231,71 @@ public final class PamAnimationRenderer {
         }
     }
 
+    static Fit fitReference(
+            Rectangle referenceBounds,
+            float x,
+            float y,
+            float boxWidth,
+            float boxHeight,
+            boolean flipX
+    ) {
+        Objects.requireNonNull(
+                referenceBounds,
+                "reference bounds cannot be null"
+        );
+        float scale = Math.min(
+                boxWidth / referenceBounds.width,
+                boxHeight / referenceBounds.height
+        );
+        float fittedWidth = referenceBounds.width * scale;
+        float anchorX = flipX
+                ? x + (boxWidth + fittedWidth) / 2f
+                        + referenceBounds.x * scale
+                : x + (boxWidth - fittedWidth) / 2f
+                        - referenceBounds.x * scale;
+        // PAM stores vertical bounds in its source (downward-positive)
+        // coordinate system. PamPlayer flips that axis while drawing, so the
+        // anchor adds the reference bounds center.
+        float anchorY = y + boxHeight / 2f
+                + (referenceBounds.y + referenceBounds.height / 2f) * scale;
+        return new Fit(scale, anchorX, anchorY);
+    }
+
     private void request(AnimationKey key) {
-        if (failed.contains(key) || !requested.add(key)) {
+        if (disposed || failed.contains(key) || !requested.add(key)) {
             return;
         }
-        animations.prepare(key.pamPath(), key.clipName(), bounds -> {
-            if (bounds == null) {
-                failed.add(key);
-            } else {
-                boundsCache.put(key, new Rectangle(bounds));
-            }
-        });
+        PamAnimationService.AnimationRequest request = animations.prepare(
+                key.pamPath(),
+                key.clipName(),
+                bounds -> {
+                    requests.remove(key);
+                    if (disposed) {
+                        return;
+                    }
+                    if (bounds == null) {
+                        failed.add(key);
+                    } else {
+                        boundsCache.put(key, new Rectangle(bounds));
+                    }
+                }
+        );
+        requests.put(key, request);
+    }
+
+    @Override
+    public void dispose() {
+        if (disposed) {
+            return;
+        }
+        disposed = true;
+        for (PamAnimationService.AnimationRequest request : requests.values()) {
+            request.cancel();
+        }
+        requests.clear();
+        boundsCache.clear();
+        requested.clear();
+        failed.clear();
     }
 
     private record AnimationKey(String pamPath, String clipName) {
@@ -237,5 +303,8 @@ public final class PamAnimationRenderer {
             Objects.requireNonNull(pamPath, "PAM path cannot be null");
             Objects.requireNonNull(clipName, "clip name cannot be null");
         }
+    }
+
+    record Fit(float scale, float anchorX, float anchorY) {
     }
 }

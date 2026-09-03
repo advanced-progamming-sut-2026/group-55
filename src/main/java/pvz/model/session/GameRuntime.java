@@ -37,9 +37,48 @@ public final class GameRuntime {
             );
         }
 
-        session = sessionFactory.create(config, discoveryListener);
-        session.start();
-        controller = new GameController(session);
+        GameSession startedSession = createStartedSession(
+                config,
+                discoveryListener
+        );
+        session = startedSession;
+        controller = new GameController(startedSession);
+    }
+
+    public void restart(GameSessionConfig config) {
+        restart(config, ZombieDiscoveryListener.none());
+    }
+
+    /**
+     * Replaces the current battle with a completely fresh session.
+     *
+     * <p>The replacement is created before the old session is aborted, so a
+     * configuration or factory failure cannot leave a working battle half
+     * cleared.</p>
+     */
+    public void restart(
+            GameSessionConfig config,
+            ZombieDiscoveryListener discoveryListener
+    ) {
+        Objects.requireNonNull(config, "session config cannot be null");
+        Objects.requireNonNull(
+                discoveryListener,
+                "zombie discovery listener cannot be null"
+        );
+
+        GameSession replacement = createStartedSession(
+                config,
+                discoveryListener
+        );
+        GameController replacementController = new GameController(
+                replacement
+        );
+
+        if (isActive()) {
+            session.abort();
+        }
+        session = replacement;
+        controller = replacementController;
     }
 
     public String handle(String input) {
@@ -95,5 +134,17 @@ public final class GameRuntime {
 
         session = null;
         controller = null;
+    }
+
+    private GameSession createStartedSession(
+            GameSessionConfig config,
+            ZombieDiscoveryListener discoveryListener
+    ) {
+        GameSession created = sessionFactory.create(
+                config,
+                discoveryListener
+        );
+        created.start();
+        return created;
     }
 }
