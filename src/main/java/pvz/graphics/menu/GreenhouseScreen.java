@@ -14,6 +14,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 
 import pvz.graphics.BaseScreen;
+import pvz.graphics.asset.PlantVisualResolver;
 import pvz.graphics.PvzGame;
 import pvz.graphics.actor.PlantActor;
 import pvz.libpvz.pam.PamPlayer;
@@ -25,8 +26,6 @@ import pvz.model.service.GreenhouseService;
 import pvz.model.utils.AppState;
 import pvz.model.utils.MenuName;
 
-import java.util.HashMap;
-import java.util.Map;
 
 public class GreenhouseScreen extends BaseScreen {
 
@@ -47,10 +46,9 @@ public class GreenhouseScreen extends BaseScreen {
     private static final String GROWING_TEXTURE = "IMAGE_ZEN_GARDEN_GROWING_PLANT_SLOT_GROWING_PLANT_SLOT_122X161";
     private static final String BEE_PATH = "768/INITIAL/ZEN_GARDEN/BEE/BEE.PAM";
 
-    private static final Map<String, String> PAM_CACHE = new HashMap<>();
-
     private final GreenhouseService greenhouseService;
     private final PamPlayer pamPlayer;
+    private final PlantVisualResolver plantVisuals;
 
     private final Group greenhouseGroup = new Group();
     private Label sproutLabel;
@@ -76,6 +74,10 @@ public class GreenhouseScreen extends BaseScreen {
         super(game, textures, batch, skin, appState, userManager, "IMAGE_BACKGROUNDS_ZEN_GARDEN");
         this.greenhouseService = greenhouseService;
         this.pamPlayer = game.getAnimationService().player();
+        this.plantVisuals = new PlantVisualResolver(
+                textures,
+                Gdx.files.internal("assets")
+        );
         buildUI();
     }
 
@@ -468,11 +470,13 @@ public class GreenhouseScreen extends BaseScreen {
     }
 
     private void addPlantAnimation(Group group, String plantName) {
-        String path = findPlantPamPath(plantName);
+        String path = plantVisuals.animationPath(plantName);
         if (path == null) {
             System.out.println("Plant PAM not found: " + plantName);
             return;
         }
+
+        String clip = plantVisuals.animationClip(plantName);
 
         Group scaler = new Group();
         scaler.setSize(POT_SIZE, POT_SIZE);
@@ -480,36 +484,15 @@ public class GreenhouseScreen extends BaseScreen {
         scaler.setOrigin(POT_SIZE / 2f, PLANT_ORIGIN_Y);
         scaler.setScale(POT_SCALE);
 
-        PlantActor actor = new PlantActor(pamPlayer, path);
+        PlantActor actor = new PlantActor(
+                pamPlayer,
+                path,
+                clip
+        );
         actor.setSize(POT_SIZE, POT_SIZE);
 
         scaler.addActor(actor);
         group.addActor(scaler);
-    }
-
-    private String findPlantPamPath(String plantName) {
-        if (plantName == null || plantName.isBlank()) return null;
-
-        if (PAM_CACHE.containsKey(plantName)) return PAM_CACHE.get(plantName);
-
-        String normalized = plantName.trim().toUpperCase().replace(' ', '_').replace('-', '_');
-        String compact = normalized.replace("_", "");
-
-        for (String folder : new String[]{"INITIAL", "FULL"}) {
-            String path1 = "768/" + folder + "/PLANT/" + normalized + "/" + normalized + ".PAM";
-            if (assetExists(path1)) {
-                PAM_CACHE.put(plantName, path1);
-                return path1;
-            }
-
-            String path2 = "768/" + folder + "/PLANT/" + compact + "/" + compact + ".PAM";
-            if (assetExists(path2)) {
-                PAM_CACHE.put(plantName, path2);
-                return path2;
-            }
-        }
-
-        return null;
     }
 
     private boolean assetExists(String path) {

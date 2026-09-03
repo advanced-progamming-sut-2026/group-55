@@ -2,7 +2,6 @@ package pvz.model.service;
 
 import pvz.model.account.PlayerPlant;
 import pvz.model.account.User;
-import pvz.model.greenhouse.Pot;
 import pvz.model.shop.*;
 import pvz.model.utils.SystemMessage;
 
@@ -55,14 +54,8 @@ public class ShopService {
     }
 
     private void buyPot(User user, int count, int totalCoin) throws Exception {
-        int lockedPots = 0;
-        for (int y = 2; y <= 4; y++) {
-            for (int x = 1; x <= 5; x++) {
-                Pot pot = user.getGreenhouse().getPot(x, y);
-                if (pot != null && pot.isLocked())
-                    lockedPots++;
-            }
-        }
+        int lockedPots =
+                user.getGreenhouse().getLockedPotCount();
 
         if (count > lockedPots) {
             throw new Exception(SystemMessage.SHOP_POTS_MAX_CAPACITY.getMessage());
