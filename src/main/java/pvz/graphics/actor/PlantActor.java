@@ -11,6 +11,7 @@ public class PlantActor extends Actor {
     private final String pamPath;
     private final Color previousBatchColor = new Color();
 
+    private String clipName;
     private float stateTime;
     private String cachedClipName = null;
 
