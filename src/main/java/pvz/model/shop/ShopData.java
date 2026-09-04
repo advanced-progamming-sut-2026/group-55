@@ -1,11 +1,12 @@
 package pvz.model.shop;
 
 import java.util.Collection;
-import java.util.LinkedHashMap;
+import java.util.HashMap;
 import java.util.Map;
 
+
 public class ShopData {
-    private static final Map<Integer, ShopItem> ITEMS = new LinkedHashMap<>();
+    private static final Map<Integer, ShopItem> ITEMS = new HashMap<>();
 
     static {
         ITEMS.put(1, new ShopItem(1, "Pot", 2000, 0, 1, ShopItemType.POT));

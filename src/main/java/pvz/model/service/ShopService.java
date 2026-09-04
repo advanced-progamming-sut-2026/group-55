@@ -56,8 +56,8 @@ public class ShopService {
 
     private void buyPot(User user, int count, int totalCoin) throws Exception {
         int lockedPots = 0;
-        for (int y = 2; y <= 3; y++) {
-            for (int x = 1; x <= 4; x++) {
+        for (int y = 2; y <= 4; y++) {
+            for (int x = 1; x <= 5; x++) {
                 Pot pot = user.getGreenhouse().getPot(x, y);
                 if (pot != null && pot.isLocked())
                     lockedPots++;
