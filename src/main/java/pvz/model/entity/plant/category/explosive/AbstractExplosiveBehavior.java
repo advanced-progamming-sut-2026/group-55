@@ -20,6 +20,7 @@ abstract class AbstractExplosiveBehavior extends AbstractPlantBehavior
     private final TransientActionWindow window;
 
     private boolean effectResolved;
+    private int resolvedActivations;
 
     protected AbstractExplosiveBehavior(
             Plant owner,
@@ -91,6 +92,11 @@ abstract class AbstractExplosiveBehavior extends AbstractPlantBehavior
 
         window.finish();
         resolveEffect(currentTick);
+        if (resolvedActivations < profile.maxActivations()) {
+            effectResolved = false;
+            window.reset();
+            return;
+        }
         owner().tryRemove(PlantThreat.TRANSIENT_EFFECT_COMPLETION);
     }
 
@@ -134,6 +140,7 @@ abstract class AbstractExplosiveBehavior extends AbstractPlantBehavior
         }
 
         effectResolved = true;
+        resolvedActivations++;
         applyEffect(currentTick);
     }
 

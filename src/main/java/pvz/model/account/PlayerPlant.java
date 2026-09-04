@@ -24,6 +24,9 @@ public class PlayerPlant {
     }
 
     public void addSeedPackets(int amount) {
+        if (amount < 0) {
+            throw new IllegalArgumentException("seed packet amount cannot be negative");
+        }
         long newAmount = (long) this.seedPackets + amount;
         if (newAmount > Integer.MAX_VALUE) {
             this.seedPackets = Integer.MAX_VALUE;
@@ -33,6 +36,9 @@ public class PlayerPlant {
     }
 
     public boolean spendSeedPackets(int amount) {
+        if (amount < 0) {
+            throw new IllegalArgumentException("seed packet cost cannot be negative");
+        }
         if (this.seedPackets >= amount) {
             this.seedPackets -= amount;
             return true;
@@ -41,6 +47,9 @@ public class PlayerPlant {
     }
 
     public void upgrade() {
+        if (this.level >= 4) {
+            throw new IllegalStateException("plant is already at maximum level");
+        }
         this.level++;
     }
 }

@@ -7,6 +7,7 @@ public final class BattleResources {
     private final BattleWallet battleWallet;
     private int plantFoodCount;
     private int collectedPotCount;
+    private boolean plantFoodReturned;
     private boolean cooldownCheatEnabled;
 
     public BattleResources(int startingSun, int startingPlantFood) {
@@ -54,6 +55,19 @@ public final class BattleResources {
 
     public int getCollectedPotCount() {
         return collectedPotCount;
+    }
+
+    public boolean isPlantFoodReturned() {
+        return plantFoodReturned;
+    }
+
+    public void markPlantFoodReturned() {
+        if (plantFoodReturned) {
+            throw new IllegalStateException(
+                    "battle plant food has already been returned"
+            );
+        }
+        plantFoodReturned = true;
     }
 
     public void enableCooldownCheat() {

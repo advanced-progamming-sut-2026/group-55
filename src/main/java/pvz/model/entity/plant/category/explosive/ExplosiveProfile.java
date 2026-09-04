@@ -91,6 +91,23 @@ public final class ExplosiveProfile {
         );
     }
 
+
+    public int maxActivations() {
+        return (int) optional("maxActivations", 1);
+    }
+
+    public int normalTargetCount() {
+        return (int) optional("normalTargetCount", 1);
+    }
+
+    public int meltRadius() {
+        return (int) optional("meltRadius", 0);
+    }
+
+    public double finishExplosionDamage() {
+        return optional("finishExplosionDamage", 0);
+    }
+
     public boolean supportsPlantFood() {
         return switch (kind) {
             case MINE, SQUASH, TANGLE_KELP, FREEZE_TRAP -> true;

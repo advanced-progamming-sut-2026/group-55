@@ -20,6 +20,7 @@ import pvz.model.account.UserManager;
 import pvz.model.command.ProfileCommand;
 import pvz.model.service.AuthService;
 import pvz.model.utils.AppState;
+import pvz.model.utils.MenuName;
 import pvz.view.MenuView;
 
 public class ProfileScreen extends Group {
@@ -36,6 +37,7 @@ public class ProfileScreen extends Group {
     private final Table contentTable;
     private final Label messageLabel;
     private Image overlay;
+    private Texture overlayTexture;
 
     public ProfileScreen(TextureBank textures, Skin skin, AppState appState, UserManager userManager) {
         this.textures = textures;
@@ -127,9 +129,9 @@ public class ProfileScreen extends Group {
         Pixmap pixmap = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
         pixmap.setColor(Color.BLACK);
         pixmap.fill();
-        Texture texture = new Texture(pixmap);
+        overlayTexture = new Texture(pixmap);
         pixmap.dispose();
-        return new TextureRegionDrawable(new TextureRegion(texture));
+        return new TextureRegionDrawable(new TextureRegion(overlayTexture));
     }
 
     private void buildProfileContent() {
@@ -289,6 +291,7 @@ public class ProfileScreen extends Group {
     public void show() {
         if (appState.getCurrentUser() != null) buildProfileContent();
 
+        appState.setCurrentMenu(MenuName.PROFILE);
         if (overlay != null) {
             overlay.setSize(getWidth(), getHeight());
             overlay.getColor().a = OVERLAY_ALPHA;
@@ -300,5 +303,13 @@ public class ProfileScreen extends Group {
 
     public void hide() {
         setVisible(false);
+        appState.setCurrentMenu(MenuName.MAIN);
+    }
+
+    public void dispose() {
+        if (overlayTexture != null) {
+            overlayTexture.dispose();
+            overlayTexture = null;
+        }
     }
 }

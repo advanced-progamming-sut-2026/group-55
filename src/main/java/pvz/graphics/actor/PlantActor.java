@@ -15,8 +15,17 @@ public class PlantActor extends Actor {
     private String cachedClipName = null;
 
     public PlantActor(PamPlayer pamPlayer, String pamPath) {
+        this(pamPlayer, pamPath, "idle");
+    }
+
+    public PlantActor(
+            PamPlayer pamPlayer,
+            String pamPath,
+            String clipName
+    ) {
         this.pamPlayer = pamPlayer;
         this.pamPath = pamPath;
+        this.clipName = clipName;
     }
 
     @Override

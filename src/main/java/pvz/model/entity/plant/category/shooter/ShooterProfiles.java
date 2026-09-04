@@ -9,6 +9,7 @@ import pvz.model.entity.plant.PlantSpec;
 import pvz.model.entity.plant.attack.ShotPath;
 import pvz.model.entity.plant.attack.ShotVector;
 import pvz.model.entity.projectile.ProjectileType;
+import pvz.model.entity.plant.level.PlantUpgradeType;
 
 public final class ShooterProfiles {
     private static final double DEFAULT_SHOT_DAMAGE = 20;
@@ -32,19 +33,29 @@ public final class ShooterProfiles {
         }
 
         return switch (spec.getName().toLowerCase(Locale.ROOT)) {
-            case "peashooter" , "pea pod" -> singleLaneProfile(
-                    20,
+            case "peashooter" -> singleLaneProfile(
+                    parseSimpleDamage(spec.getDamage()),
                     1,
                     0,
                     ProjectileType.NORMAL
             );
 
-            case "repeater" -> singleLaneProfile(
-                    20,
-                    2,
-                    RAPID_SHOT_GAP_TICKS,
+            case "pea pod" -> singleLaneProfile(
+                    parseFirstDamage(spec.getDamage()),
+                    1,
+                    0,
                     ProjectileType.NORMAL
             );
+
+            case "repeater" -> {
+                DamageBurst burst = parseDamageBurst(spec.getDamage());
+                yield singleLaneProfile(
+                    burst.damagePerProjectile(),
+                    burst.shotsPerDirection(),
+                    RAPID_SHOT_GAP_TICKS,
+                    ProjectileType.NORMAL
+                );
+            }
 
             case "snow pea" -> singleLaneProfile(
                     parseSimpleDamage(spec.getDamage()),
@@ -56,7 +67,7 @@ public final class ShooterProfiles {
             case "rotobaga" -> createRotobagaProfile(spec);
 
             case "threepeater" -> new ShooterProfile(
-                    20,
+                    parseSimpleDamage(spec.getDamage()),
                     0,
                     List.of(
                             new ShotPath(-1, ShotVector.RIGHT, 1),
@@ -68,29 +79,34 @@ public final class ShooterProfiles {
             );
 
             case "fire peashooter" -> singleLaneProfile(
-                    20,
+                    parseSimpleDamage(spec.getDamage()),
                     1,
                     0,
                     ProjectileType.FIRE
             );
 
-            case "mega gatling pea" -> singleLaneProfile(
-                    20,
-                    4,
-                    RAPID_SHOT_GAP_TICKS,
-                    ProjectileType.NORMAL
-            );
+            case "mega gatling pea" -> {
+                DamageBurst burst = parseDamageBurst(spec.getDamage());
+                yield singleLaneProfile(
+                        burst.damagePerProjectile(),
+                        burst.shotsPerDirection(),
+                        RAPID_SHOT_GAP_TICKS,
+                        ProjectileType.NORMAL
+                );
+            }
 
             case "puff-shroom", "sea-shroom" -> singleLaneProfile(
-                            20,
+                            parseSimpleDamage(spec.getDamage()),
                             1,
                             0,
                             ProjectileType.NORMAL,
                             SHORT_RANGE_TILES
+                                    + (int) Math.round(spec.getUpgradeValue(
+                                    PlantUpgradeType.RANGE_TILES_ADD))
             );
 
             case "split pea" -> new ShooterProfile(
-                    20,
+                    parseSimpleDamage(spec.getDamage()),
                     RAPID_SHOT_GAP_TICKS,
                     List.of(
                             new ShotPath(0, ShotVector.RIGHT, 1),
@@ -100,7 +116,7 @@ public final class ShooterProfiles {
                     FULL_BOARD_RANGE
             );
             case "citron" -> singleLaneProfile(
-                    800,
+                    parseSimpleDamage(spec.getDamage()),
                     1,
                     0,
                     ProjectileType.NORMAL
@@ -231,6 +247,12 @@ public final class ShooterProfiles {
                 0,
                 ProjectileType.NORMAL
         );
+    }
+
+
+    private static double parseFirstDamage(String damageText) {
+        String first = damageText.strip().split("/")[0];
+        return parseSimpleDamage(first);
     }
 
     private static double parseSimpleDamage(String damageText) {

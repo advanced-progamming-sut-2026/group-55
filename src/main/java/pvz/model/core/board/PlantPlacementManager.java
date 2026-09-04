@@ -17,26 +17,22 @@ final class PlantPlacementManager {
     }
 
     String plant(int x, int y, Plant plant) {
-        if (!grid.inBounds(x, y)) {
-            return "location (" + x + ", " + y + ") is out of bounds!";
+        String validationError = validationError(x, y, plant);
+        if (validationError != null) {
+            return validationError;
         }
 
         Tile tile = grid.getTile(x, y);
-
         if (plant.requiresTargetTile()) {
-            return plantOnTargetTile(x, y, tile, plant);
+            tile.addTopPlant(plant);
+        } else {
+            tile.addPlant(plant);
         }
-
-        if (!tile.isPlantableFor(plant)) {
-            return "you can't plant " + plant.getName() + " on this tile!";
-        }
-
-        if (!tile.canStack(plant)) {
-            return "tile (" + x + ", " + y + ") is already occupied!";
-        }
-
-        tile.addPlant(plant);
         return "planted " + plant.getName() + " at (" + x + ", " + y + ") successfully!";
+    }
+
+    boolean canPlant(int x, int y, Plant plant) {
+        return validationError(x, y, plant) == null;
     }
 
     Plant getTopPlant(int x, int y) {
@@ -78,18 +74,27 @@ final class PlantPlacementManager {
         return true;
     }
 
-    private String plantOnTargetTile(
-            int x,
-            int y,
-            Tile tile,
-            Plant plant
-    ) {
-        if (!plant.canTargetTile(describeTarget(x, y, tile))) {
+    private String validationError(int x, int y, Plant plant) {
+        Objects.requireNonNull(plant, "plant cannot be null");
+        if (!grid.inBounds(x, y)) {
+            return "location (" + x + ", " + y + ") is out of bounds!";
+        }
+
+        Tile tile = grid.getTile(x, y);
+        if (plant.requiresTargetTile()) {
+            if (plant.canTargetTile(describeTarget(x, y, tile))) {
+                return null;
+            }
             return "you can't plant " + plant.getName() + " on this tile!";
         }
 
-        tile.addTopPlant(plant);
-        return "planted " + plant.getName() + " at (" + x + ", " + y + ") successfully!";
+        if (!tile.isPlantableFor(plant)) {
+            return "you can't plant " + plant.getName() + " on this tile!";
+        }
+        if (!tile.canStack(plant)) {
+            return "tile (" + x + ", " + y + ") is already occupied!";
+        }
+        return null;
     }
 
     private PlantPlacementTarget describeTarget(int x, int y, Tile tile) {

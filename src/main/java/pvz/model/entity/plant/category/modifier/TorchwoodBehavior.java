@@ -6,6 +6,9 @@ import pvz.model.entity.plant.behavior.capability.PlantFoodCapability;
 import pvz.model.entity.plant.behavior.capability.ProjectilePassThroughModifierCapability;
 import pvz.model.entity.projectile.PeaHeatState;
 import pvz.model.entity.projectile.ProjectileModifierTarget;
+import pvz.model.entity.plant.level.PlantUpgradeType;
+import pvz.model.entity.plant.lifecycle.PlantThreat;
+import pvz.model.core.GameEvents;
 
 final class TorchwoodBehavior extends AbstractPlantBehavior
         implements PlantFoodCapability,
@@ -73,6 +76,21 @@ final class TorchwoodBehavior extends AbstractPlantBehavior
                 : normalPeaDamageMultiplier;
 
         projectile.promotePeaHeat(targetState, targetMultiplier);
+    }
+
+
+    @Override
+    public void onRemoved(PlantThreat threat) {
+        double deathDamage = owner().getSpec().getUpgradeValue(
+                PlantUpgradeType.TORCHWOOD_DEATH_EXPLOSION_DAMAGE
+        );
+        if (deathDamage <= 0
+                || (threat != PlantThreat.DAMAGE && threat != PlantThreat.INSTANT_DESTROY)) {
+            return;
+        }
+        world().damageEnemyContentsInRow(row(), deathDamage);
+        GameEvents.publish(owner().getName() + " released a row-wide death burst for "
+                + deathDamage + " damage.");
     }
 
     @Override

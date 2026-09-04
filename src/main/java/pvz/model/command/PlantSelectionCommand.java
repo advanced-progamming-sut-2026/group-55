@@ -9,6 +9,7 @@ public class PlantSelectionCommand implements Command {
         ADD_PLANT,
         REMOVE_PLANT,
         BOOST_PLANT,
+        UPGRADE_PLANT,
         START_GAME
     }
 

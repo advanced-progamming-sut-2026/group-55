@@ -1,6 +1,5 @@
 package pvz.graphics.menu;
 
-import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
@@ -15,6 +14,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 
 import pvz.graphics.BaseScreen;
+import pvz.graphics.PvzGame;
 import pvz.graphics.actor.PlantActor;
 import pvz.libpvz.pam.PamPlayer;
 import pvz.libpvz.textures.TextureBank;
@@ -23,6 +23,7 @@ import pvz.model.account.UserManager;
 import pvz.model.greenhouse.*;
 import pvz.model.service.GreenhouseService;
 import pvz.model.utils.AppState;
+import pvz.model.utils.MenuName;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -63,7 +64,7 @@ public class GreenhouseScreen extends BaseScreen {
     private boolean refreshing;
 
     public GreenhouseScreen(
-            Game game,
+            PvzGame game,
             TextureBank textures,
             SpriteBatch batch,
             Skin skin,
@@ -73,7 +74,7 @@ public class GreenhouseScreen extends BaseScreen {
     ) {
         super(game, textures, batch, skin, appState, userManager, "IMAGE_BACKGROUNDS_ZEN_GARDEN");
         this.greenhouseService = greenhouseService;
-        this.pamPlayer = new PamPlayer(textures, Gdx.files.internal("assets"));
+        this.pamPlayer = game.getAnimationService().player();
         buildUI();
     }
 
@@ -530,10 +531,12 @@ public class GreenhouseScreen extends BaseScreen {
     }
 
     private void collect(int x, int y) {
-        execute(() -> {
-            User currentUser = appState.getCurrentUser();
-            if (currentUser == null || currentUser.getGreenhouse() == null) return;
+        User currentUser = appState.getCurrentUser();
+        if (currentUser == null || currentUser.getGreenhouse() == null) {
+            return;
+        }
 
+        try {
             int initialCoins = currentUser.getCoins();
             int initialBoosts = currentUser.getStoredBoosts() != null ? currentUser.getStoredBoosts().size() : 0;
 
@@ -551,8 +554,12 @@ public class GreenhouseScreen extends BaseScreen {
                 rewardText = "Harvested!";
             }
 
-            showRewardNotification(rewardText);
-        });
+            if (saveAndRefresh()) {
+                showRewardNotification(rewardText);
+            }
+        } catch (Exception e) {
+            showError(e.getMessage());
+        }
     }
 
     private void grow(int x, int y) {
@@ -595,27 +602,65 @@ public class GreenhouseScreen extends BaseScreen {
         void run() throws Exception;
     }
 
-    private void saveAndRefresh() {
+    private boolean saveAndRefresh() {
         if (!userManager.save()) {
-            userManager.reload();
             User current = appState.getCurrentUser();
+            String username = current == null ? null : current.getUsername();
+
+            userManager.reload();
+
             if (current != null) {
-                User reloaded = userManager.find(u -> u.getUsername().equals(current.getUsername()));
+                User reloaded = userManager.find(u -> u.getUsername().equals(username));
                 appState.setCurrentUser(reloaded);
             }
+
+            rebuildPots(true);
+            rebuildCurrencies();
+            showError("Failed to save greenhouse changes.");
+            return false;
         }
+
         rebuildPots(true);
         rebuildCurrencies();
+        return true;
     }
 
     private void rebuildCurrencies() {
-        if (sproutLabel != null) sproutLabel.setText(getStoredBoostsCount());
-        if (diamondLabel != null) diamondLabel.setText(getDiamondCount());
-        if (coinLabel != null) coinLabel.setText(getCoinCount());
+        updateCurrencyLabel(sproutLabel, getStoredBoostsCount());
+        updateCurrencyLabel(diamondLabel, getDiamondCount());
+        updateCurrencyLabel(coinLabel, getCoinCount());
+    }
+
+    private void updateCurrencyLabel(Label label, String value) {
+        if (label == null) {
+            return;
+        }
+
+        label.setText(value);
+        label.pack();
     }
 
     private void showError(String message) {
-        System.out.println("Greenhouse error: " + (message == null ? "" : message));
+        String errorMessage = message == null || message.isBlank()
+                ? "Greenhouse action failed."
+                : message;
+
+        Label label = new Label(errorMessage, skin);
+        label.setColor(Color.RED);
+        label.setFontScale(1.05f);
+        label.pack();
+        label.setPosition(
+                (WIDTH - label.getWidth()) / 2f,
+                HEIGHT / 2f - 25f
+        );
+
+        label.addAction(Actions.sequence(
+                Actions.delay(2.5f),
+                Actions.fadeOut(0.3f),
+                Actions.removeActor()
+        ));
+
+        stage.addActor(label);
     }
 
     @Override
@@ -634,7 +679,7 @@ public class GreenhouseScreen extends BaseScreen {
     @Override
     public void show() {
         super.show();
-        Gdx.input.setInputProcessor(stage);
+        appState.setCurrentMenu(MenuName.GREENHOUSE);
     }
 
     @Override

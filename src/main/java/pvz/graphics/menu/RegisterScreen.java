@@ -1,6 +1,5 @@
 package pvz.graphics.menu;
 
-import com.badlogic.gdx.Game;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.actions.Actions;
@@ -9,10 +8,12 @@ import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 
 import pvz.controller.RegisterController;
 import pvz.graphics.BaseScreen;
+import pvz.graphics.PvzGame;
 import pvz.libpvz.textures.TextureBank;
 import pvz.model.account.UserManager;
 import pvz.model.command.RegisterCommand;
 import pvz.model.utils.AppState;
+import pvz.model.utils.MenuName;
 import pvz.view.MenuView;
 
 public class RegisterScreen extends BaseScreen {
@@ -33,7 +34,7 @@ public class RegisterScreen extends BaseScreen {
     private String username, password, passwordConfirm, nickname, email, gender;
 
     public RegisterScreen(
-            Game game,
+            PvzGame game,
             TextureBank textures,
             com.badlogic.gdx.graphics.g2d.SpriteBatch batch,
             Skin skin,
@@ -387,5 +388,11 @@ public class RegisterScreen extends BaseScreen {
                 Actions.fadeOut(.3f),
                 Actions.removeActor()
         ));
+    }
+
+    @Override
+    public void show() {
+        super.show();
+        appState.setCurrentMenu(MenuName.REGISTER);
     }
 }

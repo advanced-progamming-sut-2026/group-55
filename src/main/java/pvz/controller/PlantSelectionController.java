@@ -7,6 +7,7 @@ import pvz.model.account.UserManager;
 import pvz.model.command.Command;
 import pvz.model.command.PlantSelectionCommand;
 import pvz.model.entity.plant.PlantSpec;
+import pvz.model.service.PlantUpgradeService;
 import pvz.model.entity.plant.plantfood.PlantFoodSupport;
 import pvz.model.session.GameRuntime;
 import pvz.model.session.GameSessionConfig;
@@ -22,6 +23,9 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Locale;
+import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.Set;
 
 public class PlantSelectionController extends BaseController {
@@ -29,6 +33,7 @@ public class PlantSelectionController extends BaseController {
     private final PlantData plantData;
     private final GameRuntime gameRuntime;
     private final GameSessionConfigFactory configFactory;
+    private final PlantUpgradeService plantUpgradeService;
     private final List<String> selectedPlants;
     private final Set<String> boostedPlants;
     private int maxSlots = 8;
@@ -48,6 +53,7 @@ public class PlantSelectionController extends BaseController {
                 configFactory,
                 "game session config factory cannot be null"
         );
+        this.plantUpgradeService = new PlantUpgradeService(plantData.levelCosts());
         this.selectedPlants = new ArrayList<>();
         this.boostedPlants = new HashSet<>();
     }
@@ -73,6 +79,8 @@ public class PlantSelectionController extends BaseController {
                     handleRemovePlant(plantCommand);
             case BOOST_PLANT ->
                     handleBoostPlant(plantCommand, currentUser);
+            case UPGRADE_PLANT ->
+                    handleUpgradePlant(plantCommand, currentUser);
             case START_GAME ->
                     handleStartGame(currentUser);
         }
@@ -117,9 +125,14 @@ public class PlantSelectionController extends BaseController {
             return;
         }
 
-        availablePlants.forEach(spec ->
-                view.showSuccess("- " + spec.getName())
-        );
+        availablePlants.forEach(spec -> {
+            PlayerPlant playerPlant = user.getOwnedPlant(spec.getName());
+            PlantSpec effectiveSpec = spec.withLevel(playerPlant.getLevel());
+            view.showSuccess("- " + spec.getName()
+                    + " [Lvl " + playerPlant.getLevel()
+                    + ", Cost " + effectiveSpec.getCost()
+                    + ", Seeds " + seedProgress(playerPlant) + "]");
+        });
     }
 
     private void handleShowSelectedPlants(User user) {
@@ -149,8 +162,13 @@ public class PlantSelectionController extends BaseController {
                         || user.hasStoredBoost(plant);
 
         String boostStatus = boosted ? " [BOOSTED]" : "";
+        PlayerPlant playerPlant = user.getOwnedPlant(plant);
+        int level = playerPlant == null ? PlantSpec.MIN_LEVEL : playerPlant.getLevel();
+        PlantSpec baseSpec = plantData.byName().get(normalizeName(plant));
+        int effectiveCost = baseSpec == null ? 0 : baseSpec.withLevel(level).getCost();
 
-        view.showSuccess("- " + plant + boostStatus);
+        view.showSuccess("- " + plant + " [Lvl " + level
+                + ", Cost " + effectiveCost + "]" + boostStatus);
     }
 
     private void handleAddPlant(
@@ -298,6 +316,47 @@ public class PlantSelectionController extends BaseController {
         view.showError("Failed to save boost state.");
     }
 
+    private void handleUpgradePlant(
+            PlantSelectionCommand command,
+            User user
+    ) {
+        String target = normalizeName(command.getTargetName());
+        PlantSpec spec = plantData.byName().get(target);
+        if (spec == null) {
+            view.showError(SystemMessage.PLANT_SELECTION_INVALID_NAME.getMessage());
+            return;
+        }
+
+        PlantUpgradeService.Result result = plantUpgradeService.upgrade(
+                user,
+                spec.getName()
+        );
+        switch (result) {
+            case NOT_OWNED -> view.showError(
+                    SystemMessage.PLANT_SELECTION_NOT_OWNED.getMessage());
+            case MAX_LEVEL -> view.showError(
+                    SystemMessage.COLLECTION_MAX_LEVEL_REACHED.getMessage());
+            case NOT_ENOUGH_COINS -> view.showError(
+                    SystemMessage.COLLECTION_NOT_ENOUGH_COINS.getMessage());
+            case NOT_ENOUGH_SEEDS -> view.showError(
+                    SystemMessage.COLLECTION_NOT_ENOUGH_SEEDS.getMessage());
+            case SUCCESS -> {
+                String username = user.getUsername();
+                if (userManager.save()) {
+                    PlayerPlant playerPlant = user.getOwnedPlant(spec.getName());
+                    view.showSuccess(spec.getName() + " upgraded to level "
+                            + playerPlant.getLevel() + ".");
+                } else {
+                    userManager.reload();
+                    appState.setCurrentUser(userManager.find(
+                            candidate -> candidate.getUsername().equals(username)
+                    ));
+                    view.showError("Failed to save game data. Plant upgrade reverted.");
+                }
+            }
+        }
+    }
+
     private void handleStartGame(User currentUser) {
         String selectedLevelId = appState.getSelectedLevelId();
 
@@ -415,9 +474,22 @@ public class PlantSelectionController extends BaseController {
             int startingPlantFood,
             int difficultyLevel
     ) {
+        User user = appState.getCurrentUser();
+        Map<String, Integer> plantLevels = selectedPlants.stream()
+                .collect(Collectors.toUnmodifiableMap(
+                        plant -> plant,
+                        plant -> {
+                            PlayerPlant playerPlant = user.getOwnedPlant(plant);
+                            return playerPlant == null
+                                    ? PlantSpec.MIN_LEVEL
+                                    : playerPlant.getLevel();
+                        }
+                ));
+
         return configFactory.create(
                 selectedLevelId,
                 List.copyOf(selectedPlants),
+                plantLevels,
                 Set.copyOf(activeBoosts),
                 startingPlantFood,
                 difficultyLevel
@@ -450,13 +522,45 @@ public class PlantSelectionController extends BaseController {
                 || user.hasStoredBoost(plantName);
     }
 
+    private String seedProgress(PlayerPlant playerPlant) {
+        if (playerPlant.getLevel() >= PlantSpec.MAX_LEVEL) {
+            return "MAX";
+        }
+        int required = plantData.levelCosts()
+                .forTargetLevel(playerPlant.getLevel() + 1)
+                .seedPackets();
+        return playerPlant.getSeedPackets() + "/" + required;
+    }
+
     private String normalizeName(String plantName) {
-        return plantName.toLowerCase();
+        return plantName.toLowerCase(Locale.ROOT);
     }
 
     public void resetSelection() {
         selectedPlants.clear();
         boostedPlants.clear();
+    }
+
+    public List<String> getSelectedPlants() {
+        return List.copyOf(selectedPlants);
+    }
+
+    public Set<String> getBoostedPlants() {
+        return Set.copyOf(boostedPlants);
+    }
+
+    public int getMaxSlots() {
+        return maxSlots;
+    }
+
+    public boolean isPlantSelected(String plantName) {
+        return plantName != null && isSelected(plantName);
+    }
+
+    public boolean isPlantBoosted(String plantName, User user) {
+        return plantName != null
+                && user != null
+                && isAlreadyBoosted(normalizeName(plantName), user);
     }
 
     @Override

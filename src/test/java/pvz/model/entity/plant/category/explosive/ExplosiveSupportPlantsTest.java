@@ -327,7 +327,7 @@ class ExplosiveSupportPlantsTest {
                 world.board().getTile(6, 4).getType()
         );
 
-        game.advance(5);
+        game.advance(20);
 
         assertEquals(
                 TileType.NORMAL,

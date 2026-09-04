@@ -11,6 +11,15 @@ public interface SunProfile {
     default void applyPlantFoodEffect() {
     }
 
+    /**
+     * Logical growth stage used by stage-aware visuals. Most sun producers
+     * have a single stage; Sun-shroom overrides this with its three-stage
+     * progression.
+     */
+    default int getGrowthStage(long currentTick) {
+        return 1;
+    }
+
     default SunProductionMode getProductionMode() {
         return SunProductionMode.PERIODIC;
     }

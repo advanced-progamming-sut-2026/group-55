@@ -732,6 +732,17 @@ public final class World {
         return zombie;
     }
 
+    public boolean rollChance(double probability) {
+        if (!Double.isFinite(probability) || probability < 0 || probability > 1) {
+            throw new IllegalArgumentException("probability must be between 0 and 1");
+        }
+        return random.nextDouble() < probability;
+    }
+
+    public double randomDouble() {
+        return random.nextDouble();
+    }
+
     public int randomInt(int bound) {
         if (bound <= 0) {
             throw new IllegalArgumentException("random bound must be positive");
@@ -832,6 +843,20 @@ public final class World {
 
     public SunCollectionOutcome collectSun(Sun sun) {
         Objects.requireNonNull(sun, "sun cannot be null");
+        return collectSun(sun, sun.getTileX(), sun.getTileY());
+    }
+
+    /**
+     * Collects a sun at the tile where the interaction happened.  The
+     * interaction tile matters only while a radioactive sky sun is falling;
+     * it becomes the center for both gameplay damage and the battle visual.
+     */
+    public SunCollectionOutcome collectSun(
+            Sun sun,
+            int collectionColumn,
+            int collectionRow
+    ) {
+        Objects.requireNonNull(sun, "sun cannot be null");
 
         if (sun.isRemoved() || !collectibles.contains(sun)) {
             throw new IllegalStateException(
@@ -840,42 +865,60 @@ public final class World {
         }
 
         if (sun.isRadioactiveWhileFalling()) {
-            board.damageZombiesDirectlyInArea(
-                    getZombies(),
-                    sun.getTileX(),
-                    sun.getTileY(),
-                    RADIOACTIVE_ZOMBIE_RADIUS,
-                    RADIOACTIVE_ZOMBIE_DAMAGE
+            requireSunCollectionTile(collectionColumn, collectionRow);
+            explodeRadioactiveSunAt(
+                    sun,
+                    collectionColumn,
+                    collectionRow
             );
-
-            board.damagePlantsInArea(
-                    sun.getTileX(),
-                    sun.getTileY(),
-                    RADIOACTIVE_PLANT_RADIUS,
-                    RADIOACTIVE_PLANT_DAMAGE
-            );
-
-            board.damageTilesInArea(
-                    sun.getTileX(),
-                    sun.getTileY(),
-                    RADIOACTIVE_ZOMBIE_RADIUS,
-                    RADIOACTIVE_ZOMBIE_DAMAGE
-            );
-
-            damagePushedObstaclesDirectlyInArea(
-                    sun.getTileX(),
-                    sun.getTileY(),
-                    RADIOACTIVE_ZOMBIE_RADIUS,
-                    RADIOACTIVE_ZOMBIE_DAMAGE
-            );
-
-            sun.remove();
             return SunCollectionOutcome.EXPLODED;
         }
 
         resources.sunBank().add(sun.getValue());
         sun.remove();
         return SunCollectionOutcome.COLLECTED;
+    }
+
+    private void requireSunCollectionTile(int column, int row) {
+        if (!board.inBounds(column, row)) {
+            throw new IllegalArgumentException(
+                    "sun collection tile is out of bounds: ("
+                            + column + ", " + row + ")"
+            );
+        }
+    }
+
+    private void explodeRadioactiveSunAt(
+            Sun sun,
+            int column,
+            int row
+    ) {
+        board.damageZombiesDirectlyInArea(
+                getZombies(),
+                column,
+                row,
+                RADIOACTIVE_ZOMBIE_RADIUS,
+                RADIOACTIVE_ZOMBIE_DAMAGE
+        );
+        board.damagePlantsInArea(
+                column,
+                row,
+                RADIOACTIVE_PLANT_RADIUS,
+                RADIOACTIVE_PLANT_DAMAGE
+        );
+        board.damageTilesInArea(
+                column,
+                row,
+                RADIOACTIVE_ZOMBIE_RADIUS,
+                RADIOACTIVE_ZOMBIE_DAMAGE
+        );
+        damagePushedObstaclesDirectlyInArea(
+                column,
+                row,
+                RADIOACTIVE_ZOMBIE_RADIUS,
+                RADIOACTIVE_ZOMBIE_DAMAGE
+        );
+        sun.remove();
     }
 
     public void collectPlantFood(PlantFood plantFood) {

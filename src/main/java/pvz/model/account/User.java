@@ -319,14 +319,17 @@ public class User implements CurrencyWallet {
         this.plantFoodCount = 0;
     }
 
-    public boolean addPlantFood(int amount) {
+    public boolean canAddPlantFood(int amount) {
         long newAmount = (long) plantFoodCount + amount;
+        return amount >= 0 && newAmount <= MAX_PLANT_FOOD;
+    }
 
-        if (amount < 0 || newAmount > MAX_PLANT_FOOD) {
+    public boolean addPlantFood(int amount) {
+        if (!canAddPlantFood(amount)) {
             return false;
         }
 
-        plantFoodCount = (int) newAmount;
+        plantFoodCount += amount;
         return true;
     }
 

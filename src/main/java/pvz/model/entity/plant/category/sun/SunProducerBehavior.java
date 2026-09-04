@@ -9,7 +9,9 @@ import pvz.model.entity.plant.PlantSpec;
 import pvz.model.entity.plant.behavior.AbstractPlantBehavior;
 import pvz.model.entity.plant.category.explosive.TransientActionWindow;
 import pvz.model.entity.plant.lifecycle.PlantThreat;
+import pvz.model.entity.plant.level.PlantUpgradeType;
 import pvz.model.entity.plant.plantfood.PlantFoodVolley;
+import pvz.model.entity.plant.behavior.capability.GrowthStageCapability;
 import pvz.model.entity.plant.behavior.capability.PlantFoodCapability;
 import pvz.model.entity.plant.behavior.capability.SunProductionCapability;
 import pvz.model.entity.plant.behavior.capability.TransientEffectCapability;
@@ -19,6 +21,7 @@ public final class SunProducerBehavior
         extends AbstractPlantBehavior
         implements PlantFoodCapability,
         SunProductionCapability,
+        GrowthStageCapability,
         ZombieEdibilityCapability,
         TransientEffectCapability {
 
@@ -115,6 +118,12 @@ public final class SunProducerBehavior
     }
 
     @Override
+    public int getGrowthStage(long currentTick) {
+        ensurePlaced();
+        return profile == null ? 1 : profile.getGrowthStage(currentTick);
+    }
+
+    @Override
     public boolean hasPendingSuns() {
         return pendingSuns > 0;
     }
@@ -128,6 +137,15 @@ public final class SunProducerBehavior
 
     private void produceCycle(long currentTick) {
         List<Integer> drops = profile.getCycleDrops(currentTick);
+
+        double doubleChance = spec.getUpgradeValue(
+                PlantUpgradeType.SUN_DOUBLE_CHANCE_ADD
+        );
+        if (!drops.isEmpty() && doubleChance > 0 && world().rollChance(doubleChance)) {
+            java.util.ArrayList<Integer> doubled = new java.util.ArrayList<>(drops);
+            doubled.addAll(drops);
+            drops = List.copyOf(doubled);
+        }
 
         if (drops.isEmpty()) {
             return;
@@ -160,12 +178,13 @@ public final class SunProducerBehavior
     }
 
     private long effectDisplayTicks() {
-        return spec.behaviorParams(SUN_BURST_BEHAVIOR)
+        long baseTicks = spec.behaviorParams(SUN_BURST_BEHAVIOR)
                 .getOrDefault(
                         "effectDisplayTicks",
                         (double) DEFAULT_EFFECT_DISPLAY_TICKS
                 )
                 .longValue();
+        return Math.max(1, baseTicks);
     }
 
     private void schedulePlantFoodSuns(

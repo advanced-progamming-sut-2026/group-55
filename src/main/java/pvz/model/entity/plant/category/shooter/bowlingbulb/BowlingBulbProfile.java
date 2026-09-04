@@ -8,6 +8,7 @@ import java.util.Objects;
 import pvz.model.core.Game;
 import pvz.model.entity.plant.PlantCategory;
 import pvz.model.entity.plant.PlantSpec;
+import pvz.model.entity.plant.level.PlantUpgradeType;
 
 public record BowlingBulbProfile(
         List<Bulb> bulbs
@@ -77,11 +78,15 @@ public record BowlingBulbProfile(
              index < BULB_NAMES.size();
              index++) {
 
+            long regenAdjustment = Math.round(
+                    spec.getUpgradeValue(PlantUpgradeType.BOWLING_REGEN_SECONDS_ADD)
+                            * Game.TICKS_PER_SECOND
+            );
             bulbs.add(
                     new Bulb(
                             BULB_NAMES.get(index),
                             damageValues.get(index),
-                            RECHARGE_TICKS.get(index)
+                            Math.max(1, RECHARGE_TICKS.get(index) + regenAdjustment)
                     )
             );
         }

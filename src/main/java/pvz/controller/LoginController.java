@@ -194,6 +194,10 @@ public class LoginController extends BaseController {
         return isWaitingForNewPassword;
     }
 
+    public void cancelRecovery() {
+        resetRecoveryState();
+    }
+
     private void resetRecoveryState() {
         recoveryUser = null;
         isWaitingForNewPassword = false;

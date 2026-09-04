@@ -1,10 +1,10 @@
 package pvz.graphics.menu;
 
-import com.badlogic.gdx.Game;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 
 import pvz.graphics.BaseScreen;
+import pvz.graphics.PvzGame;
 import pvz.libpvz.textures.TextureBank;
 import pvz.model.account.User;
 import pvz.model.account.UserManager;
@@ -26,7 +26,7 @@ public class TitleScreen extends BaseScreen {
     private int dots;
 
     public TitleScreen(
-            Game game,
+            PvzGame game,
             TextureBank textures,
             SpriteBatch batch,
             Skin skin,

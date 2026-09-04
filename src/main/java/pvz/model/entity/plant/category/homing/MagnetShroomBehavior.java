@@ -50,12 +50,19 @@ final class MagnetShroomBehavior extends AbstractHomingBehavior {
     private Zombie nearestMagnetizableZombie() {
         return world().getHostileZombies().stream()
                 .filter(zombie -> !zombie.isDead())
+                .filter(this::isWithinMagnetRange)
                 .filter(this::hasMagnetizableArmor)
                 .min(Comparator
                         .comparingDouble(this::squaredDistanceToOwner)
                         .thenComparingDouble(Zombie::getX)
                         .thenComparingDouble(Zombie::getY))
                 .orElse(null);
+    }
+
+
+    private boolean isWithinMagnetRange(Zombie zombie) {
+        int horizontalDistance = Math.abs(zombie.getTileX() - column());
+        return horizontalDistance <= profile().magnetHorizontalRangeTiles();
     }
 
     private boolean hasMagnetizableArmor(Zombie zombie) {

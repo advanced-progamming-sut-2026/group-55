@@ -12,6 +12,7 @@ import pvz.model.entity.plant.attack.ShotVector;
 import pvz.model.entity.plant.behavior.AbstractPlantBehavior;
 import pvz.model.entity.plant.behavior.capability.PlantFoodCapability;
 import pvz.model.entity.plant.plantfood.PlantFoodVolley;
+import pvz.model.entity.plant.level.PlantUpgradeType;
 import pvz.model.entity.plant.projectile.PlantProjectileEmitter;
 import pvz.model.entity.plant.category.shooter.plantfood.PlantFoodShotPath;
 import pvz.model.entity.plant.category.shooter.plantfood.ShooterPlantFoodPhase;
@@ -92,6 +93,15 @@ public class ShooterBehavior
                 currentTick,
                 row()
         );
+
+        double selfPlantFoodChance = spec.getUpgradeValue(
+                PlantUpgradeType.SELF_PLANT_FOOD_CHANCE_ADD
+        );
+        if (selfPlantFoodChance > 0
+                && supportsPlantFood()
+                && world().rollChance(selfPlantFoodChance)) {
+            owner().tryApplyPlantFood(currentTick);
+        }
     }
 
     ///* plantFoodBehavior

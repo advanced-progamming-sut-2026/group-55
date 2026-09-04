@@ -9,6 +9,7 @@ import pvz.model.entity.plant.lifecycle.PlantThreat;
 import pvz.model.entity.zombie.HypnosisService;
 import pvz.model.entity.zombie.Zombie;
 import pvz.model.entity.zombie.ZombieTransformationService;
+import pvz.model.entity.plant.level.PlantUpgradeType;
 
 final class HypnoShroomBehavior extends AbstractPlantBehavior
         implements PlantFoodCapability,
@@ -62,13 +63,21 @@ final class HypnoShroomBehavior extends AbstractPlantBehavior
 
         Zombie attacker = context.attacker();
 
+        Zombie resultingAlly = null;
         if (stage == HypnoShroomStage.GARGANTUAR_ARMED) {
-            ZombieTransformationService.transformToAlliedGargantuar(
+            resultingAlly = ZombieTransformationService.transformToAlliedGargantuar(
                     attacker,
                     context.tick()
             );
-        } else {
-            HypnosisService.hypnotize(attacker, context.tick());
+        } else if (HypnosisService.hypnotize(attacker, context.tick())) {
+            resultingAlly = attacker;
+        }
+
+        if (resultingAlly != null) {
+            resultingAlly.applyAlliedCombatBuff(
+                    owner().getSpec().getUpgradeValue(PlantUpgradeType.HYPNO_ALLY_HP_PERCENT_ADD),
+                    owner().getSpec().getUpgradeValue(PlantUpgradeType.HYPNO_ALLY_DAMAGE_PERCENT_ADD)
+            );
         }
 
         owner().tryRemove(PlantThreat.FORCED_REMOVAL);

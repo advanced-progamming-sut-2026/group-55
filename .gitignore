@@ -42,3 +42,7 @@ target/
 *.iml
 # AI / MCP local configuration
 .ai/
+
+# Local game saves
+/save.json
+/save.json.bak

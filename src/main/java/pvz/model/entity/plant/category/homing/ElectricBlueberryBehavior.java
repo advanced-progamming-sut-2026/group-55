@@ -58,10 +58,14 @@ final class ElectricBlueberryBehavior extends AbstractHomingBehavior {
 
     private HomingTarget resolveTarget() {
         if (HomingTargetResolver.hasHostileZombie(world())) {
-            return HomingTargetResolver.randomHostileZombie(world());
+            return profile().priorityTargeting()
+                    ? HomingTargetResolver.highestThreatHostileZombie(world())
+                    : HomingTargetResolver.randomHostileZombie(world());
         }
 
-        return HomingTargetResolver.randomDestructibleTarget(world());
+        return profile().priorityTargeting()
+                ? HomingTargetResolver.highestThreatDestructibleTarget(world())
+                : HomingTargetResolver.randomDestructibleTarget(world());
     }
 
     private void strike(HomingTarget target) {

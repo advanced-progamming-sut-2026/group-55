@@ -1,6 +1,5 @@
 package pvz.graphics.menu;
 
-import com.badlogic.gdx.Game;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.actions.Actions;
@@ -9,12 +8,14 @@ import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 
 import pvz.controller.LoginController;
 import pvz.graphics.BaseScreen;
+import pvz.graphics.PvzGame;
 import pvz.libpvz.textures.TextureBank;
 import pvz.model.account.UserManager;
 import pvz.model.command.Command;
 import pvz.model.command.LoginCommand;
 import pvz.model.service.AuthService;
 import pvz.model.utils.AppState;
+import pvz.model.utils.MenuName;
 import pvz.model.utils.SystemMessage;
 import pvz.view.MenuView;
 
@@ -32,7 +33,7 @@ public class LoginScreen extends BaseScreen {
     private Table form;
 
     public LoginScreen(
-            Game game,
+            PvzGame game,
             TextureBank textures,
             com.badlogic.gdx.graphics.g2d.SpriteBatch batch,
             Skin skin,
@@ -174,6 +175,7 @@ public class LoginScreen extends BaseScreen {
     }
 
     private void buildLoginForm() {
+        controller.cancelRecovery();
         form.clear();
         addTitle("LOGIN");
 
@@ -455,5 +457,11 @@ public class LoginScreen extends BaseScreen {
                         Actions.removeActor()
                 )
         );
+    }
+
+    @Override
+    public void show() {
+        super.show();
+        appState.setCurrentMenu(MenuName.LOGIN);
     }
 }

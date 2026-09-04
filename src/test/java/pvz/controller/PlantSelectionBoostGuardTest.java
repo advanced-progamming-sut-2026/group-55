@@ -1,6 +1,7 @@
 package pvz.controller;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -28,6 +29,54 @@ import pvz.model.utils.MenuName;
 import pvz.view.MenuView;
 
 class PlantSelectionBoostGuardTest {
+    @Test
+    void selectionStateIsExposedAsReadOnlyData() throws IOException {
+        PlantData plantData = PlantCsvLoader.load("assets/Data/plants.csv");
+        ZombieData zombieData = ZombieCsvLoader.load("assets/Data/zombies.csv");
+        AdventureData adventureData = AdventureCsvLoader.load(
+                "assets/Data/chapters.csv",
+                "assets/Data/levels.csv",
+                "assets/Data/level_zombies.csv",
+                "assets/Data/waves.csv",
+                zombieData
+        );
+        AppState appState = new AppState();
+        appState.setCurrentUser(new User(
+                "selection-user", "hash", "Tester",
+                "selection@example.com", "x"
+        ));
+        Path savePath = Files.createTempDirectory(
+                "pvz-selection-state-"
+        ).resolve("users.json");
+        PlantSelectionController controller = new PlantSelectionController(
+                appState,
+                new UserManager(savePath.toString()),
+                new RecordingView(),
+                plantData,
+                new GameRuntime(new GameSessionFactory(
+                        new PlantFactory(plantData.byName()),
+                        new ZombieFactory(zombieData)
+                )),
+                new GameSessionConfigFactory(adventureData)
+        );
+
+        controller.handle(new PlantSelectionCommand(
+                PlantSelectionCommand.Action.ADD_PLANT,
+                "Peashooter"
+        ));
+
+        assertEquals(List.of("peashooter"), controller.getSelectedPlants());
+        assertTrue(controller.isPlantSelected("Peashooter"));
+        assertEquals(8, controller.getMaxSlots());
+        boolean readOnly = false;
+        try {
+            controller.getSelectedPlants().add("sunflower");
+        } catch (UnsupportedOperationException exception) {
+            readOnly = true;
+        }
+        assertTrue(readOnly);
+    }
+
     @Test
     void storedBoostedPlantMustBeSelectedBeforeStartingGame()
             throws IOException {

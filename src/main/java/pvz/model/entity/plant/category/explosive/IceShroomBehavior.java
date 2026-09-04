@@ -16,11 +16,11 @@ final class IceShroomBehavior extends AbstractExplosiveBehavior {
     @Override
     protected void applyEffect(long currentTick) {
         ZombieFreezeSupport.freezeWholeLawn(
-                world(),
-                currentTick,
-                profile().freezeDurationTicks()
-        );
-
-        publishEffect("froze every zombie on the lawn.");
+                world(), currentTick, profile().freezeDurationTicks());
+        if (profile().damage() > 0) {
+            world().damageAllEnemyContents(profile().damage());
+        }
+        publishEffect("froze every zombie on the lawn." +
+                (profile().damage() > 0 ? " It also dealt " + profile().damage() + " damage." : ""));
     }
 }
