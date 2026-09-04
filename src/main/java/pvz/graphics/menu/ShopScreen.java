@@ -18,6 +18,7 @@ import com.badlogic.gdx.utils.Align;
 
 import pvz.controller.ShopController;
 import pvz.graphics.BaseScreen;
+import pvz.graphics.PvzGame;
 import pvz.libpvz.textures.TextureBank;
 import pvz.model.account.PlayerPlant;
 import pvz.model.account.User;
@@ -54,7 +55,7 @@ public class ShopScreen extends BaseScreen {
     private Table storeGrid;
 
     public ShopScreen(
-            Game game,
+            PvzGame game,
             TextureBank textures,
             SpriteBatch batch,
             Skin skin,
