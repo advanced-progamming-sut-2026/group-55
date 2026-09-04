@@ -134,9 +134,15 @@ public class GameMenuScreen extends BaseScreen {
                 greenhouseService
         ))));
 
-        collection.addListener(click(() -> {
-            // بعداً CollectionScreen
-        }));
+        collection.addListener(click(() -> game.setScreen(new CollectionScreen(
+                game,
+                textures,
+                batch,
+                skin,
+                appState,
+                userManager,
+                MenuName.GAME
+        ))));
 
         settings.addListener(click(() -> settingsScreen.show()));
 

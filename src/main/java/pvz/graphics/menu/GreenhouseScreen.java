@@ -125,6 +125,15 @@ public class GreenhouseScreen extends BaseScreen {
 
         Image collection = image("IMAGE_UI_HUD_ALMANACBUTTON_BUTTONS_HUD_ALMANAC_NORMAL");
         collection.setBounds(25f + size + gap, y, size, size);
+        collection.addListener(click(() -> game.setScreen(new CollectionScreen(
+                game,
+                textures,
+                batch,
+                skin,
+                appState,
+                userManager,
+                MenuName.GREENHOUSE
+        ))));
 
         TextButton store = new TextButton("", skin, "brown");
         TextureRegion storeRegion = textures.region("IMAGE_UI_ALMANAC_FINDMORE_STORE");
