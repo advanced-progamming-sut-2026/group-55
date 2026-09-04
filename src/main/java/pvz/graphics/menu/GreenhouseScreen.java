@@ -14,6 +14,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 
 import pvz.graphics.BaseScreen;
+import pvz.graphics.asset.PlantVisualResolver;
 import pvz.graphics.PvzGame;
 import pvz.graphics.actor.PlantActor;
 import pvz.libpvz.pam.PamPlayer;
@@ -25,8 +26,6 @@ import pvz.model.service.GreenhouseService;
 import pvz.model.utils.AppState;
 import pvz.model.utils.MenuName;
 
-import java.util.HashMap;
-import java.util.Map;
 
 public class GreenhouseScreen extends BaseScreen {
 
@@ -35,7 +34,6 @@ public class GreenhouseScreen extends BaseScreen {
     private static final float CELL_W = 128f, CELL_H = 144f;
     private static final float GRID_TOP = 202f;
 
-    private static final int UNLOCK_COST = 20;
     private static final float POT_SCALE = 0.45f;
     private static final float PLANT_ORIGIN_Y = 45f;
     private static final float GROWING_DIRT_SIZE = 45f;
@@ -47,10 +45,9 @@ public class GreenhouseScreen extends BaseScreen {
     private static final String GROWING_TEXTURE = "IMAGE_ZEN_GARDEN_GROWING_PLANT_SLOT_GROWING_PLANT_SLOT_122X161";
     private static final String BEE_PATH = "768/INITIAL/ZEN_GARDEN/BEE/BEE.PAM";
 
-    private static final Map<String, String> PAM_CACHE = new HashMap<>();
-
     private final GreenhouseService greenhouseService;
     private final PamPlayer pamPlayer;
+    private final PlantVisualResolver plantVisuals;
 
     private final Group greenhouseGroup = new Group();
     private Label sproutLabel;
@@ -76,6 +73,10 @@ public class GreenhouseScreen extends BaseScreen {
         super(game, textures, batch, skin, appState, userManager, "IMAGE_BACKGROUNDS_ZEN_GARDEN");
         this.greenhouseService = greenhouseService;
         this.pamPlayer = game.getAnimationService().player();
+        this.plantVisuals = new PlantVisualResolver(
+                textures,
+                Gdx.files.internal("assets")
+        );
         buildUI();
     }
 
@@ -138,6 +139,16 @@ public class GreenhouseScreen extends BaseScreen {
 
         stage.addActor(back);
         stage.addActor(collection);
+
+        store.addListener(click(() -> game.setScreen(new ShopScreen(
+                game,
+                textures,
+                batch,
+                skin,
+                appState,
+                userManager,
+                greenhouseService
+        ))));
         stage.addActor(store);
     }
 
@@ -333,7 +344,7 @@ public class GreenhouseScreen extends BaseScreen {
         float py = topY - y * CELL_H + (CELL_H - POT_SIZE) / 2f;
 
         switch (pot.getState()) {
-            case LOCKED: return createLockedPot(px, py, x, y);
+            case LOCKED: return createLockedPot(px, py);
             case EMPTY: return createEmptyPot(px, py, x, y);
             case GROWING: return createGrowingPot(pot, px, py, x, y);
             case READY: return createReadyPot(pot, px, py, x, y);
@@ -355,23 +366,22 @@ public class GreenhouseScreen extends BaseScreen {
         return image;
     }
 
-    private Group createLockedPot(float px, float py, int potX, int potY) {
+    private Group createLockedPot(float px, float py) {
         Group group = potGroup(px, py);
-        TextureRegion region = textures.region("IMAGE_ZEN_GARDEN_BUTTON_UNLOCK_INACTIVE");
-        if (region == null) return group;
+        TextureRegion region = textures.region("IMAGE_ZEN_GARDEN_LOCKED_POT_ICON");
 
-        Image button = new Image(region);
-        button.setBounds(-15f, 13f, 95f, 42f);
-        button.addListener(click(() -> unlockPot(potX, potY)));
+        if (region != null) {
+            Image lockImage = new Image(region);
+            float lockSize = 40f;
+            lockImage.setSize(lockSize, lockSize);
+            lockImage.setPosition(
+                    (POT_SIZE - lockSize) / 2f,
+                    (POT_SIZE - lockSize) / 2f
+            );
+            group.addActor(lockImage);
+        }
 
-        Label cost = new Label(String.valueOf(UNLOCK_COST), skin);
-        cost.setColor(Color.WHITE);
-        cost.setPosition(32f, 25f);
-
-        group.addActor(button);
-        group.addActor(cost);
-        group.setTouchable(Touchable.childrenOnly);
-
+        group.setTouchable(Touchable.disabled);
         return group;
     }
 
@@ -468,11 +478,13 @@ public class GreenhouseScreen extends BaseScreen {
     }
 
     private void addPlantAnimation(Group group, String plantName) {
-        String path = findPlantPamPath(plantName);
+        String path = plantVisuals.animationPath(plantName);
         if (path == null) {
             System.out.println("Plant PAM not found: " + plantName);
             return;
         }
+
+        String clip = plantVisuals.animationClip(plantName);
 
         Group scaler = new Group();
         scaler.setSize(POT_SIZE, POT_SIZE);
@@ -480,36 +492,15 @@ public class GreenhouseScreen extends BaseScreen {
         scaler.setOrigin(POT_SIZE / 2f, PLANT_ORIGIN_Y);
         scaler.setScale(POT_SCALE);
 
-        PlantActor actor = new PlantActor(pamPlayer, path);
+        PlantActor actor = new PlantActor(
+                pamPlayer,
+                path,
+                clip
+        );
         actor.setSize(POT_SIZE, POT_SIZE);
 
         scaler.addActor(actor);
         group.addActor(scaler);
-    }
-
-    private String findPlantPamPath(String plantName) {
-        if (plantName == null || plantName.isBlank()) return null;
-
-        if (PAM_CACHE.containsKey(plantName)) return PAM_CACHE.get(plantName);
-
-        String normalized = plantName.trim().toUpperCase().replace(' ', '_').replace('-', '_');
-        String compact = normalized.replace("_", "");
-
-        for (String folder : new String[]{"INITIAL", "FULL"}) {
-            String path1 = "768/" + folder + "/PLANT/" + normalized + "/" + normalized + ".PAM";
-            if (assetExists(path1)) {
-                PAM_CACHE.put(plantName, path1);
-                return path1;
-            }
-
-            String path2 = "768/" + folder + "/PLANT/" + compact + "/" + compact + ".PAM";
-            if (assetExists(path2)) {
-                PAM_CACHE.put(plantName, path2);
-                return path2;
-            }
-        }
-
-        return null;
     }
 
     private boolean assetExists(String path) {
@@ -567,10 +558,6 @@ public class GreenhouseScreen extends BaseScreen {
 
     private void grow(int x, int y) {
         execute(() -> greenhouseService.forceGrow(appState.getCurrentUser(), x, y));
-    }
-
-    private void unlockPot(int x, int y) {
-        execute(() -> greenhouseService.unlockPot(appState.getCurrentUser(), x, y));
     }
 
     private void showRewardNotification(String message) {
