@@ -17,37 +17,33 @@ public class User implements CurrencyWallet {
 
     private static final List<String> DEFAULT_UNLOCKED_PLANT_NAMES = List.of(
             "Sunflower",
-            "Twin Sunflower",
-            "Sun-shroom",
-            "Primal Sunflower",
-
+            "Sunflowertwin",
+            "Sunshroom",
+            "PrimalSunflower",
             "Peashooter",
             "Repeater",
             "Threepeater",
-            "Snow Pea",
+            "SnowPea",
             "Rotobaga",
-            "Pea Pod",
-            "Split Pea",
+            "PeaPod",
+            "SplitPea",
             "Citron",
-            "Bowling Bulb",
-            "Fire Peashooter",
+            "BowlingBulb",
+            "FirePeashooter",
             "Starfruit",
-            "Goo Peashooter",
-            "Mega Gatling Pea",
-            "Sea-shroom",
-            "Puff-shroom",
-
+            "GooPeashooter",
+            "MegaGatlingPea",
+            "Seashroom",
+            "Puffshroom",
             "Cactus",
-            "Fume-shroom",
-
-            "Cabbage-pult",
-            "Kernel-pult",
-            "Melon-pult",
-            "Winter Melon",
-
-            "Wall-nut",
-            "Tall-nut",
-            "Explode-o-nut",
+            "Fumeshroom",
+            "Cabbagepult",
+            "Kernelpult",
+            "Melonpult",
+            "WinterMelon",
+            "Wallnut",
+            "Tallnut",
+            "Explodeonut",
             "Pumpkin"
     );
 
@@ -261,6 +257,17 @@ public class User implements CurrencyWallet {
     public List<PlayerPlant> getUnlockedPlants() {
         if (unlockedPlants == null) {
             unlockedPlants = createDefaultUnlockedPlants();
+        } else {
+            Set<String> existingPlantNames = new HashSet<>();
+            for (PlayerPlant p : unlockedPlants) {
+                existingPlantNames.add(p.getPlantName().toLowerCase());
+            }
+
+            for (String defaultName : DEFAULT_UNLOCKED_PLANT_NAMES) {
+                if (!existingPlantNames.contains(defaultName.toLowerCase())) {
+                    unlockedPlants.add(new PlayerPlant(defaultName));
+                }
+            }
         }
 
         return unlockedPlants;

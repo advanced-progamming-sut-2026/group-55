@@ -48,9 +48,7 @@ public class Greenhouse {
 
     public int unlockPots(int count) {
         if (count < 0) {
-            throw new IllegalArgumentException(
-                    "pot count cannot be negative"
-            );
+            throw new IllegalArgumentException("pot count cannot be negative");
         }
 
         int unlocked = 0;
@@ -74,5 +72,19 @@ public class Greenhouse {
         }
 
         return unlocked;
+    }
+
+    public int getLockedPotCount() {
+        int locked = 0;
+
+        for (int y = 2; y <= ROWS; y++) {
+            for (int x = 1; x <= COLS; x++) {
+                if (pots[y - 1][x - 1].isLocked()) {
+                    locked++;
+                }
+            }
+        }
+
+        return locked;
     }
 }

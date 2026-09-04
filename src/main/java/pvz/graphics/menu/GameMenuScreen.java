@@ -180,7 +180,7 @@ public class GameMenuScreen extends BaseScreen {
 
         premiumGroup.addListener(click(() -> {
             if (isDebugModeEnabled()) {
-                appState.getCurrentUser().addDiamonds(100);
+                appState.getCurrentUser().addDiamonds(1000);
                 updateCurrencyLabels();
                 userManager.save();
             }
@@ -188,7 +188,7 @@ public class GameMenuScreen extends BaseScreen {
 
         coinGroup.addListener(click(() -> {
             if (isDebugModeEnabled()) {
-                appState.getCurrentUser().addCoins(100);
+                appState.getCurrentUser().addCoins(1000);
                 updateCurrencyLabels();
                 userManager.save();
             }

@@ -9,10 +9,10 @@ public class PlantActor extends Actor {
 
     private final PamPlayer pamPlayer;
     private final String pamPath;
-    private final String clipName;
     private final Color previousBatchColor = new Color();
 
     private float stateTime;
+    private String cachedClipName = null;
 
     public PlantActor(PamPlayer pamPlayer, String pamPath) {
         this(pamPlayer, pamPath, "idle");
@@ -52,17 +52,33 @@ public class PlantActor extends Actor {
                 color.a * parentAlpha
         );
 
-        pamPlayer.draw(
-                batch,
-                pamPath,
-                clipName,
-                stateTime,
-                centerX,
-                dirtY,
-                true
-        );
+        try {
+            if (cachedClipName != null) {
+                try {
+                    pamPlayer.draw(batch, pamPath, cachedClipName, stateTime, centerX, dirtY, true);
+                    return;
+                } catch (Exception e) {
+                    cachedClipName = null;
+                }
+            }
 
-        batch.setColor(previousBatchColor);
+            String[] candidates = {
+                    "idle",
+                    "idle_stage1",
+                    "idle1"
+            };
+
+            for (String candidate : candidates) {
+                try {
+                    pamPlayer.draw(batch, pamPath, candidate, stateTime, centerX, dirtY, true);
+                    cachedClipName = candidate;
+                    return;
+                } catch (IllegalArgumentException ignored) {
+                }
+            }
+        } finally {
+            batch.setColor(previousBatchColor);
+        }
     }
 
     public void resetAnimation() {
