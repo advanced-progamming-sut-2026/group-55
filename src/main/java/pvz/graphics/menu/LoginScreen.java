@@ -9,6 +9,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import pvz.controller.LoginController;
 import pvz.graphics.BaseScreen;
 import pvz.graphics.PvzGame;
+import pvz.graphics.ui.HoverEffect;
 import pvz.libpvz.textures.TextureBank;
 import pvz.model.account.UserManager;
 import pvz.model.command.Command;
@@ -196,6 +197,10 @@ public class LoginScreen extends BaseScreen {
         TextButton forgotButton = new TextButton("FORGOT PASSWORD", skin, "green");
         addFullButton(forgotButton);
 
+        HoverEffect.addScale(loginButton);
+        HoverEffect.addScale(registerButton);
+        HoverEffect.addScale(forgotButton);
+
         loginButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
@@ -256,6 +261,9 @@ public class LoginScreen extends BaseScreen {
         TextButton continueButton = new TextButton("CONTINUE", skin, "green");
         addTwoButtons(backButton, continueButton);
 
+        HoverEffect.addScale(backButton);
+        HoverEffect.addScale(continueButton);
+
         backButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
@@ -307,6 +315,9 @@ public class LoginScreen extends BaseScreen {
         TextButton continueButton = new TextButton("CONTINUE", skin, "green");
         addTwoButtons(backButton, continueButton);
 
+        HoverEffect.addScale(backButton);
+        HoverEffect.addScale(continueButton);
+
         backButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
@@ -356,6 +367,9 @@ public class LoginScreen extends BaseScreen {
         TextButton backButton = new TextButton("BACK", skin, "brown");
         TextButton changeButton = new TextButton("CHANGE PASSWORD", skin, "green");
         addTwoButtons(backButton, changeButton);
+
+        HoverEffect.addScale(backButton);
+        HoverEffect.addScale(changeButton);
 
         backButton.addListener(new ClickListener() {
             @Override

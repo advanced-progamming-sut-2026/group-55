@@ -15,6 +15,7 @@ import com.badlogic.gdx.utils.Align;
 import pvz.controller.MainMenuController;
 import pvz.graphics.BaseScreen;
 import pvz.graphics.PvzGame;
+import pvz.graphics.ui.HoverEffect;
 import pvz.libpvz.textures.TextureBank;
 import pvz.model.account.User;
 import pvz.model.account.UserManager;
@@ -110,8 +111,11 @@ public class MainMenuScreen extends BaseScreen {
         play.setSize(PLAY_WIDTH, PLAY_HEIGHT);
         play.setPosition((WIDTH - PLAY_WIDTH) / 2f, 105f);
         stage.addActor(play);
+        HoverEffect.addScale(play);
 
-        play.addListener(click(() -> game.setScreen(new GameMenuScreen(game, textures, batch, skin, appState, userManager))));
+        play.addListener(click(() -> game.setScreen(new GameMenuScreen(
+                game, textures, batch, skin, appState, userManager
+        ))));
     }
 
     private void buildLogoutButton() {
@@ -119,6 +123,7 @@ public class MainMenuScreen extends BaseScreen {
         logout.setSize(55f, 55f);
         logout.setPosition(25f, HEIGHT - 85f);
         stage.addActor(logout);
+        HoverEffect.addScale(logout);
 
         logout.addListener(click(() -> {
             try {
@@ -145,6 +150,9 @@ public class MainMenuScreen extends BaseScreen {
         coinLabel.setColor(Color.WHITE);
         Group coinGroup = currencyGroup(coinRegion, coinLabel, COIN_WIDTH, 65f);
 
+        HoverEffect.addScale(premiumGroup, this::isDebugModeEnabled);
+        HoverEffect.addScale(coinGroup, this::isDebugModeEnabled);
+
         premiumGroup.addListener(click(() -> {
             if (isDebugModeEnabled()) {
                 appState.getCurrentUser().addDiamonds(100);
@@ -162,7 +170,10 @@ public class MainMenuScreen extends BaseScreen {
         }));
 
         Table currencies = new Table();
-        currencies.add(premiumGroup).width(premiumRegion.getRegionWidth()).height(premiumRegion.getRegionHeight()).padRight(10f);
+        currencies.add(premiumGroup)
+                .width(premiumRegion.getRegionWidth())
+                .height(premiumRegion.getRegionHeight())
+                .padRight(10f);
         currencies.add(coinGroup).width(COIN_WIDTH).height(coinRegion.getRegionHeight());
         currencies.pack();
 
@@ -241,6 +252,10 @@ public class MainMenuScreen extends BaseScreen {
         Image cup = new Image(textures.region("IMAGE_UI_GAMECENTER_ICON"));
         leaderboard.add(cup).size(35f, 35f).center();
 
+        HoverEffect.addScale(profile);
+        HoverEffect.addScale(miniGames);
+        HoverEffect.addScale(leaderboard);
+
         profile.addListener(click(() -> {
             if (profileScreen != null) profileScreen.show();
         }));
@@ -293,6 +308,9 @@ public class MainMenuScreen extends BaseScreen {
         newsGroup.addActor(unreadMark);
 
         unreadMark.setVisible(appState.getCurrentUser() != null && appState.getCurrentUser().hasUnreadNews());
+
+        HoverEffect.addScale(newsGroup);
+        HoverEffect.addScale(settings);
 
         newsGroup.addListener(click(() -> {
             if (newsScreen != null) {

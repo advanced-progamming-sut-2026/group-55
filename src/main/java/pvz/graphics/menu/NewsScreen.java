@@ -12,6 +12,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Align;
 
+import pvz.graphics.ui.HoverEffect;
 import pvz.libpvz.textures.TextureBank;
 import pvz.model.account.NewsItem;
 import pvz.model.account.User;
@@ -69,6 +70,7 @@ public class NewsScreen extends Group {
                 textures.region("IMAGE_UI_MAINMENU_BACK_BTN_NORMAL")
         );
         back.setSize(35f, 35f);
+        HoverEffect.addScale(back);
 
         back.addListener(new ClickListener() {
             @Override

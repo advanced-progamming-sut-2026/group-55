@@ -15,6 +15,8 @@ import com.badlogic.gdx.utils.Scaling;
 
 import pvz.graphics.BaseScreen;
 import pvz.graphics.PvzGame;
+import pvz.graphics.ui.HoverEffect;
+import pvz.graphics.ui.Typography;
 import pvz.libpvz.textures.TextureBank;
 import pvz.model.account.User;
 import pvz.model.account.UserManager;
@@ -49,6 +51,7 @@ public class GameMenuScreen extends BaseScreen {
     private final LevelCatalog levelCatalog;
     private final Image[] worlds;
     private final Label[] worldLabels;
+    private final HoverEffect.ScaleHandle[] worldHoverEffects;
     private final GreenhouseService greenhouseService;
 
     private SettingsScreen settingsScreen;
@@ -88,6 +91,7 @@ public class GameMenuScreen extends BaseScreen {
         }
         this.worlds = new Image[chapters.size()];
         this.worldLabels = new Label[chapters.size()];
+        this.worldHoverEffects = new HoverEffect.ScaleHandle[chapters.size()];
         this.greenhouseService = game.getGameData()
                 .greenhouseService();
         this.currentPage = selectedChapterIndex();
@@ -123,6 +127,12 @@ public class GameMenuScreen extends BaseScreen {
         collection.setPosition(25f + (size + gap) * 2f, y);
         settings.setPosition(25f + (size + gap) * 3f, y);
         travelLogButton.setPosition(25f + (size + gap) * 4f, y);
+
+        HoverEffect.addScale(back);
+        HoverEffect.addScale(greenhouse);
+        HoverEffect.addScale(collection);
+        HoverEffect.addScale(settings);
+        HoverEffect.addScale(travelLogButton);
 
         back.addListener(click(() -> game.setScreen(new MainMenuScreen(
                 game,
@@ -255,12 +265,19 @@ public class GameMenuScreen extends BaseScreen {
         }
 
         premiumLabel = new Label(getPremiumCount(), skin);
+        Typography.applyBody(premiumLabel, skin);
+        premiumLabel.setFontScale(1.05f);
         premiumLabel.setColor(Color.WHITE);
         Group premiumGroup = currencyGroup(premiumRegion, premiumLabel, premiumRegion.getRegionWidth(), 70f);
 
         coinLabel = new Label(getCoinCount(), skin);
+        Typography.applyBody(coinLabel, skin);
+        coinLabel.setFontScale(1.05f);
         coinLabel.setColor(Color.WHITE);
         Group coinGroup = currencyGroup(coinRegion, coinLabel, COIN_WIDTH, 65f);
+
+        HoverEffect.addScale(premiumGroup, this::isDebugModeEnabled);
+        HoverEffect.addScale(coinGroup, this::isDebugModeEnabled);
 
         premiumGroup.addListener(click(() -> {
             if (isDebugModeEnabled()) {
@@ -345,16 +362,21 @@ public class GameMenuScreen extends BaseScreen {
                 skin,
                 "green"
         );
+        Typography.applyBody(enterChapterButton, skin);
+        enterChapterButton.getLabel().setFontScale(1.18f);
         enterChapterButton.setBounds(
                 (WIDTH - 220f) / 2f,
                 50f,
                 220f,
                 55f
         );
+        HoverEffect.addScale(enterChapterButton);
         enterChapterButton.addListener(click(this::enterCurrentChapter));
         stage.addActor(enterChapterButton);
 
         statusLabel = new Label("", skin);
+        Typography.applyBody(statusLabel, skin);
+        statusLabel.setFontScale(0.95f);
         statusLabel.setColor(Color.YELLOW);
         statusLabel.setAlignment(Align.center);
         statusLabel.setBounds(240f, 15f, WIDTH - 480f, 30f);
@@ -378,6 +400,7 @@ public class GameMenuScreen extends BaseScreen {
 
         final int worldIndex = index;
 
+        worldHoverEffects[index] = HoverEffect.addScale(world);
         world.addListener(click(() -> {
             currentPage = worldIndex;
             statusLabel.setText("");
@@ -388,6 +411,7 @@ public class GameMenuScreen extends BaseScreen {
         worldContainer.addActor(world);
 
         Label name = new Label(worldLabelText(index), skin);
+        Typography.applyBody(name, skin);
         name.setAlignment(Align.center);
         name.setSize(WORLD_WIDTH, 60f);
         name.setOrigin(Align.center);
@@ -402,7 +426,7 @@ public class GameMenuScreen extends BaseScreen {
         for (int i = 0; i < worlds.length; i++) {
             boolean selected = i == currentPage;
 
-            worlds[i].setScale(
+            worldHoverEffects[i].setBaseScale(
                     selected ? SELECTED_SCALE : NORMAL_SCALE
             );
 
@@ -476,6 +500,11 @@ public class GameMenuScreen extends BaseScreen {
 
     private String worldLabelText(int index) {
         ChapterSpec chapter = chapters.get(index);
+        if (!isWorldUnlocked(index)) {
+            return chapter.name().toUpperCase(Locale.ROOT)
+                    + "\nLOCKED";
+        }
+
         List<LevelSpec> levels = levelCatalog.levelsInChapter(chapter.id());
         User user = appState.getCurrentUser();
         long completed = user == null
