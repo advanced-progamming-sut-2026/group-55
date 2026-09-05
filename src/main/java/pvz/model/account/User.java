@@ -436,6 +436,24 @@ public class User implements CurrencyWallet {
         return true;
     }
 
+    public boolean discoverZombie(String zombieId, String zombieName) {
+        Objects.requireNonNull(zombieName, "zombie name cannot be null");
+        String checkedName = zombieName.strip();
+        if (checkedName.isEmpty()) {
+            throw new IllegalArgumentException("zombie name cannot be blank");
+        }
+
+        if (!addSeenZombie(zombieId)) {
+            return false;
+        }
+
+        addNews(
+                "Zombie Discovered",
+                checkedName + " has been discovered!"
+        );
+        return true;
+    }
+
     private List<String> getUnlockedChapters() {
         if (unlockedChapters == null) {
             unlockedChapters = new ArrayList<>();

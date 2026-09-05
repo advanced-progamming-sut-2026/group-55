@@ -57,6 +57,11 @@ public class LoginScreen extends BaseScreen {
                 new MenuView() {
                     @Override
                     public void showError(String message) {
+                        if (SystemMessage.ANSWER_INCORRECT.getMessage()
+                                .equals(message)) {
+                            LoginScreen.this.showErrorAndResetToLogin(message);
+                            return;
+                        }
                         LoginScreen.this.showMessage(message);
                     }
 
@@ -64,12 +69,7 @@ public class LoginScreen extends BaseScreen {
                     public void showSuccess(String message) {
                         if (appState.getCurrentUser() != null) {
                             game.setScreen(new MainMenuScreen(
-                                    game,
-                                    textures,
-                                    batch,
-                                    skin,
-                                    appState,
-                                    userManager
+                                    game, textures, batch, skin, appState, userManager
                             ));
                         } else {
                             LoginScreen.this.showMessage(message);
@@ -81,7 +81,7 @@ public class LoginScreen extends BaseScreen {
 
                     @Override
                     public void showMessage(String message) {
-                        LoginScreen.this.showMessage(message);
+                        LoginScreen.this.handleControllerMessage(message);
                     }
                 }
         );
@@ -187,20 +187,13 @@ public class LoginScreen extends BaseScreen {
         addField("Password:", passwordField);
 
         CheckBox stayLoggedIn = new CheckBox(" Stay logged in", skin);
-
-        form.add(stayLoggedIn)
-                .colspan(2)
-                .center()
-                .padTop(5)
-                .padBottom(12)
-                .row();
+        form.add(stayLoggedIn).colspan(2).center().padTop(5).padBottom(12).row();
 
         TextButton loginButton = new TextButton("LOGIN", skin, "green");
         TextButton registerButton = new TextButton("REGISTER", skin, "brown");
         addTwoButtons(loginButton, registerButton);
 
-        TextButton forgotButton =
-                new TextButton("FORGOT PASSWORD", skin, "green");
+        TextButton forgotButton = new TextButton("FORGOT PASSWORD", skin, "green");
         addFullButton(forgotButton);
 
         loginButton.addListener(new ClickListener() {
@@ -236,12 +229,7 @@ public class LoginScreen extends BaseScreen {
             @Override
             public void clicked(InputEvent event, float x, float y) {
                 game.setScreen(new RegisterScreen(
-                        game,
-                        textures,
-                        batch,
-                        skin,
-                        appState,
-                        userManager
+                        game, textures, batch, skin, appState, userManager
                 ));
             }
         });
@@ -265,9 +253,7 @@ public class LoginScreen extends BaseScreen {
         addField("Email:", emailField);
 
         TextButton backButton = new TextButton("BACK", skin, "brown");
-        TextButton continueButton =
-                new TextButton("CONTINUE", skin, "green");
-
+        TextButton continueButton = new TextButton("CONTINUE", skin, "green");
         addTwoButtons(backButton, continueButton);
 
         backButton.addListener(new ClickListener() {
@@ -290,15 +276,8 @@ public class LoginScreen extends BaseScreen {
 
                 try {
                     controller.handle(
-                            LoginCommand.createForgetPassword(
-                                    username,
-                                    email
-                            )
+                            LoginCommand.createForgetPassword(username, email)
                     );
-
-                    if (controller.isRecoveryUserFound()) {
-                        buildAnswerForm();
-                    }
                 } catch (Exception e) {
                     showMessage(
                             e.getMessage() != null
@@ -310,14 +289,11 @@ public class LoginScreen extends BaseScreen {
         });
     }
 
-    private void buildAnswerForm() {
+    private void buildAnswerFormWithQuestion(String questionText) {
         form.clear();
         addTitle("SECURITY QUESTION");
 
-        form.add(new Label(
-                        "Enter the answer to your security question:",
-                        skin
-                ))
+        form.add(new Label(questionText, skin))
                 .width(CONTENT_WIDTH)
                 .colspan(2)
                 .center()
@@ -328,9 +304,7 @@ public class LoginScreen extends BaseScreen {
         addField("Answer:", answerField);
 
         TextButton backButton = new TextButton("BACK", skin, "brown");
-        TextButton continueButton =
-                new TextButton("CONTINUE", skin, "green");
-
+        TextButton continueButton = new TextButton("CONTINUE", skin, "green");
         addTwoButtons(backButton, continueButton);
 
         backButton.addListener(new ClickListener() {
@@ -351,9 +325,7 @@ public class LoginScreen extends BaseScreen {
                 }
 
                 try {
-                    controller.handle(
-                            LoginCommand.createAnswer(answer)
-                    );
+                    controller.handle(LoginCommand.createAnswer(answer));
 
                     if (controller.isWaitingForNewPassword()) {
                         buildNewPasswordForm();
@@ -362,7 +334,7 @@ public class LoginScreen extends BaseScreen {
                     showMessage(
                             e.getMessage() != null
                                     ? e.getMessage()
-                                    : "Incorrect answer."
+                                    : SystemMessage.INVALID_COMMAND.getMessage()
                     );
                 }
             }
@@ -373,22 +345,16 @@ public class LoginScreen extends BaseScreen {
         form.clear();
         addTitle("NEW PASSWORD");
 
-        TextField passwordField =
-                createField("Enter new password");
-        TextField confirmField =
-                createField("Confirm new password");
-
+        TextField passwordField = createField("Enter new password");
+        TextField confirmField = createField("Confirm new password");
         makePassword(passwordField);
         makePassword(confirmField);
 
         addField("Password:", passwordField);
         addField("Confirm:", confirmField);
 
-        TextButton backButton =
-                new TextButton("BACK", skin, "brown");
-        TextButton changeButton =
-                new TextButton("CHANGE PASSWORD", skin, "green");
-
+        TextButton backButton = new TextButton("BACK", skin, "brown");
+        TextButton changeButton = new TextButton("CHANGE PASSWORD", skin, "green");
         addTwoButtons(backButton, changeButton);
 
         backButton.addListener(new ClickListener() {
@@ -415,9 +381,7 @@ public class LoginScreen extends BaseScreen {
                 }
 
                 try {
-                    controller.handle(
-                            new Command.RawTextCommand(password)
-                    );
+                    controller.handle(new Command.RawTextCommand(password));
 
                     if (!controller.isWaitingForNewPassword()) {
                         buildLoginForm();
@@ -433,6 +397,28 @@ public class LoginScreen extends BaseScreen {
         });
     }
 
+    private void handleControllerMessage(String message) {
+        if (appState.getCurrentUser() != null) {
+            return;
+        }
+
+        if (controller.isRecoveryUserFound()
+                && !controller.isWaitingForNewPassword()) {
+            buildAnswerFormWithQuestion(message);
+            return;
+        }
+
+        if (!controller.isWaitingForNewPassword()) {
+            showMessage(message);
+        }
+    }
+
+    private void showErrorAndResetToLogin(String message) {
+        controller.cancelRecovery();
+        buildLoginForm();
+        showMessage(message);
+    }
+
     private void showMessage(String message) {
         Label label = new Label(
                 message == null
@@ -443,10 +429,7 @@ public class LoginScreen extends BaseScreen {
 
         label.setColor(Color.BLACK);
         label.pack();
-        label.setPosition(
-                (WIDTH - label.getWidth()) / 2f,
-                100f
-        );
+        label.setPosition((WIDTH - label.getWidth()) / 2f, 100f);
 
         stage.addActor(label);
         label.toFront();

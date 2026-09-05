@@ -31,6 +31,7 @@ import pvz.graphics.actor.BattlefieldActor;
 import pvz.graphics.asset.PlantVisualResolver;
 import pvz.graphics.asset.ZombieVisualResolver;
 import pvz.graphics.battle.BattleTickClock;
+import pvz.graphics.battle.BattleTimeScale;
 import pvz.graphics.battle.BattleToolState;
 import pvz.graphics.battle.SeedPacketState;
 import pvz.libpvz.textures.TextureBank;
@@ -387,6 +388,7 @@ public final class BattleScreen extends BaseScreen {
         battlefield.setSelectedPlant(selectedPlant);
         battlefield.setToolMode(toolMode);
         battlefield.setShowGrid(showGrid());
+        battlefield.setAnimationTimeScale(effectiveTimeScale());
         battlefield.setPaused(paused);
         stage.getRoot().addActorAt(0, battlefield);
     }
@@ -555,7 +557,11 @@ public final class BattleScreen extends BaseScreen {
             return;
         }
 
-        int ticks = tickClock.consume(delta, gameSpeed(), paused);
+        int ticks = tickClock.consume(
+                delta,
+                effectiveTimeScale(),
+                paused
+        );
         if (ticks <= 0) {
             return;
         }
@@ -993,9 +999,11 @@ public final class BattleScreen extends BaseScreen {
                         + "   " + session.waveManager().getState()
                         + "   TICK " + session.game().getCurrentTick()
                         + "   SPEED x" + gameSpeed()
+                        + "   TIME x" + formattedTimeScale()
         );
         updateToolControls();
         battlefield.setShowGrid(showGrid());
+        battlefield.setAnimationTimeScale(effectiveTimeScale());
         battlefield.setSelectedPlant(selectedPlant);
         updateSeedPackets();
     }
@@ -1079,7 +1087,10 @@ public final class BattleScreen extends BaseScreen {
                 restartConfig,
                 zombieSpec -> {
                     if (user != null
-                            && user.addSeenZombie(zombieSpec.getId())) {
+                            && user.discoverZombie(
+                                    zombieSpec.getId(),
+                                    zombieSpec.getName()
+                            )) {
                         userManager.save();
                     }
                 }
@@ -1108,6 +1119,21 @@ public final class BattleScreen extends BaseScreen {
     private int gameSpeed() {
         User user = appState.getCurrentUser();
         return user == null ? 1 : Math.max(1, Math.min(3, user.getGameSpeed()));
+    }
+
+    private double effectiveTimeScale() {
+        return BattleTimeScale.effectiveScale(
+                restartConfig.difficultyLevel(),
+                gameSpeed()
+        );
+    }
+
+    private String formattedTimeScale() {
+        return String.format(
+                Locale.ROOT,
+                "%.2f",
+                effectiveTimeScale()
+        );
     }
 
     private boolean showGrid() {

@@ -389,7 +389,10 @@ public class PlantSelectionController extends BaseController {
         gameRuntime.start(
                 config,
                 zombieSpec -> {
-                    if (currentUser.addSeenZombie(zombieSpec.getId())) {
+                    if (currentUser.discoverZombie(
+                            zombieSpec.getId(),
+                            zombieSpec.getName()
+                    )) {
                         userManager.save();
                     }
                 }
