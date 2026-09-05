@@ -445,10 +445,11 @@ public class LoginScreen extends BaseScreen {
         label.pack();
         label.setPosition(
                 (WIDTH - label.getWidth()) / 2f,
-                70f
+                100f
         );
 
         stage.addActor(label);
+        label.toFront();
 
         label.addAction(
                 Actions.sequence(

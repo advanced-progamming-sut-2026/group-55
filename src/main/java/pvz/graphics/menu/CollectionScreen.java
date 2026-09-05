@@ -11,12 +11,14 @@ import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
 import com.badlogic.gdx.scenes.scene2d.ui.Image;
+import com.badlogic.gdx.scenes.scene2d.ui.ImageButton;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
+import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Scaling;
 import java.util.ArrayList;
@@ -56,6 +58,7 @@ import pvz.model.utils.MenuName;
 public final class CollectionScreen extends BaseScreen {
     private static final int PLANT_PURCHASE_PRICE = 2_000;
     private static final int GRID_COLUMNS = 4;
+    private static final float TEXT_Y_OFFSET = 17f;
 
     private static final float GRID_X = 22f;
     private static final float GRID_Y = 72f;
@@ -93,6 +96,7 @@ public final class CollectionScreen extends BaseScreen {
     private final Table detailContent = new Table();
 
     private ScrollPane entityScroll;
+    private Label premiumLabel;
     private Label coinLabel;
     private Label statusLabel;
     private TextButton plantsTabButton;
@@ -169,21 +173,134 @@ public final class CollectionScreen extends BaseScreen {
     }
 
     private void buildHeader() {
-        TextButton back = new TextButton("BACK", skin, "brown");
-        back.setBounds(25f, HEIGHT - 72f, 125f, 48f);
+        TextureRegion normal = textures.region(
+                "IMAGE_UI_MAINMENU_BACK_BTN_NORMAL"
+        );
+        TextureRegion pressed = textures.region(
+                "IMAGE_UI_MAINMENU_BACK_BTN_PRESSED"
+        );
+
+        ImageButton.ImageButtonStyle style = new ImageButton.ImageButtonStyle();
+        style.up = normal != null ? new TextureRegionDrawable(normal) : null;
+        style.down = pressed != null
+                ? new TextureRegionDrawable(pressed)
+                : style.up;
+
+        ImageButton back = new ImageButton(style);
+        back.setBounds(25f, HEIGHT - 80f, 55f, 55f);
         back.addListener(click(this::goBack));
         stage.addActor(back);
 
-        Label title = new Label("COLLECTION / ALMANAC", skin);
+        Label title = new Label("COLLECTION", skin);
         title.setFontScale(1.35f);
         title.setAlignment(Align.center);
         title.setBounds(255f, HEIGHT - 70f, 650f, 48f);
         stage.addActor(title);
 
-        coinLabel = new Label("", skin);
-        coinLabel.setAlignment(Align.right);
-        coinLabel.setBounds(965f, HEIGHT - 70f, 290f, 45f);
-        stage.addActor(coinLabel);
+        buildCurrencies();
+    }
+
+    private void buildCurrencies() {
+        TextureRegion premiumRegion = textures.region(
+                "IMAGE_UI_GENERIC_BUTTONS_PREMIUM_NORMAL"
+        );
+        TextureRegion coinRegion = textures.region(
+                "IMAGE_UI_GENERIC_BUTTONS_COIN_BUY_NORMAL"
+        );
+
+        if (premiumRegion == null || coinRegion == null) {
+            throw new IllegalStateException("Currency textures not found.");
+        }
+
+        premiumLabel = new Label(getPremiumCount(), skin);
+        premiumLabel.setColor(Color.WHITE);
+        Group premiumGroup = currencyGroup(
+                premiumRegion,
+                premiumLabel,
+                premiumRegion.getRegionWidth(),
+                70f
+        );
+        premiumGroup.setTouchable(Touchable.enabled);
+
+        coinLabel = new Label(getCoinCount(), skin);
+        coinLabel.setColor(Color.WHITE);
+        Group coinGroup = currencyGroup(
+                coinRegion,
+                coinLabel,
+                150f,
+                65f
+        );
+        coinGroup.setTouchable(Touchable.enabled);
+
+        premiumGroup.addListener(click(() -> {
+            if (isDebugModeEnabled()) {
+                appState.getCurrentUser().addDiamonds(100);
+                refreshCurrency();
+                userManager.save();
+            }
+        }));
+
+        coinGroup.addListener(click(() -> {
+            if (isDebugModeEnabled()) {
+                appState.getCurrentUser().addCoins(100);
+                refreshCurrency();
+                userManager.save();
+            }
+        }));
+
+        Table currencies = new Table();
+        currencies.add(premiumGroup)
+                .width(premiumRegion.getRegionWidth())
+                .height(premiumRegion.getRegionHeight())
+                .padRight(10f);
+        currencies.add(coinGroup)
+                .width(150f)
+                .height(coinRegion.getRegionHeight());
+        currencies.pack();
+
+        currencies.setPosition(
+                WIDTH - currencies.getWidth() - 20f,
+                HEIGHT - currencies.getHeight() - 20f
+        );
+        stage.addActor(currencies);
+    }
+
+    private Group currencyGroup(
+            TextureRegion region,
+            Label label,
+            float width,
+            float textX
+    ) {
+        Group group = new Group();
+        float height = region.getRegionHeight();
+        group.setSize(width, height);
+
+        Image image = new Image(region);
+        image.setSize(width, height);
+        group.addActor(image);
+
+        label.pack();
+        label.setPosition(textX, TEXT_Y_OFFSET);
+        group.addActor(label);
+
+        return group;
+    }
+
+    private boolean isDebugModeEnabled() {
+        return appState.getCurrentUser() != null
+                && appState.getCurrentUser().isDebugMode();
+    }
+
+    private String getPremiumCount() {
+        return appState.getCurrentUser() == null
+                ? "0"
+                : String.valueOf(appState.getCurrentUser().getDiamonds());
+    }
+
+    private String getCoinCount() {
+        return appState.getCurrentUser() == null
+                ? "0"
+                : String.valueOf(appState.getCurrentUser().getCoins());
     }
 
     private void buildTabs() {
@@ -302,11 +419,18 @@ public final class CollectionScreen extends BaseScreen {
 
     private void refreshCurrency() {
         User user = appState.getCurrentUser();
-        coinLabel.setText(
-                user == null
-                        ? "Coins: 0"
-                        : "Coins: " + user.getCoins()
-        );
+        if (premiumLabel != null) {
+            premiumLabel.setText(
+                    user == null ? "0" : String.valueOf(user.getDiamonds())
+            );
+            premiumLabel.pack();
+        }
+        if (coinLabel != null) {
+            coinLabel.setText(
+                    user == null ? "0" : String.valueOf(user.getCoins())
+            );
+            coinLabel.pack();
+        }
     }
 
     private void updateFilterLabels() {

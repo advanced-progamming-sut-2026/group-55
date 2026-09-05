@@ -10,11 +10,13 @@ import com.badlogic.gdx.scenes.scene2d.actions.Actions;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
+import com.badlogic.gdx.utils.Align;
 
 import pvz.controller.MainMenuController;
 import pvz.graphics.BaseScreen;
 import pvz.graphics.PvzGame;
 import pvz.libpvz.textures.TextureBank;
+import pvz.model.account.User;
 import pvz.model.account.UserManager;
 import pvz.model.command.Command;
 import pvz.model.utils.AppState;
@@ -38,6 +40,7 @@ public class MainMenuScreen extends BaseScreen {
 
     private Label premiumLabel;
     private Label coinLabel;
+    private Label welcomeLabel;
 
     public MainMenuScreen(PvzGame game, TextureBank textures, SpriteBatch batch,
                           Skin skin, AppState appState, UserManager userManager) {
@@ -83,6 +86,20 @@ public class MainMenuScreen extends BaseScreen {
         logo.setSize(LOGO_WIDTH, LOGO_HEIGHT);
         logo.setPosition((WIDTH - LOGO_WIDTH) / 2f, HEIGHT - LOGO_HEIGHT - 35f);
         stage.addActor(logo);
+
+        welcomeLabel = new Label("", skin);
+        welcomeLabel.setColor(Color.BROWN);
+        welcomeLabel.setFontScale(0.95f);
+        welcomeLabel.setAlignment(Align.center);
+
+        Table userBox = new Table();
+        userBox.setBackground(skin.getDrawable(
+                "image_ui_dialog_asset_inner_bkgd_10"
+        ));
+        userBox.add(welcomeLabel).growX().pad(8f, 10f, 8f, 10f);
+        userBox.setSize(230f, 55f);
+        userBox.setPosition(90f, HEIGHT - 85f);
+        stage.addActor(userBox);
 
         Image content = image("IMAGE_UI_MAINMENU_MAINMENU_CONTENT_OFFLINE");
         content.setSize(CONTENT_WIDTH, CONTENT_HEIGHT);
@@ -178,6 +195,34 @@ public class MainMenuScreen extends BaseScreen {
             coinLabel.setText(getCoinCount());
             coinLabel.pack();
         }
+    }
+
+    private void updateWelcomeLabel() {
+        if (welcomeLabel == null) {
+            return;
+        }
+
+        User user = appState.getCurrentUser();
+        String displayName = "Guest";
+        if (user != null) {
+            String nickname = user.getNickname();
+            displayName = nickname != null && !nickname.isBlank()
+                    ? nickname
+                    : user.getUsername();
+        }
+
+        welcomeLabel.setText("WELCOME!  " + truncateDisplayName(displayName));
+    }
+
+    private static String truncateDisplayName(String value) {
+        if (value == null || value.isBlank()) {
+            return "Guest";
+        }
+        int maxLength = 18;
+        if (value.length() <= maxLength) {
+            return value;
+        }
+        return value.substring(0, maxLength - 3) + "...";
     }
 
     private boolean isDebugModeEnabled() {
@@ -342,6 +387,7 @@ public class MainMenuScreen extends BaseScreen {
         super.show();
         appState.setCurrentMenu(MenuName.MAIN);
         updateCurrencyLabels();
+        updateWelcomeLabel();
     }
 
     @Override

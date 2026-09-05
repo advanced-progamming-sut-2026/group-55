@@ -489,7 +489,6 @@ public class GreenhouseScreen extends BaseScreen {
     private void addPlantAnimation(Group group, String plantName) {
         String path = plantVisuals.animationPath(plantName);
         if (path == null) {
-            System.out.println("Plant PAM not found: " + plantName);
             return;
         }
 

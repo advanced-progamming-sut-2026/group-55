@@ -1,12 +1,11 @@
 package pvz.model;
 
 import pvz.model.utils.SaveManager;
-import java.io.File; // این ایمپورت برای شناختن File الزامی است
+import java.io.File;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 public abstract class BaseManager<T> {
     protected final String filePath;

@@ -4,13 +4,18 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
+import com.badlogic.gdx.scenes.scene2d.Touchable;
+import com.badlogic.gdx.scenes.scene2d.ui.Image;
+import com.badlogic.gdx.scenes.scene2d.ui.ImageButton;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
+import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Align;
 import java.util.Comparator;
 import java.util.Locale;
@@ -34,6 +39,8 @@ import pvz.model.utils.MenuName;
 
 public final class PlantSelectionScreen extends BaseScreen {
     private static final int CARD_COLUMNS = 4;
+    private static final float TEXT_Y_OFFSET = 17f;
+    private static final float COIN_WIDTH = 150f;
     private final LevelSpec level;
     private final PlantSelectionController controller;
     private final PamAnimationService animationService;
@@ -42,7 +49,8 @@ public final class PlantSelectionScreen extends BaseScreen {
     private final Table selectedSlots = new Table();
     private ScrollPane plantScroll;
     private Label statusLabel;
-    private Label currencyLabel;
+    private Label premiumLabel;
+    private Label coinLabel;
     private Label selectionCountLabel;
 
     public PlantSelectionScreen(
@@ -84,15 +92,8 @@ public final class PlantSelectionScreen extends BaseScreen {
         title.setBounds(180f, HEIGHT - 70f, 920f, 50f);
         stage.addActor(title);
 
-        TextButton back = new TextButton("BACK", skin, "brown");
-        back.setBounds(25f, HEIGHT - 72f, 125f, 48f);
-        back.addListener(click(this::goBack));
-        stage.addActor(back);
-
-        currencyLabel = new Label("", skin);
-        currencyLabel.setAlignment(Align.right);
-        currencyLabel.setBounds(1010f, HEIGHT - 70f, 245f, 45f);
-        stage.addActor(currencyLabel);
+        buildTopBar();
+        buildCurrencies();
 
         selectionCountLabel = new Label("", skin);
         selectionCountLabel.setAlignment(Align.center);
@@ -124,6 +125,129 @@ public final class PlantSelectionScreen extends BaseScreen {
         stage.addActor(start);
     }
 
+    private void buildTopBar() {
+        TextureRegion normal = textures.region(
+                "IMAGE_UI_MAINMENU_BACK_BTN_NORMAL"
+        );
+        TextureRegion pressed = textures.region(
+                "IMAGE_UI_MAINMENU_BACK_BTN_PRESSED"
+        );
+
+        ImageButton.ImageButtonStyle style = new ImageButton.ImageButtonStyle();
+        style.up = normal != null ? new TextureRegionDrawable(normal) : null;
+        style.down = pressed != null
+                ? new TextureRegionDrawable(pressed)
+                : style.up;
+
+        ImageButton back = new ImageButton(style);
+        back.setBounds(25f, HEIGHT - 80f, 55f, 55f);
+        back.addListener(click(this::goBack));
+        stage.addActor(back);
+    }
+
+    private void buildCurrencies() {
+        TextureRegion premiumRegion = textures.region(
+                "IMAGE_UI_GENERIC_BUTTONS_PREMIUM_NORMAL"
+        );
+        TextureRegion coinRegion = textures.region(
+                "IMAGE_UI_GENERIC_BUTTONS_COIN_BUY_NORMAL"
+        );
+
+        if (premiumRegion == null || coinRegion == null) {
+            throw new IllegalStateException("Currency textures not found.");
+        }
+
+        premiumLabel = new Label(getPremiumCount(), skin);
+        premiumLabel.setColor(Color.WHITE);
+        Group premiumGroup = currencyGroup(
+                premiumRegion,
+                premiumLabel,
+                premiumRegion.getRegionWidth(),
+                70f
+        );
+        premiumGroup.setTouchable(Touchable.enabled);
+
+        coinLabel = new Label(getCoinCount(), skin);
+        coinLabel.setColor(Color.WHITE);
+        Group coinGroup = currencyGroup(
+                coinRegion,
+                coinLabel,
+                COIN_WIDTH,
+                65f
+        );
+        coinGroup.setTouchable(Touchable.enabled);
+
+        premiumGroup.addListener(click(() -> {
+            if (isDebugModeEnabled()) {
+                appState.getCurrentUser().addDiamonds(100);
+                refreshCurrencies();
+                userManager.save();
+            }
+        }));
+
+        coinGroup.addListener(click(() -> {
+            if (isDebugModeEnabled()) {
+                appState.getCurrentUser().addCoins(100);
+                refreshCurrencies();
+                userManager.save();
+            }
+        }));
+
+        Table currencies = new Table();
+        currencies.add(premiumGroup)
+                .width(premiumRegion.getRegionWidth())
+                .height(premiumRegion.getRegionHeight())
+                .padRight(10f);
+        currencies.add(coinGroup)
+                .width(COIN_WIDTH)
+                .height(coinRegion.getRegionHeight());
+        currencies.pack();
+
+        currencies.setPosition(
+                WIDTH - currencies.getWidth() - 20f,
+                HEIGHT - currencies.getHeight() - 20f
+        );
+        stage.addActor(currencies);
+    }
+
+    private Group currencyGroup(
+            TextureRegion region,
+            Label label,
+            float width,
+            float textX
+    ) {
+        Group group = new Group();
+        float height = region.getRegionHeight();
+        group.setSize(width, height);
+
+        Image image = new Image(region);
+        image.setSize(width, height);
+        group.addActor(image);
+
+        label.pack();
+        label.setPosition(textX, TEXT_Y_OFFSET);
+        group.addActor(label);
+
+        return group;
+    }
+
+    private boolean isDebugModeEnabled() {
+        return appState.getCurrentUser() != null
+                && appState.getCurrentUser().isDebugMode();
+    }
+
+    private String getPremiumCount() {
+        return appState.getCurrentUser() == null
+                ? "0"
+                : String.valueOf(appState.getCurrentUser().getDiamonds());
+    }
+
+    private String getCoinCount() {
+        return appState.getCurrentUser() == null
+                ? "0"
+                : String.valueOf(appState.getCurrentUser().getCoins());
+    }
+
     private void refresh() {
         refreshCurrencies();
         rebuildSelectedSlots();
@@ -138,10 +262,18 @@ public final class PlantSelectionScreen extends BaseScreen {
 
     private void refreshCurrencies() {
         User user = appState.getCurrentUser();
-        currencyLabel.setText(user == null
-                ? "Coins 0   Diamonds 0"
-                : "Coins " + user.getCoins()
-                + "   Diamonds " + user.getDiamonds());
+        if (premiumLabel != null) {
+            premiumLabel.setText(user == null
+                    ? "0"
+                    : String.valueOf(user.getDiamonds()));
+            premiumLabel.pack();
+        }
+        if (coinLabel != null) {
+            coinLabel.setText(user == null
+                    ? "0"
+                    : String.valueOf(user.getCoins()));
+            coinLabel.pack();
+        }
     }
 
     private void rebuildSelectedSlots() {
@@ -282,5 +414,6 @@ public final class PlantSelectionScreen extends BaseScreen {
     public void show() {
         super.show();
         appState.setCurrentMenu(MenuName.PLANT_SELECTION);
+        refreshCurrencies();
     }
 }
