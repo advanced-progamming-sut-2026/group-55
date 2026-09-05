@@ -1,13 +1,17 @@
 package pvz.graphics.menu;
 
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.Pixmap;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
+import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Align;
+import com.badlogic.gdx.utils.Scaling;
 
 import pvz.graphics.BaseScreen;
 import pvz.graphics.PvzGame;
@@ -54,6 +58,8 @@ public class GameMenuScreen extends BaseScreen {
     private Label coinLabel;
     private TextButton enterChapterButton;
     private Label statusLabel;
+    private TextButton travelLogButton;
+    private Texture travelLogIconTexture;
 
     public GameMenuScreen(
             PvzGame game,
@@ -102,9 +108,10 @@ public class GameMenuScreen extends BaseScreen {
         Image greenhouse = image("IMAGE_UI_GENERIC_BUTTONS_HUD_ZG_NORMAL");
         Image collection = image("IMAGE_UI_HUD_ALMANACBUTTON_BUTTONS_HUD_ALMANAC_NORMAL");
         Image settings = image("IMAGE_UI_HUD_SETTINGSBUTTON_BUTTONS_HUD_SETTINGS_NORMAL");
-        TextButton travelLog = new TextButton("TRAVEL LOG", skin, "brown");
 
         float size = 55f, gap = 10f, y = HEIGHT - 80f;
+
+        travelLogButton = createTravelLogButton(size);
 
         back.setSize(size, size);
         greenhouse.setSize(size, size);
@@ -115,8 +122,7 @@ public class GameMenuScreen extends BaseScreen {
         greenhouse.setPosition(25f + size + gap, y);
         collection.setPosition(25f + (size + gap) * 2f, y);
         settings.setPosition(25f + (size + gap) * 3f, y);
-        travelLog.setBounds(25f + (size + gap) * 4f, y, 145f, size);
-        travelLog.getLabel().setFontScale(0.68f);
+        travelLogButton.setPosition(25f + (size + gap) * 4f, y);
 
         back.addListener(click(() -> game.setScreen(new MainMenuScreen(
                 game,
@@ -149,7 +155,7 @@ public class GameMenuScreen extends BaseScreen {
 
         settings.addListener(click(() -> settingsScreen.show()));
 
-        travelLog.addListener(click(() -> game.setScreen(new TravelLogScreen(
+        travelLogButton.addListener(click(() -> game.setScreen(new TravelLogScreen(
                 game,
                 textures,
                 batch,
@@ -162,7 +168,66 @@ public class GameMenuScreen extends BaseScreen {
         stage.addActor(greenhouse);
         stage.addActor(collection);
         stage.addActor(settings);
-        stage.addActor(travelLog);
+        stage.addActor(travelLogButton);
+    }
+
+    private TextButton createTravelLogButton(float size) {
+        TextButton button = new TextButton("", skin, "brown");
+        Image icon = new Image(createTravelLogDrawable());
+        icon.setScaling(Scaling.fit);
+        icon.setTouchable(com.badlogic.gdx.scenes.scene2d.Touchable.disabled);
+
+        button.clearChildren();
+        button.add(icon).size(39f, 43f).pad(4f);
+        button.setSize(size, size);
+        return button;
+    }
+
+    private TextureRegionDrawable createTravelLogDrawable() {
+        Pixmap pixmap = new Pixmap(48, 48, Pixmap.Format.RGBA8888);
+        pixmap.setColor(0f, 0f, 0f, 0f);
+        pixmap.fill();
+
+        // Dark log/book backing.
+        pixmap.setColor(0.29f, 0.15f, 0.06f, 1f);
+        pixmap.fillRectangle(6, 5, 36, 39);
+        pixmap.setColor(0.53f, 0.31f, 0.12f, 1f);
+        pixmap.fillRectangle(8, 7, 32, 35);
+
+        // Checklist sheet pinned to the log.
+        pixmap.setColor(0.96f, 0.90f, 0.70f, 1f);
+        pixmap.fillRectangle(13, 8, 24, 31);
+        pixmap.setColor(0.76f, 0.59f, 0.31f, 1f);
+        pixmap.fillRectangle(13, 8, 24, 3);
+        pixmap.fillRectangle(13, 36, 24, 3);
+
+        drawChecklistRow(pixmap, 15);
+        drawChecklistRow(pixmap, 23);
+        drawChecklistRow(pixmap, 31);
+
+        // Small red pin gives the icon the hand-made PvZ UI feel.
+        pixmap.setColor(0.72f, 0.10f, 0.08f, 1f);
+        pixmap.fillCircle(25, 8, 3);
+        pixmap.setColor(1f, 0.47f, 0.24f, 1f);
+        pixmap.fillCircle(24, 7, 1);
+
+        travelLogIconTexture = new Texture(pixmap);
+        travelLogIconTexture.setFilter(
+                Texture.TextureFilter.Linear,
+                Texture.TextureFilter.Linear
+        );
+        pixmap.dispose();
+        return new TextureRegionDrawable(new TextureRegion(travelLogIconTexture));
+    }
+
+    private void drawChecklistRow(Pixmap pixmap, int y) {
+        pixmap.setColor(0.22f, 0.57f, 0.18f, 1f);
+        pixmap.drawRectangle(16, y - 3, 5, 5);
+        pixmap.drawLine(17, y - 1, 19, y + 1);
+        pixmap.drawLine(19, y + 1, 22, y - 3);
+
+        pixmap.setColor(0.28f, 0.20f, 0.10f, 1f);
+        pixmap.fillRectangle(24, y - 1, 10, 2);
     }
 
     private void buildSettingsOverlay() {
@@ -475,6 +540,10 @@ public class GameMenuScreen extends BaseScreen {
 
     @Override
     public void dispose() {
+        if (travelLogIconTexture != null) {
+            travelLogIconTexture.dispose();
+            travelLogIconTexture = null;
+        }
         if (settingsScreen != null) {
             settingsScreen.dispose();
         }
