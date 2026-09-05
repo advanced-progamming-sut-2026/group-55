@@ -200,6 +200,28 @@ public class MainMenuScreen extends BaseScreen {
             if (profileScreen != null) profileScreen.show();
         }));
 
+        miniGames.addListener(click(() -> game.setScreen(
+                new MinigamesScreen(
+                        game,
+                        textures,
+                        batch,
+                        skin,
+                        appState,
+                        userManager
+                )
+        )));
+
+        leaderboard.addListener(click(() -> game.setScreen(
+                new LeaderboardScreen(
+                        game,
+                        textures,
+                        batch,
+                        skin,
+                        appState,
+                        userManager
+                )
+        )));
+
         Table bottomLeft = new Table();
         bottomLeft.add(profile).size(MENU_ICON_SIZE).padRight(6f);
         bottomLeft.add(miniGames).size(MENU_ICON_SIZE).padRight(6f);

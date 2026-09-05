@@ -16,5 +16,6 @@ public enum MenuName {
     GREENHOUSE,
     TRAVEL_LOG,
     LEADERBOARD,
+    MINIGAMES,
     CHAPTER
 }

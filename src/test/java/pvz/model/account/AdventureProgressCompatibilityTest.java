@@ -43,5 +43,6 @@ class AdventureProgressCompatibilityTest {
 
         assertNotNull(progress);
         assertTrue(progress.getCompletedLevelIds().isEmpty());
+        assertTrue(progress.getRewardUnlockedLevelIds().isEmpty());
     }
 }

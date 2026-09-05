@@ -145,7 +145,7 @@ public final class GameController {
         }
 
         world.sunBank().spend(cost);
-        session.recordPlanting(type);
+        session.recordPlanting(plant.getName(), cost);
         plant.place(world, x, y, game.getCurrentTick());
 
         if (plant.getSpec().hasUpgrade(PlantUpgradeType.MINT_RESET_FAMILY_COOLDOWNS)) {

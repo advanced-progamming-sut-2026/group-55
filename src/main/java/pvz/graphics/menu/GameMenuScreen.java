@@ -102,6 +102,7 @@ public class GameMenuScreen extends BaseScreen {
         Image greenhouse = image("IMAGE_UI_GENERIC_BUTTONS_HUD_ZG_NORMAL");
         Image collection = image("IMAGE_UI_HUD_ALMANACBUTTON_BUTTONS_HUD_ALMANAC_NORMAL");
         Image settings = image("IMAGE_UI_HUD_SETTINGSBUTTON_BUTTONS_HUD_SETTINGS_NORMAL");
+        TextButton travelLog = new TextButton("TRAVEL LOG", skin, "brown");
 
         float size = 55f, gap = 10f, y = HEIGHT - 80f;
 
@@ -114,6 +115,8 @@ public class GameMenuScreen extends BaseScreen {
         greenhouse.setPosition(25f + size + gap, y);
         collection.setPosition(25f + (size + gap) * 2f, y);
         settings.setPosition(25f + (size + gap) * 3f, y);
+        travelLog.setBounds(25f + (size + gap) * 4f, y, 145f, size);
+        travelLog.getLabel().setFontScale(0.68f);
 
         back.addListener(click(() -> game.setScreen(new MainMenuScreen(
                 game,
@@ -146,10 +149,20 @@ public class GameMenuScreen extends BaseScreen {
 
         settings.addListener(click(() -> settingsScreen.show()));
 
+        travelLog.addListener(click(() -> game.setScreen(new TravelLogScreen(
+                game,
+                textures,
+                batch,
+                skin,
+                appState,
+                userManager
+        ))));
+
         stage.addActor(back);
         stage.addActor(greenhouse);
         stage.addActor(collection);
         stage.addActor(settings);
+        stage.addActor(travelLog);
     }
 
     private void buildSettingsOverlay() {

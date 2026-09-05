@@ -31,6 +31,10 @@ public final class LevelProgressService {
         Objects.requireNonNull(user, "user cannot be null");
         Objects.requireNonNull(level, "level cannot be null");
 
+        if (user.getAdventureProgress()
+                .isLevelRewardUnlocked(level.id())) {
+            return true;
+        }
         if (!user.isChapterUnlocked(level.chapterId())) {
             return false;
         }

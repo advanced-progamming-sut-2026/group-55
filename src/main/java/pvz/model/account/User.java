@@ -2,6 +2,8 @@ package pvz.model.account;
 
 import pvz.model.currency.CurrencyWallet;
 import pvz.model.greenhouse.Greenhouse;
+import pvz.model.minigame.MinigameProgress;
+import pvz.model.quest.QuestLog;
 import pvz.model.shop.DailyOffer;
 
 import java.util.ArrayList;
@@ -83,6 +85,8 @@ public class User implements CurrencyWallet {
     private List<NewsItem> newsList;
     private List<PlayerPlant> unlockedPlants;
     private List<String> seenZombies;
+    private QuestLog questLog;
+    private MinigameProgress minigameProgress;
 
     public User(
             String username,
@@ -108,6 +112,8 @@ public class User implements CurrencyWallet {
         this.storedBoosts = new HashSet<>();
         this.newsList = new ArrayList<>();
         this.seenZombies = new ArrayList<>();
+        this.questLog = new QuestLog();
+        this.minigameProgress = new MinigameProgress();
     }
 
     public String getUsername() {
@@ -396,6 +402,20 @@ public class User implements CurrencyWallet {
         }
 
         return seenZombies;
+    }
+
+    public QuestLog getQuestLog() {
+        if (questLog == null) {
+            questLog = new QuestLog();
+        }
+        return questLog;
+    }
+
+    public MinigameProgress getMinigameProgress() {
+        if (minigameProgress == null) {
+            minigameProgress = new MinigameProgress();
+        }
+        return minigameProgress;
     }
 
     public boolean addSeenZombie(String zombieId) {

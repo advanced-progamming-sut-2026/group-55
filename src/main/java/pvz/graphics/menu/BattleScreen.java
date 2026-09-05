@@ -18,6 +18,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.utils.Align;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -43,6 +44,7 @@ import pvz.model.core.GameEvents;
 import pvz.model.entity.collectible.sun.Sun;
 import pvz.model.entity.collectible.sun.SunCollectionOutcome;
 import pvz.model.entity.plant.PlantSpec;
+import pvz.model.quest.QuestEvent;
 import pvz.model.session.BattleOutcomeSettlement;
 import pvz.model.session.GameRuntime;
 import pvz.model.session.GameSession;
@@ -96,6 +98,7 @@ public final class BattleScreen extends BaseScreen {
     private boolean resultHandled;
     private boolean rewardsSettled;
     private boolean rewardsSaved;
+    private boolean questEventsApplied;
     private BattleOutcomeSettlement.Result settlementResult;
     private boolean disposed;
 
@@ -133,6 +136,7 @@ public final class BattleScreen extends BaseScreen {
                 "IMAGE_BACKGROUNDS_EGYPT_TEXTURE_RIGHT"
         );
         GameEvents.drain();
+        prepareQuestTracking();
         buildUi();
         bindBattlefield();
         updateUi();
@@ -739,7 +743,113 @@ public final class BattleScreen extends BaseScreen {
             }
         }
 
+        applyQuestEvents(user);
         return saveSettledRewards();
+    }
+
+    /**
+     * Establishes daily baselines before this attempt can increment persistent
+     * battle counters. This makes daily quests count the first battle even if
+     * the player never opened Travel Log beforehand.
+     */
+    private void prepareQuestTracking() {
+        User user = appState.getCurrentUser();
+        if (user == null) {
+            return;
+        }
+        game.getQuestService().restoreInitialAvailability(
+                user,
+                game.getGameData().questCatalog().all()
+        );
+        game.getQuestService().synchronize(
+                user,
+                game.getGameData().questCatalog().all()
+        );
+    }
+
+    /**
+     * Applies buffered battle telemetry exactly once to the current user.
+     * Persistence is deliberately left to the existing battle save below so
+     * rewards, level progress and quest progress are committed together.
+     */
+    private void applyQuestEvents(User user) {
+        if (questEventsApplied) {
+            return;
+        }
+
+        List<QuestEvent> events = new ArrayList<>();
+        if (runtime.status() == GameSessionStatus.WON
+                || runtime.status() == GameSessionStatus.LOST) {
+            events.addAll(session.drainQuestEvents());
+        } else {
+            // Leaving an unfinished attempt must not farm kill/sun quests.
+            session.clearQuestEvents();
+        }
+        appendSettlementQuestEvents(events, user);
+
+        game.getQuestService().recordEvents(
+                user,
+                game.getGameData().questCatalog().all(),
+                events
+        );
+        game.getQuestService().synchronize(
+                user,
+                game.getGameData().questCatalog().all()
+        );
+        questEventsApplied = true;
+    }
+
+    private void appendSettlementQuestEvents(
+            List<QuestEvent> events,
+            User user
+    ) {
+        GameSessionStatus status = runtime.status();
+        if (status == GameSessionStatus.WON
+                || status == GameSessionStatus.LOST) {
+            events.add(QuestEvent.battleCompleted());
+        }
+
+        if (status == GameSessionStatus.WON) {
+            events.add(QuestEvent.levelCompleted(restartConfig.levelId()));
+            appendChapterCompletionEvent(events, user);
+        }
+
+        if (settlementResult == null) {
+            return;
+        }
+        int coins = settlementResult.rewards().coins();
+        int diamonds = settlementResult.rewards().diamonds();
+        if (coins > 0) {
+            events.add(QuestEvent.coinsEarned(coins));
+        }
+        if (diamonds > 0) {
+            events.add(QuestEvent.diamondsEarned(diamonds));
+        }
+    }
+
+    private void appendChapterCompletionEvent(
+            List<QuestEvent> events,
+            User user
+    ) {
+        if (settlementResult == null || !settlementResult.newlyCompleted()) {
+            return;
+        }
+
+        LevelSpec level = game.getGameData()
+                .adventureData()
+                .catalog()
+                .requireLevel(restartConfig.levelId());
+        boolean chapterCompleted = game.getGameData()
+                .adventureData()
+                .catalog()
+                .levelsInChapter(level.chapterId())
+                .stream()
+                .allMatch(candidate -> user.getAdventureProgress()
+                        .isLevelCompleted(candidate.id()));
+
+        if (chapterCompleted) {
+            events.add(QuestEvent.chapterCompleted(level.chapterId()));
+        }
     }
 
     private boolean saveSettledRewards() {
@@ -804,6 +914,7 @@ public final class BattleScreen extends BaseScreen {
         resultHandled = false;
         rewardsSettled = false;
         rewardsSaved = false;
+        questEventsApplied = false;
         settlementResult = null;
         tickClock.reset();
         GameEvents.drain();

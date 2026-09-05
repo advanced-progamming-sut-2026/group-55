@@ -16,6 +16,8 @@ import pvz.model.entity.plant.Plant;
 import pvz.model.entity.plant.PlantFactory;
 import pvz.model.entity.zombie.Zombie;
 import pvz.model.entity.zombie.ZombieFactory;
+import pvz.model.quest.QuestEvent;
+import pvz.model.quest.QuestEventBuffer;
 import pvz.model.session.condition.WinConditionContext;
 import pvz.model.wave.WaveManager;
 
@@ -27,6 +29,7 @@ public final class GameSession {
     private final PlantFactory plantFactory;
     private final ZombieFactory zombieFactory;
     private final WaveManager waveManager;
+    private final QuestEventBuffer questEvents;
     private final Map<String, Long> lastPlantedTicks = new HashMap<>();
 
     private GameSessionStatus status = GameSessionStatus.CREATED;
@@ -36,7 +39,8 @@ public final class GameSession {
             World world,
             PlantFactory plantFactory,
             ZombieFactory zombieFactory,
-            WaveManager waveManager
+            WaveManager waveManager,
+            QuestEventBuffer questEvents
     ) {
         this.config = Objects.requireNonNull(
                 config,
@@ -57,6 +61,10 @@ public final class GameSession {
         this.waveManager = Objects.requireNonNull(
                 waveManager,
                 "wave manager cannot be null"
+        );
+        this.questEvents = Objects.requireNonNull(
+                questEvents,
+                "quest event buffer cannot be null"
         );
         this.game = world.game();
         this.board = world.board();
@@ -138,6 +146,43 @@ public final class GameSession {
                 normalizeName(plantName),
                 game.getCurrentTick()
         );
+    }
+
+    /**
+     * Records a successful player planting operation for cooldown and quest
+     * telemetry. Failed placement attempts must never call this overload.
+     */
+    public void recordPlanting(
+            String plantName,
+            int sunCost
+    ) {
+        if (sunCost < 0) {
+            throw new IllegalArgumentException(
+                    "plant sun cost cannot be negative"
+            );
+        }
+
+        recordPlanting(plantName);
+        questEvents.publish(QuestEvent.plantPlaced(plantName));
+        if (sunCost > 0) {
+            questEvents.publish(QuestEvent.sunSpent(sunCost));
+        }
+    }
+
+    public void publishQuestEvent(QuestEvent event) {
+        questEvents.publish(event);
+    }
+
+    public java.util.List<QuestEvent> questEventsSnapshot() {
+        return questEvents.snapshot();
+    }
+
+    public java.util.List<QuestEvent> drainQuestEvents() {
+        return questEvents.drain();
+    }
+
+    public void clearQuestEvents() {
+        questEvents.clear();
     }
 
 

@@ -73,6 +73,21 @@ class LevelProgressServiceTest {
         assertEquals(1, user.getClearedStages());
     }
 
+
+    @Test
+    void explicitQuestRewardCanUnlockALevelWithoutPreviousCompletion() {
+        LevelSpec second = catalog.requireLevel("egypt-2");
+        assertFalse(service.isUnlocked(user, second));
+
+        user.getAdventureProgress().unlockLevel(second.id());
+
+        assertTrue(service.isUnlocked(user, second));
+        assertEquals(
+                LevelProgressService.LevelState.AVAILABLE,
+                service.state(user, second)
+        );
+    }
+
     @Test
     void unlocksNextChapterOnlyAfterCurrentChapterIsCompleted() {
         service.completeLevel(user, "egypt-1");

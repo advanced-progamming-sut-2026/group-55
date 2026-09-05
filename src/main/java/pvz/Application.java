@@ -67,6 +67,7 @@ public class Application {
     private final NewsController newsController = new NewsController(appState, userManager, view);
     private final TravelLogController travelLogController = new TravelLogController(appState, userManager, view);
     private final LeaderboardController leaderboardController = new LeaderboardController(appState, userManager, view);
+    private final MinigamesController minigamesController = new MinigamesController(appState, userManager, view);
     private ChapterController chapterController;
     private GreenhouseController greenhouseController;
     private CollectionController collectionController;
@@ -411,6 +412,7 @@ public class Application {
             case GREENHOUSE -> greenhouseController.handle(command);
             case TRAVEL_LOG -> travelLogController.handle(command);
             case LEADERBOARD -> leaderboardController.handle(command);
+            case MINIGAMES -> minigamesController.handle(command);
             case CHAPTER -> chapterController.handle(command);
             case SHOP -> shopController.handle(command);
         }
