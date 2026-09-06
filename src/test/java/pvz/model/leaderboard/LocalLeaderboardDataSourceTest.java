@@ -86,7 +86,7 @@ class LocalLeaderboardDataSourceTest {
         assertEquals("frost", firstEntry.adventure().chapterId());
         assertEquals("frost-1", firstEntry.adventure().levelId());
         assertEquals(2, firstEntry.completedDailyQuests());
-        assertEquals(1, firstEntry.completedNonDailyQuests());
+        assertEquals(2, firstEntry.completedNonDailyQuests());
         assertEquals(2, firstEntry.completedMinigameStages());
         assertEquals(420, firstEntry.maxMewPoint());
 
@@ -95,6 +95,55 @@ class LocalLeaderboardDataSourceTest {
                 .findFirst()
                 .orElseThrow();
         assertFalse(secondEntry.adventure().hasProgress());
+    }
+
+    @Test
+    void reflectsUpgradeWithoutOpeningTravelLogAndDoesNotMutateQuestLog() {
+        UserManager manager = new UserManager(tempDirectory.resolve("upgrade.json").toString());
+        User player = user("upgrade", "Upgrade");
+        var plant = new pvz.model.account.PlayerPlant("Peashooter");
+        plant.upgrade();
+        player.getUnlockedPlants().add(plant);
+        manager.add(player);
+        var source = new LocalLeaderboardDataSource(manager, catalog(), QuestCatalog.createDefault());
+        assertEquals(1, source.loadEntries().get(0).completedNonDailyQuests());
+        assertEquals(1, source.loadEntries().get(0).completedNonDailyQuests());
+        assertTrue(player.getQuestLog().getAll().isEmpty());
+        player.getQuestLog().getOrCreate(QuestCatalog.CHALLENGE_FIRST_UPGRADE).markCompleted();
+        assertEquals(1, source.loadEntries().get(0).completedNonDailyQuests());
+    }
+
+    @Test
+    void neverResetsOfflineDailyCyclesOrInfersOldActivityAsToday() {
+        UserManager manager = new UserManager(tempDirectory.resolve("daily.json").toString());
+        User player = user("daily", "Daily");
+        manager.add(player);
+        var progress = player.getQuestLog().getOrCreate(QuestCatalog.DAILY_PLAY_ONE);
+        var oldDate = LocalDate.of(2020, 1, 1);
+        progress.initializeCycle(oldDate, 0);
+        player.setGamesPlayed(100);
+        var source = new LocalLeaderboardDataSource(manager, catalog(), QuestCatalog.createDefault());
+        assertEquals(0, source.loadEntries().get(0).completedDailyQuests());
+        assertEquals(oldDate, progress.getCycleDate());
+    }
+
+    @Test
+    void projectsTodaysCompletionOnlyOnceWithoutClaimingIt() {
+        UserManager manager = new UserManager(tempDirectory.resolve("today.json").toString());
+        User player = user("today", "Today");
+        manager.add(player);
+        var date = LocalDate.of(2026, 9, 6);
+        var progress = player.getQuestLog().getOrCreate(QuestCatalog.DAILY_PLAY_ONE);
+        progress.initializeCycle(date, 10);
+        player.setGamesPlayed(11);
+        var clock = java.time.Clock.fixed(date.atStartOfDay(java.time.ZoneOffset.UTC).toInstant(),
+                java.time.ZoneOffset.UTC);
+        var source = new LocalLeaderboardDataSource(manager, catalog(), QuestCatalog.createDefault(), clock);
+        assertEquals(1, source.loadEntries().get(0).completedDailyQuests());
+        assertEquals(1, source.loadEntries().get(0).completedDailyQuests());
+        assertFalse(progress.isCompleted());
+        progress.markCompleted();
+        assertEquals(1, source.loadEntries().get(0).completedDailyQuests());
     }
 
     private User user(String username, String nickname) {

@@ -9,6 +9,7 @@ public final class GameRuntime {
 
     private GameSession session;
     private GameController controller;
+    private StoredPlantBoostAccess storedBoostAccess = StoredPlantBoostAccess.untracked();
 
     public GameRuntime(GameSessionFactory sessionFactory) {
         this.sessionFactory = Objects.requireNonNull(
@@ -18,17 +19,37 @@ public final class GameRuntime {
     }
 
     public void start(GameSessionConfig config) {
-        start(config, ZombieDiscoveryListener.none());
+        start(
+                config,
+                ZombieDiscoveryListener.none(),
+                StoredPlantBoostAccess.untracked()
+        );
     }
 
     public void start(
             GameSessionConfig config,
             ZombieDiscoveryListener discoveryListener
     ) {
+        start(
+                config,
+                discoveryListener,
+                StoredPlantBoostAccess.untracked()
+        );
+    }
+
+    public void start(
+            GameSessionConfig config,
+            ZombieDiscoveryListener discoveryListener,
+            StoredPlantBoostAccess boostAccess
+    ) {
         Objects.requireNonNull(config, "session config cannot be null");
         Objects.requireNonNull(
                 discoveryListener,
                 "zombie discovery listener cannot be null"
+        );
+        Objects.requireNonNull(
+                boostAccess,
+                "stored boost access cannot be null"
         );
 
         if (isActive()) {
@@ -39,10 +60,12 @@ public final class GameRuntime {
 
         GameSession startedSession = createStartedSession(
                 config,
-                discoveryListener
+                discoveryListener,
+                boostAccess
         );
         session = startedSession;
         controller = new GameController(startedSession);
+        storedBoostAccess = boostAccess;
     }
 
     public void restart(GameSessionConfig config) {
@@ -68,7 +91,8 @@ public final class GameRuntime {
 
         GameSession replacement = createStartedSession(
                 config,
-                discoveryListener
+                discoveryListener,
+                storedBoostAccess
         );
         GameController replacementController = new GameController(
                 replacement
@@ -134,15 +158,18 @@ public final class GameRuntime {
 
         session = null;
         controller = null;
+        storedBoostAccess = StoredPlantBoostAccess.untracked();
     }
 
     private GameSession createStartedSession(
             GameSessionConfig config,
-            ZombieDiscoveryListener discoveryListener
+            ZombieDiscoveryListener discoveryListener,
+            StoredPlantBoostAccess boostAccess
     ) {
         GameSession created = sessionFactory.create(
                 config,
-                discoveryListener
+                discoveryListener,
+                boostAccess
         );
         created.start();
         return created;

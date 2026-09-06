@@ -7,11 +7,13 @@ import pvz.model.command.GameMenuCommand;
 import pvz.model.utils.*;
 import pvz.view.MenuView;
 import pvz.model.adventure.LevelCatalog;
+import pvz.model.adventure.LevelProgressService;
 
 import java.util.Objects;
 
 public class GameMenuController extends BaseController {
     private final LevelCatalog levelCatalog;
+    private final LevelProgressService levelProgressService;
 
     public GameMenuController(
             AppState appState,
@@ -24,6 +26,7 @@ public class GameMenuController extends BaseController {
                 levelCatalog,
                 "level catalog cannot be null"
         );
+        this.levelProgressService = new LevelProgressService(levelCatalog);
     }
 
     @Override
@@ -46,7 +49,10 @@ public class GameMenuController extends BaseController {
                     return null;
                 }
 
-                if (!currentUser.isChapterUnlocked(chapterName)) {
+                if (!levelProgressService.isChapterAccessible(
+                        currentUser,
+                        chapterName
+                )) {
                     view.showError(SystemMessage.CHAPTER_LOCKED.getMessage());
                     return null;
                 }

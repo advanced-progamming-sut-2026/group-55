@@ -20,15 +20,18 @@ import pvz.graphics.asset.PamAnimationService;
 
 public final class PlantCardActor extends Table {
     public static final float CARD_WIDTH = 210f;
-    public static final float CARD_HEIGHT = 292f;
+    public static final float CARD_HEIGHT = 300f;
 
     public record Model(
             String name,
             int level,
             int sunCost,
             String seedProgress,
+            String family,
             boolean owned,
+            boolean selectable,
             boolean selected,
+            boolean removable,
             boolean boosted,
             TextureRegion preview,
             String pamPath,
@@ -103,13 +106,14 @@ public final class PlantCardActor extends Table {
 
         String details = "Lvl " + model.level()
                 + "   Sun " + model.sunCost()
-                + "\nSeeds " + model.seedProgress();
+                + "\nSeeds " + model.seedProgress()
+                + "   " + model.family();
         Label detailLabel = new Label(details, skin);
         detailLabel.setAlignment(Align.center);
         detailLabel.setColor(model.owned() ? Color.DARK_GRAY : Color.GRAY);
         add(detailLabel)
                 .width(CONTENT_WIDTH)
-                .height(40f)
+                .height(48f)
                 .colspan(2)
                 .row();
 
@@ -122,17 +126,25 @@ public final class PlantCardActor extends Table {
                 .colspan(2)
                 .row();
 
+        String selectText = model.selected() && !model.removable()
+                ? "REQUIRED"
+                : model.selected() ? "REMOVE" : "SELECT";
         TextButton select = new TextButton(
-                model.selected() ? "REMOVE" : "SELECT",
+                selectText,
                 skin,
                 model.selected() ? "brown" : "green"
         );
-        select.setDisabled(!model.owned());
+        select.setDisabled(!model.owned()
+                || !model.selectable()
+                || (model.selected() && !model.removable()));
         select.addListener(click(selectionAction));
         add(select).size(HALF_BUTTON_WIDTH, 42f);
 
         TextButton boost = new TextButton("BOOST", skin, "brown");
-        boost.setDisabled(!model.owned() || model.boosted());
+        boost.setDisabled(!model.owned()
+                || !model.selectable()
+                || !model.selected()
+                || model.boosted());
         boost.addListener(click(boostAction));
         add(boost).size(HALF_BUTTON_WIDTH, 42f).row();
 
@@ -251,8 +263,14 @@ public final class PlantCardActor extends Table {
         if (!model.owned()) {
             return "LOCKED";
         }
+        if (!model.selectable()) {
+            return "UNAVAILABLE THIS LEVEL";
+        }
         if (model.boosted()) {
             return "BOOSTED";
+        }
+        if (model.selected() && !model.removable()) {
+            return "REQUIRED";
         }
         return model.selected() ? "SELECTED" : "AVAILABLE";
     }

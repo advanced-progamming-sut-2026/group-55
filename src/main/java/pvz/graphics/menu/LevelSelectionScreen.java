@@ -2,8 +2,6 @@ package pvz.graphics.menu;
 
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.graphics.g2d.TextureRegion;
-import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.ui.Image;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
@@ -18,22 +16,24 @@ import java.util.Locale;
 import java.util.Objects;
 import pvz.graphics.BaseScreen;
 import pvz.graphics.PvzGame;
+import pvz.graphics.ui.HoverEffect;
+import pvz.graphics.ui.Typography;
 import pvz.libpvz.textures.TextureBank;
 import pvz.model.account.User;
 import pvz.model.account.UserManager;
 import pvz.model.adventure.ChapterSpec;
+import pvz.model.adventure.LevelEntryRoute;
+import pvz.model.adventure.LevelEntryRouter;
 import pvz.model.adventure.LevelProgressService;
 import pvz.model.adventure.LevelSpec;
 import pvz.model.utils.AppState;
 import pvz.model.utils.MenuName;
 
 public final class LevelSelectionScreen extends BaseScreen {
-    private static final float COIN_WIDTH = 150f;
-    private static final float TEXT_Y_OFFSET = 17f;
-
     private final ChapterSpec chapter;
     private final List<LevelSpec> levels;
     private final LevelProgressService levelProgressService;
+    private final LevelEntryRouter levelEntryRouter = new LevelEntryRouter();
     private final Table levelTable = new Table();
 
     private Label premiumLabel;
@@ -94,6 +94,7 @@ public final class LevelSelectionScreen extends BaseScreen {
                     userManager
             ));
         }));
+        HoverEffect.addScale(back);
         stage.addActor(back);
     }
 
@@ -102,10 +103,11 @@ public final class LevelSelectionScreen extends BaseScreen {
                 chapter.name().toUpperCase(Locale.ROOT),
                 skin
         );
+        Typography.applyBody(title, skin);
         title.setColor(Color.WHITE);
         title.setFontScale(1.6f);
         title.setAlignment(Align.center);
-        title.setBounds(240f, HEIGHT - 105f, WIDTH - 480f, 60f);
+        title.setBounds(190f, HEIGHT - 105f, 690f, 60f);
         stage.addActor(title);
     }
 
@@ -160,11 +162,13 @@ public final class LevelSelectionScreen extends BaseScreen {
                 ? "green"
                 : "brown";
         TextButton button = new TextButton(text, skin, style);
+        Typography.applyBody(button, skin);
         button.getLabel().setAlignment(Align.center);
         button.getLabel().setWrap(true);
         button.setDisabled(
                 state == LevelProgressService.LevelState.LOCKED
         );
+        HoverEffect.addScale(button, () -> !button.isDisabled());
         button.addListener(click(() -> selectLevel(level, state)));
         return button;
     }
@@ -181,6 +185,15 @@ public final class LevelSelectionScreen extends BaseScreen {
             return;
         }
 
+        LevelEntryRoute route = levelEntryRouter.route(level);
+        if (route != LevelEntryRoute.PLANT_SELECTION) {
+            statusLabel.setColor(Color.YELLOW);
+            statusLabel.setText(
+                    "This level needs a setup flow that is not ready yet."
+            );
+            return;
+        }
+
         appState.setSelectedChapter(chapter.id());
         appState.setSelectedLevelId(level.id());
         game.setScreen(new PlantSelectionScreen(
@@ -190,107 +203,40 @@ public final class LevelSelectionScreen extends BaseScreen {
                 skin,
                 appState,
                 userManager,
-                level
+                level,
+                levelEntryRouter.plantSelectionRules(level)
         ));
     }
 
     private void buildStatusLabel() {
         statusLabel = new Label("", skin);
+        Typography.applyBody(statusLabel, skin);
         statusLabel.setAlignment(Align.center);
         statusLabel.setBounds(250f, 65f, WIDTH - 500f, 40f);
         stage.addActor(statusLabel);
     }
 
     private void buildCurrencies() {
-        TextureRegion premiumRegion = textures.region(
-                "IMAGE_UI_GENERIC_BUTTONS_PREMIUM_NORMAL"
-        );
-        TextureRegion coinRegion = textures.region(
-                "IMAGE_UI_GENERIC_BUTTONS_COIN_BUY_NORMAL"
-        );
-        if (premiumRegion == null || coinRegion == null) {
-            throw new IllegalStateException("Currency textures not found.");
-        }
-
         premiumLabel = new Label(getPremiumCount(), skin);
-        premiumLabel.setColor(Color.WHITE);
-        Group premiumGroup = currencyGroup(
-                premiumRegion,
-                premiumLabel,
-                premiumRegion.getRegionWidth(),
-                70f
-        );
-
         coinLabel = new Label(getCoinCount(), skin);
-        coinLabel.setColor(Color.WHITE);
-        Group coinGroup = currencyGroup(
-                coinRegion,
+
+        addCurrencyBadge(
+                "IMAGE_UI_QUESTS_GEM_ICON",
+                premiumLabel,
+                WIDTH - 352f,
+                this::updateCurrencyLabels
+        );
+        addCurrencyBadge(
+                "IMAGE_UI_QUESTS_COIN_ICON",
                 coinLabel,
-                COIN_WIDTH,
-                65f
+                WIDTH - 184f,
+                this::updateCurrencyLabels
         );
-
-        premiumGroup.addListener(click(() -> {
-            if (isDebugModeEnabled()) {
-                appState.getCurrentUser().addDiamonds(100);
-                updateCurrencyLabels();
-                userManager.save();
-            }
-        }));
-        coinGroup.addListener(click(() -> {
-            if (isDebugModeEnabled()) {
-                appState.getCurrentUser().addCoins(100);
-                updateCurrencyLabels();
-                userManager.save();
-            }
-        }));
-
-        Table currencies = new Table();
-        currencies.add(premiumGroup)
-                .width(premiumRegion.getRegionWidth())
-                .height(premiumRegion.getRegionHeight())
-                .padRight(10f);
-        currencies.add(coinGroup)
-                .width(COIN_WIDTH)
-                .height(coinRegion.getRegionHeight());
-        currencies.pack();
-        currencies.setPosition(
-                WIDTH - currencies.getWidth() - 20f,
-                HEIGHT - currencies.getHeight() - 20f
-        );
-        stage.addActor(currencies);
-    }
-
-    private Group currencyGroup(
-            TextureRegion region,
-            Label label,
-            float width,
-            float textX
-    ) {
-        Group group = new Group();
-        float height = region.getRegionHeight();
-        group.setSize(width, height);
-
-        Image image = new Image(region);
-        image.setSize(width, height);
-        group.addActor(image);
-
-        label.pack();
-        label.setPosition(textX, TEXT_Y_OFFSET);
-        group.addActor(label);
-        return group;
     }
 
     private void updateCurrencyLabels() {
         premiumLabel.setText(getPremiumCount());
-        premiumLabel.pack();
         coinLabel.setText(getCoinCount());
-        coinLabel.pack();
-    }
-
-    private boolean isDebugModeEnabled() {
-        User user = appState.getCurrentUser();
-        return user != null && user.isDebugMode();
     }
 
     private String getPremiumCount() {

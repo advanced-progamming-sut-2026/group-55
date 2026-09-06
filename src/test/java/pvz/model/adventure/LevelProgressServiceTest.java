@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,6 +38,10 @@ class LevelProgressServiceTest {
         levels.put(
                 "frostbite-1",
                 normalLevel("frostbite-1", "frostbite-caves", 1)
+        );
+        levels.put(
+                "frostbite-2",
+                normalLevel("frostbite-2", "frostbite-caves", 2)
         );
 
         catalog = new LevelCatalog(chapters, levels);
@@ -101,6 +106,142 @@ class LevelProgressServiceTest {
                 user,
                 catalog.requireLevel("frostbite-1")
         ));
+    }
+
+
+    @Test
+    void completingEarlierLevelAfterOutOfOrderClearUnlocksNextChapter() {
+        user.getAdventureProgress().unlockLevel("egypt-2");
+        service.completeLevel(user, "egypt-2");
+
+        assertFalse(user.isChapterUnlocked("frostbite-caves"));
+
+        LevelProgressService.CompletionResult result =
+                service.completeLevel(user, "egypt-1");
+
+        assertEquals("frostbite-caves", result.unlockedChapterId());
+        assertEquals("frostbite-1", result.unlockedLevelId());
+        assertTrue(user.isChapterUnlocked("frostbite-caves"));
+        assertTrue(service.isUnlocked(
+                user,
+                catalog.requireLevel("frostbite-1")
+        ));
+    }
+
+    @Test
+    void doesNotReportAnAlreadyRewardUnlockedNextLevelAsNew() {
+        user.getAdventureProgress().unlockLevel("egypt-2");
+
+        LevelProgressService.CompletionResult result =
+                service.completeLevel(user, "egypt-1");
+
+        assertNull(result.unlockedLevelId());
+        assertNull(result.unlockedChapterId());
+    }
+
+    @Test
+    void reconciliationRestoresChapterAccessFromCompletedOldSave() {
+        user.getAdventureProgress().completeLevel("egypt-1");
+        user.getAdventureProgress().completeLevel("egypt-2");
+        assertFalse(user.isChapterUnlocked("frostbite-caves"));
+
+        LevelProgressService.ReconciliationResult result =
+                service.reconcileProgress(user);
+
+        assertTrue(result.changed());
+        assertEquals(List.of("frostbite-caves"), result.unlockedChapterIds());
+        assertTrue(user.isChapterUnlocked("frostbite-caves"));
+    }
+
+    @Test
+    void rewardUnlockedLevelMakesContainingChapterAccessible() {
+        user.getAdventureProgress().unlockLevel("frostbite-1");
+
+        assertTrue(service.isChapterAccessible(user, "frostbite-caves"));
+        assertTrue(service.isUnlocked(
+                user,
+                catalog.requireLevel("frostbite-1")
+        ));
+    }
+
+    @Test
+    void rewardAccessDoesNotUnlockSiblingLevelsInLockedChapter() {
+        user.getAdventureProgress().unlockLevel("frostbite-2");
+
+        assertTrue(service.isChapterAccessible(user, "frostbite-caves"));
+        assertFalse(service.isUnlocked(
+                user,
+                catalog.requireLevel("frostbite-1")
+        ));
+        assertTrue(service.isUnlocked(
+                user,
+                catalog.requireLevel("frostbite-2")
+        ));
+    }
+
+    @Test
+    void directRewardsCannotLeapfrogSequentialChapterProgression() {
+        Map<String, ChapterSpec> chapters = new LinkedHashMap<>();
+        chapters.put("ancient-egypt", new ChapterSpec(
+                "ancient-egypt",
+                "Ancient Egypt",
+                1
+        ));
+        chapters.put("frostbite-caves", new ChapterSpec(
+                "frostbite-caves",
+                "Frostbite Caves",
+                2
+        ));
+        chapters.put("big-wave-beach", new ChapterSpec(
+                "big-wave-beach",
+                "Big Wave Beach",
+                3
+        ));
+
+        Map<String, LevelSpec> levels = new LinkedHashMap<>();
+        levels.put("egypt-1", normalLevel(
+                "egypt-1",
+                "ancient-egypt",
+                1
+        ));
+        levels.put("frost-1", normalLevel(
+                "frost-1",
+                "frostbite-caves",
+                1
+        ));
+        levels.put("beach-1", normalLevel(
+                "beach-1",
+                "big-wave-beach",
+                1
+        ));
+
+        LevelProgressService localService = new LevelProgressService(
+                new LevelCatalog(chapters, levels)
+        );
+        user.getAdventureProgress().unlockLevel("frost-1");
+        localService.completeLevel(user, "frost-1");
+
+        assertFalse(localService.isChapterAccessible(
+                user,
+                "big-wave-beach"
+        ));
+        assertFalse(user.isChapterUnlocked("big-wave-beach"));
+    }
+
+    @Test
+    void newlyAvailableLevelCreatesNewsOnlyOnce() {
+        int initialNews = user.getAllNews().size();
+
+        service.completeLevel(user, "egypt-1");
+
+        assertEquals(initialNews + 1, user.getAllNews().size());
+        assertEquals(
+                "Level Unlocked",
+                user.getAllNews().get(initialNews).getTitle()
+        );
+
+        service.completeLevel(user, "egypt-1");
+        assertEquals(initialNews + 1, user.getAllNews().size());
     }
 
     @Test

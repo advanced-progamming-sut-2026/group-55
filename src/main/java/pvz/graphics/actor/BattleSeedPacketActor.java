@@ -3,15 +3,11 @@ package pvz.graphics.actor;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
-import com.badlogic.gdx.scenes.scene2d.ui.Image;
-import com.badlogic.gdx.scenes.scene2d.ui.Label;
-import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
+import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
-import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Disposable;
-import com.badlogic.gdx.utils.Scaling;
 import java.util.Objects;
 import pvz.graphics.battle.SeedPacketState;
 
@@ -28,10 +24,7 @@ public final class BattleSeedPacketActor extends Table implements Disposable {
     private static final Color READY_TEXT_COLOR =
             new Color(0.10f, 0.52f, 0.10f, 1f);
 
-    private final Image previewImage;
-    private final Label nameLabel;
-    private final Label costLabel;
-    private final Label statusLabel;
+    private final PlantCompactCardContent content;
     private Runnable selectionAction;
     private final ClickListener clickListener;
     private boolean disposed;
@@ -53,34 +46,27 @@ public final class BattleSeedPacketActor extends Table implements Disposable {
                 "selection action cannot be null"
         );
 
-        setBackground(skin.getDrawable(
-                "image_ui_dialog_asset_inner_bkgd_10"
-        ));
+        setBackground(skin.getDrawable("image_ui_dialog_asset_inner_bkgd_10"));
         setSize(PACKET_WIDTH, PACKET_HEIGHT);
         pad(4f);
 
-        previewImage = preview == null ? new Image() : new Image(preview);
-        previewImage.setScaling(Scaling.fit);
-        add(previewImage).size(48f, 60f).padRight(3f);
-
-        Table details = new Table();
-        nameLabel = label(skin, plantName, 0.68f);
-        nameLabel.setWrap(true);
-        details.add(nameLabel).width(77f).height(25f).row();
-
-        costLabel = label(skin, "", 0.66f);
-        details.add(costLabel).width(77f).height(17f).row();
-
-        statusLabel = label(skin, "", 0.62f);
-        details.add(statusLabel).width(77f).height(18f);
-        add(details).size(78f, 62f);
+        content = new PlantCompactCardContent(
+                skin,
+                preview,
+                plantName,
+                48f,
+                77f
+        );
+        add(content).grow();
 
         clickListener = new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
                 event.stop();
-                if (!disposed && state.selectable() && selectionAction != null) {
-                    selectionAction.run();
+                if (!disposed
+                        && state.selectable()
+                        && BattleSeedPacketActor.this.selectionAction != null) {
+                    BattleSeedPacketActor.this.selectionAction.run();
                 }
             }
         };
@@ -96,8 +82,7 @@ public final class BattleSeedPacketActor extends Table implements Disposable {
             throw new IllegalArgumentException("sun cost cannot be negative");
         }
         this.state = Objects.requireNonNull(state, "state cannot be null");
-        costLabel.setText(sunCost + " SUN");
-        statusLabel.setText(state.statusText());
+        content.update(sunCost, state.statusText());
         applyState();
     }
 
@@ -112,16 +97,17 @@ public final class BattleSeedPacketActor extends Table implements Disposable {
                 == SeedPacketState.Availability.UNAVAILABLE
                 ? Color.LIGHT_GRAY
                 : Color.DARK_GRAY;
-        previewImage.setColor(state.availability()
-                == SeedPacketState.Availability.UNAVAILABLE
-                ? Color.GRAY
-                : Color.WHITE);
-        nameLabel.setColor(textColor);
-        costLabel.setColor(textColor);
-        statusLabel.setColor(state.availability()
-                == SeedPacketState.Availability.READY
-                ? READY_TEXT_COLOR
-                : textColor);
+        content.setPreviewColor(
+                state.availability() == SeedPacketState.Availability.UNAVAILABLE
+                        ? Color.GRAY
+                        : Color.WHITE
+        );
+        content.setContentColor(textColor);
+        content.setStatusColor(
+                state.availability() == SeedPacketState.Availability.READY
+                        ? READY_TEXT_COLOR
+                        : textColor
+        );
     }
 
     @Override
@@ -136,14 +122,6 @@ public final class BattleSeedPacketActor extends Table implements Disposable {
         clearActions();
         clearListeners();
         remove();
-        // previewImage points at a shared TextureBank region. It is not owned
-        // by this packet and must not be disposed here.
-    }
-
-    private static Label label(Skin skin, String text, float fontScale) {
-        Label label = new Label(text, skin);
-        label.setAlignment(Align.center);
-        label.setFontScale(fontScale);
-        return label;
+        // TextureBank regions are shared and are not owned by this packet.
     }
 }

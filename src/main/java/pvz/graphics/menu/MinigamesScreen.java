@@ -1,6 +1,12 @@
 package pvz.graphics.menu;
 
 import pvz.graphics.ui.Typography;
+import pvz.graphics.ui.HoverEffect;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.scenes.scene2d.ui.Image;
+import com.badlogic.gdx.scenes.scene2d.ui.ImageButton;
+import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
+import com.badlogic.gdx.utils.Scaling;
 
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
@@ -100,38 +106,45 @@ public final class MinigamesScreen extends BaseScreen {
     }
 
     private void buildHeader() {
-        TextButton back = new TextButton("BACK", skin, "brown");
-        back.setBounds(25f, HEIGHT - 72f, 125f, 48f);
-        back.addListener(click(this::goBack));
-        stage.addActor(back);
-
+        TextureRegion normal = textures.region("IMAGE_UI_MAINMENU_BACK_BTN_NORMAL");
+        TextureRegion pressed = textures.region("IMAGE_UI_MAINMENU_BACK_BTN_PRESSED");
+        if (normal != null) {
+            ImageButton.ImageButtonStyle style = new ImageButton.ImageButtonStyle();
+            style.up = new TextureRegionDrawable(normal);
+            style.down = pressed == null ? style.up : new TextureRegionDrawable(pressed);
+            ImageButton back = new ImageButton(style);
+            back.setBounds(28f, HEIGHT - 80f, 56f, 56f);
+            back.addListener(click(this::goBack));
+            HoverEffect.addScale(back);
+            stage.addActor(back);
+        } else {
+            TextButton back = new TextButton("BACK", skin, "brown");
+            back.setBounds(20f, HEIGHT - 72f, 105f, 48f);
+            back.addListener(click(this::goBack));
+            stage.addActor(back);
+        }
         Label title = new Label("MINIGAMES", skin);
         Typography.setReadableScale(title, 1.45f);
         title.setAlignment(Align.center);
-        title.setBounds(300f, HEIGHT - 70f, 600f, 48f);
+        title.setBounds(150f, HEIGHT - 70f, 600f, 48f);
         stage.addActor(title);
 
         diamondLabel = new Label("", skin);
-        diamondLabel.setAlignment(Align.right);
-        diamondLabel.setBounds(930f, HEIGHT - 69f, 150f, 44f);
-        stage.addActor(diamondLabel);
-
         coinLabel = new Label("", skin);
-        coinLabel.setAlignment(Align.right);
-        coinLabel.setBounds(1080f, HEIGHT - 69f, 175f, 44f);
-        stage.addActor(coinLabel);
+        addCurrencyBadge("IMAGE_UI_QUESTS_GEM_ICON", diamondLabel, 916f, this::refreshCurrencies);
+        addCurrencyBadge("IMAGE_UI_QUESTS_COIN_ICON", coinLabel, 1084f, this::refreshCurrencies);
     }
 
     private void buildPanel() {
         Table frame = new Table();
-        frame.setBackground(skin.getDrawable(
-                "image_ui_dialog_asset_inner_bkgd_10"
+        frame.setBackground(skin.newDrawable(
+                "image_ui_dialog_asset_inner_bkgd_10", Color.valueOf("142e3c")
         ));
         frame.setBounds(PANEL_X, PANEL_Y, PANEL_WIDTH, PANEL_HEIGHT);
         frame.pad(14f);
 
         summaryLabel = new Label("", skin);
-        summaryLabel.setColor(Color.DARK_GRAY);
+        summaryLabel.setColor(Color.WHITE);
         summaryLabel.setAlignment(Align.left);
         frame.add(summaryLabel)
                 .growX()
@@ -154,7 +167,7 @@ public final class MinigamesScreen extends BaseScreen {
 
     private void buildStatusBar() {
         statusLabel = new Label(
-                "Stage progression is ready; gameplay opens in Phase 7.",
+                "Minigames are coming soon. Complete stages to unlock the next challenge.",
                 skin
         );
         Typography.setReadableScale(statusLabel, 0.72f);
@@ -172,12 +185,12 @@ public final class MinigamesScreen extends BaseScreen {
     private void refreshCurrencies() {
         User user = appState.getCurrentUser();
         if (user == null) {
-            diamondLabel.setText("Gems: 0");
-            coinLabel.setText("Coins: 0");
+            diamondLabel.setText("0");
+            coinLabel.setText("0");
             return;
         }
-        diamondLabel.setText("Gems: " + user.getDiamonds());
-        coinLabel.setText("Coins: " + user.getCoins());
+        diamondLabel.setText(String.valueOf(user.getDiamonds()));
+        coinLabel.setText(String.valueOf(user.getCoins()));
     }
 
     private void rebuildMinigames() {
@@ -226,15 +239,16 @@ public final class MinigamesScreen extends BaseScreen {
 
         Label name = new Label(spec.name(), skin);
         Typography.setReadableScale(name, 1.02f);
-        name.setColor(Color.YELLOW);
+        name.setColor(Color.valueOf("203945"));
         info.add(name).left().row();
 
         Label description = new Label(spec.description(), skin);
+        Typography.applyBody(description, skin);
         description.setWrap(true);
         Typography.setReadableScale(description, 0.70f);
         description.setColor(Color.DARK_GRAY);
         info.add(description)
-                .width(475f)
+                .width(420f)
                 .left()
                 .padTop(6f)
                 .row();
@@ -247,7 +261,7 @@ public final class MinigamesScreen extends BaseScreen {
                 skin
         );
         Typography.setReadableScale(progress, 0.68f);
-        progress.setColor(Color.GRAY);
+        progress.setColor(Color.valueOf("395c49"));
         info.add(progress).left().padTop(7f);
 
         Table stages = new Table();
@@ -260,7 +274,19 @@ public final class MinigamesScreen extends BaseScreen {
                     .height(STAGE_HEIGHT);
         }
 
-        card.add(info).width(515f).growY().left();
+        String iconKey = switch (spec.id()) {
+            case MinigameCatalog.VASE_BREAKER ->
+                    "IMAGE_VASEBREAKER_VASE_BROWN_VASE_BROWN_115X150";
+            case MinigameCatalog.WALL_NUT_BOWLING -> "IMAGE_UI_PACKETS_WALLNUT";
+            default -> "IMAGE_UI_QUESTS_QUESTICONS_ZOMBIE";
+        };
+        TextureRegion iconRegion = textures.region(iconKey);
+        if (iconRegion != null) {
+            Image icon = new Image(iconRegion);
+            icon.setScaling(Scaling.fit);
+            card.add(icon).size(64f).padRight(12f);
+        }
+        card.add(info).width(430f).growY().left();
         card.add(stages).growX().right();
         return card;
     }
@@ -291,9 +317,9 @@ public final class MinigamesScreen extends BaseScreen {
         button.getLabel().setAlignment(Align.center);
 
         if (state == MinigameStageState.LOCKED) {
-            button.getLabel().setColor(Color.GRAY);
+            button.getLabel().setColor(Color.LIGHT_GRAY);
         } else if (state == MinigameStageState.AVAILABLE) {
-            button.getLabel().setColor(Color.YELLOW);
+            button.getLabel().setColor(Color.WHITE);
         }
 
         // Phase 7 will enable launch for AVAILABLE/COMPLETED routes.
@@ -309,7 +335,7 @@ public final class MinigamesScreen extends BaseScreen {
     ) {
         return switch (state) {
             case COMPLETED -> "STAGE " + stageNumber + "\nCOMPLETED";
-            case AVAILABLE -> "STAGE " + stageNumber + "\nAVAILABLE";
+            case AVAILABLE -> "STAGE " + stageNumber + "\nCOMING SOON";
             case LOCKED -> "STAGE " + stageNumber + "\nLOCKED";
         };
     }

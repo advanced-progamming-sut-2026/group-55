@@ -1,9 +1,11 @@
 package pvz.model.session;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import pvz.model.core.BattleResources;
 import pvz.model.core.BattleWallet;
@@ -30,6 +32,9 @@ public final class GameSession {
     private final ZombieFactory zombieFactory;
     private final WaveManager waveManager;
     private final QuestEventBuffer questEvents;
+    private final StoredPlantBoostAccess storedBoostAccess;
+    private final Set<String> pendingStoredBoosts;
+    private final Set<String> activatedStoredBoosts = new HashSet<>();
     private final Map<String, Long> lastPlantedTicks = new HashMap<>();
 
     private GameSessionStatus status = GameSessionStatus.CREATED;
@@ -40,7 +45,8 @@ public final class GameSession {
             PlantFactory plantFactory,
             ZombieFactory zombieFactory,
             WaveManager waveManager,
-            QuestEventBuffer questEvents
+            QuestEventBuffer questEvents,
+            StoredPlantBoostAccess storedBoostAccess
     ) {
         this.config = Objects.requireNonNull(
                 config,
@@ -66,6 +72,11 @@ public final class GameSession {
                 questEvents,
                 "quest event buffer cannot be null"
         );
+        this.storedBoostAccess = Objects.requireNonNull(
+                storedBoostAccess,
+                "stored boost access cannot be null"
+        );
+        this.pendingStoredBoosts = new HashSet<>(config.storedBoostPlants());
         this.game = world.game();
         this.board = world.board();
     }
@@ -109,9 +120,56 @@ public final class GameSession {
     }
 
     public boolean isPlantBoosted(String plantName) {
+        String normalizedName = normalizeName(plantName);
+        return isPlantManuallyBoosted(normalizedName)
+                || isStoredBoostActivated(normalizedName)
+                || hasPendingStoredBoost(normalizedName);
+    }
+
+    public boolean isPlantManuallyBoosted(String plantName) {
         return config.boostedPlants().contains(
                 normalizeName(plantName)
         );
+    }
+
+    public boolean hasPendingStoredBoost(String plantName) {
+        String normalizedName = normalizeName(plantName);
+        return pendingStoredBoosts.contains(normalizedName)
+                && storedBoostAccess.isAvailable(normalizedName);
+    }
+
+    public boolean isStoredBoostActivated(String plantName) {
+        return activatedStoredBoosts.contains(normalizeName(plantName));
+    }
+
+    /**
+     * Consumes a greenhouse boost only after a successful planting operation
+     * and activates the ordinary stage-wide boost for the rest of this run.
+     * The persistent boundary is asked first; on failure the session keeps the
+     * reward pending so a later planting can retry without losing it.
+     */
+    public boolean activateStoredBoost(String plantName) {
+        requireRunning();
+        String normalizedName = normalizeName(plantName);
+        if (!hasPendingStoredBoost(normalizedName)) {
+            return false;
+        }
+        if (!storedBoostAccess.consume(normalizedName)) {
+            return false;
+        }
+        pendingStoredBoosts.remove(normalizedName);
+        activatedStoredBoosts.add(normalizedName);
+        return true;
+    }
+
+    public Set<String> pendingStoredBoostsSnapshot() {
+        return pendingStoredBoosts.stream()
+                .filter(storedBoostAccess::isAvailable)
+                .collect(java.util.stream.Collectors.toUnmodifiableSet());
+    }
+
+    public Set<String> activatedStoredBoostsSnapshot() {
+        return Set.copyOf(activatedStoredBoosts);
     }
 
     public long getRemainingRechargeTicks(

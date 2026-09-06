@@ -56,17 +56,37 @@ public final class GameSessionFactory {
 
 
     public GameSession create(GameSessionConfig config) {
-        return create(config, ZombieDiscoveryListener.none());
+        return create(
+                config,
+                ZombieDiscoveryListener.none(),
+                StoredPlantBoostAccess.untracked()
+        );
     }
 
     public GameSession create(
             GameSessionConfig config,
             ZombieDiscoveryListener discoveryListener
     ) {
+        return create(
+                config,
+                discoveryListener,
+                StoredPlantBoostAccess.untracked()
+        );
+    }
+
+    public GameSession create(
+            GameSessionConfig config,
+            ZombieDiscoveryListener discoveryListener,
+            StoredPlantBoostAccess storedBoostAccess
+    ) {
         Objects.requireNonNull(config, "config cannot be null");
         Objects.requireNonNull(
                 discoveryListener,
                 "zombie discovery listener cannot be null"
+        );
+        Objects.requireNonNull(
+                storedBoostAccess,
+                "stored boost access cannot be null"
         );
 
         Game game = new Game();
@@ -135,7 +155,8 @@ public final class GameSessionFactory {
                 plantFactory,
                 zombieFactory,
                 waveManager,
-                questEvents
+                questEvents,
+                storedBoostAccess
         );
     }
 

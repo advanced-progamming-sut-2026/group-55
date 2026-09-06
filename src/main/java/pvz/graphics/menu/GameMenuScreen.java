@@ -23,6 +23,7 @@ import pvz.model.account.UserManager;
 import pvz.model.adventure.ChapterSpec;
 import pvz.model.adventure.LevelCatalog;
 import pvz.model.adventure.LevelSpec;
+import pvz.model.adventure.LevelProgressService;
 import pvz.model.service.GreenhouseService;
 import pvz.model.utils.AppState;
 import pvz.model.utils.MenuName;
@@ -49,6 +50,7 @@ public class GameMenuScreen extends BaseScreen {
     private final Group worldContainer = new Group();
     private final List<ChapterSpec> chapters;
     private final LevelCatalog levelCatalog;
+    private final LevelProgressService levelProgressService;
     private final Image[] worlds;
     private final Label[] worldLabels;
     private final HoverEffect.ScaleHandle[] worldHoverEffects;
@@ -85,6 +87,8 @@ public class GameMenuScreen extends BaseScreen {
         this.levelCatalog = game.getGameData()
                 .adventureData()
                 .catalog();
+        this.levelProgressService = game.getGameData()
+                .levelProgressService();
         this.chapters = levelCatalog.chapters();
         if (chapters.isEmpty()) {
             throw new IllegalStateException("No chapters are configured.");
@@ -471,7 +475,10 @@ public class GameMenuScreen extends BaseScreen {
     private boolean isWorldUnlocked(int index) {
         User user = appState.getCurrentUser();
         return user != null
-                && user.isChapterUnlocked(chapters.get(index).id());
+                && levelProgressService.isChapterAccessible(
+                        user,
+                        chapters.get(index).id()
+                );
     }
 
     private int selectedChapterIndex() {
@@ -564,7 +571,22 @@ public class GameMenuScreen extends BaseScreen {
     public void show() {
         super.show();
         appState.setCurrentMenu(MenuName.GAME);
+        reconcileAdventureProgress();
         updateWorlds();
+    }
+
+    private void reconcileAdventureProgress() {
+        User user = appState.getCurrentUser();
+        if (user == null) {
+            return;
+        }
+        LevelProgressService.ReconciliationResult result =
+                levelProgressService.reconcileProgress(user);
+        if (result.changed() && !userManager.save()) {
+            statusLabel.setText(
+                    "Adventure access updated, but saving failed."
+            );
+        }
     }
 
     @Override

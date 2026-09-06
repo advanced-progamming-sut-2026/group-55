@@ -24,6 +24,7 @@ public record GameSessionConfig(
         List<String> selectedPlants,
         Map<String, Integer> plantLevels,
         Set<String> boostedPlants,
+        Set<String> storedBoostPlants,
         List<Point> tombCoordinates,
         WaveConfiguration waveConfiguration,
         WinCondition winCondition
@@ -74,6 +75,11 @@ public record GameSessionConfig(
         );
 
         Objects.requireNonNull(
+                storedBoostPlants,
+                "stored boost plants cannot be null"
+        );
+
+        Objects.requireNonNull(
                 tombCoordinates,
                 "tomb coordinates cannot be null"
         );
@@ -118,10 +124,24 @@ public record GameSessionConfig(
         boostedPlants = boostedPlants.stream()
                 .map(GameSessionConfig::normalizePlantName)
                 .collect(Collectors.toUnmodifiableSet());
+        storedBoostPlants = storedBoostPlants.stream()
+                .map(GameSessionConfig::normalizePlantName)
+                .collect(Collectors.toUnmodifiableSet());
 
-        if (!new HashSet<>(selectedPlants).containsAll(boostedPlants)) {
+        Set<String> selectedSet = new HashSet<>(selectedPlants);
+        if (!selectedSet.containsAll(boostedPlants)) {
             throw new IllegalArgumentException(
-                    "every boosted plant must also be selected"
+                    "every manually boosted plant must also be selected"
+            );
+        }
+        if (!selectedSet.containsAll(storedBoostPlants)) {
+            throw new IllegalArgumentException(
+                    "every stored-boost plant must also be selected"
+            );
+        }
+        if (!java.util.Collections.disjoint(boostedPlants, storedBoostPlants)) {
+            throw new IllegalArgumentException(
+                    "a plant cannot have both manual and stored boost in one session"
             );
         }
 
@@ -149,6 +169,7 @@ public record GameSessionConfig(
         private boolean skySunEnabled = true;
         private Map<String, Integer> plantLevels = Map.of();
         private Set<String> boostedPlants = Set.of();
+        private Set<String> storedBoostPlants = Set.of();
         private List<Point> tombCoordinates = List.of();
         private WaveConfiguration waveConfiguration;
         private WinCondition winCondition;
@@ -212,6 +233,13 @@ public record GameSessionConfig(
             return this;
         }
 
+        public Builder storedBoostPlants(
+                Set<String> storedBoostPlants
+        ) {
+            this.storedBoostPlants = storedBoostPlants;
+            return this;
+        }
+
         public Builder tombCoordinates(
                 List<Point> tombCoordinates
         ) {
@@ -267,6 +295,7 @@ public record GameSessionConfig(
                     selectedPlants,
                     plantLevels,
                     boostedPlants,
+                    storedBoostPlants,
                     tombCoordinates,
                     waveConfiguration,
                     winCondition

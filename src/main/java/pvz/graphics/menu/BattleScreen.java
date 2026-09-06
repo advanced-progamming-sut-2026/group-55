@@ -1062,6 +1062,12 @@ public final class BattleScreen extends BaseScreen {
                     remaining,
                     Game.TICKS_PER_SECOND
             );
+            if (session.isPlantBoosted(plantName)) {
+                state = new SeedPacketState.View(
+                        state.availability(),
+                        "B / " + state.statusText()
+                );
+            }
             packet.update(spec.getCost(), state);
         }
     }

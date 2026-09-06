@@ -1,6 +1,10 @@
 package pvz.model.leaderboard;
 
 import java.util.Comparator;
+import java.time.Clock;
+import java.time.LocalDate;
+import pvz.model.quest.UserQuestProgressSource;
+import pvz.model.quest.QuestState;
 import java.util.List;
 import java.util.Objects;
 import pvz.model.account.User;
@@ -22,12 +26,20 @@ public final class LocalLeaderboardDataSource
     private final UserManager userManager;
     private final LevelCatalog levelCatalog;
     private final QuestCatalog questCatalog;
+    private final Clock clock;
+    private final UserQuestProgressSource progressSource = new UserQuestProgressSource();
 
     public LocalLeaderboardDataSource(
             UserManager userManager,
             LevelCatalog levelCatalog,
             QuestCatalog questCatalog
     ) {
+        this(userManager, levelCatalog, questCatalog, Clock.systemDefaultZone());
+    }
+
+    public LocalLeaderboardDataSource(UserManager userManager,
+            LevelCatalog levelCatalog, QuestCatalog questCatalog, Clock clock) {
+        this.clock = Objects.requireNonNull(clock, "clock cannot be null");
         this.userManager = Objects.requireNonNull(
                 userManager,
                 "user manager cannot be null"
@@ -123,14 +135,35 @@ public final class LocalLeaderboardDataSource
                 continue;
             }
             QuestProgress progress = user.getQuestLog().find(spec.id());
-            if (progress == null) {
-                continue;
+            int recorded = progress == null ? 0 : progress.getLifetimeCompletionCount();
+            completed += recorded;
+            if (hasUnrecordedCompletion(user, spec, progress, recorded)) {
+                completed++;
             }
-            completed += progress.getLifetimeCompletionCount();
             if (completed >= Integer.MAX_VALUE) {
                 return Integer.MAX_VALUE;
             }
         }
         return (int) completed;
     }
+    /** Read-only projection: never resets another player's daily cycle or pays rewards. */
+    private boolean hasUnrecordedCompletion(User user, QuestSpec spec,
+            QuestProgress progress, int recorded) {
+        if (!progressSource.supports(spec.objective().metric())) return false;
+        if (progress != null && (progress.isCompleted() || progress.isClaimed())) return false;
+        if ((progress == null || progress.getState() == QuestState.UNAVAILABLE)
+                && !spec.initiallyAvailable()) return false;
+        int value = Math.max(0, progressSource.currentValue(user, spec.objective()));
+        if (spec.resetPolicy() == QuestResetPolicy.DAILY) {
+            // Missing/expired baselines cannot tell us when the activity happened.
+            if (progress == null || !LocalDate.now(clock).equals(progress.getCycleDate())) {
+                return false;
+            }
+            value = Math.max(0, value - progress.getBaselineValue());
+        } else if (recorded > 0) {
+            return false;
+        }
+        return value >= spec.objective().target();
+    }
+
 }

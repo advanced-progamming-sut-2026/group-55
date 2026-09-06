@@ -1,6 +1,12 @@
 package pvz.graphics.menu;
 
 import pvz.graphics.ui.Typography;
+import pvz.graphics.ui.HoverEffect;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.scenes.scene2d.ui.Image;
+import com.badlogic.gdx.scenes.scene2d.ui.ImageButton;
+import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
+import com.badlogic.gdx.utils.Scaling;
 
 import java.util.EnumMap;
 import java.util.List;
@@ -10,6 +16,7 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
+import com.badlogic.gdx.scenes.scene2d.ui.Tooltip;
 import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
@@ -37,11 +44,11 @@ public final class LeaderboardScreen extends BaseScreen {
     private static final float PANEL_Y = 72f;
     private static final float PANEL_WIDTH = 1216f;
     private static final float PANEL_HEIGHT = 548f;
-    private static final float HEADER_HEIGHT = 44f;
-    private static final float ROW_HEIGHT = 58f;
+    private static final float HEADER_HEIGHT = 64f;
+    private static final float ROW_HEIGHT = 72f;
 
-    private static final float USER_WIDTH = 230f;
-    private static final float ADVENTURE_WIDTH = 330f;
+    private static final float USER_WIDTH = 270f;
+    private static final float ADVENTURE_WIDTH = 290f;
     private static final float MINIGAME_WIDTH = 140f;
     private static final float DAILY_WIDTH = 125f;
     private static final float QUEST_WIDTH = 135f;
@@ -55,6 +62,10 @@ public final class LeaderboardScreen extends BaseScreen {
             LeaderboardSortKey.NON_DAILY_QUEST_COMPLETIONS,
             LeaderboardSortKey.MAX_MEW_POINT
     };
+
+    private static final Color TEXT = Color.valueOf("eef5f2");
+    private static final Color SECONDARY = Color.valueOf("bdcfd4");
+    private static final Color ACCENT = Color.valueOf("a9edb8");
 
     private final LeaderboardService leaderboardService;
     private final Map<LeaderboardSortKey, TextButton> headerButtons =
@@ -96,44 +107,61 @@ public final class LeaderboardScreen extends BaseScreen {
     }
 
     private void buildHeader() {
-        TextButton back = new TextButton("BACK", skin, "brown");
-        back.setBounds(25f, HEIGHT - 72f, 125f, 48f);
-        back.addListener(click(this::goBack));
-        stage.addActor(back);
-
+        TextureRegion normal = textures.region("IMAGE_UI_MAINMENU_BACK_BTN_NORMAL");
+        TextureRegion pressed = textures.region("IMAGE_UI_MAINMENU_BACK_BTN_PRESSED");
+        if (normal != null) {
+            ImageButton.ImageButtonStyle style = new ImageButton.ImageButtonStyle();
+            style.up = new TextureRegionDrawable(normal);
+            style.down = pressed == null ? style.up : new TextureRegionDrawable(pressed);
+            ImageButton back = new ImageButton(style);
+            back.setBounds(28f, HEIGHT - 80f, 56f, 56f);
+            back.addListener(click(this::goBack));
+            HoverEffect.addScale(back);
+            stage.addActor(back);
+        } else {
+            TextButton back = new TextButton("BACK", skin, "brown");
+            back.setBounds(20f, HEIGHT - 72f, 105f, 48f);
+            back.addListener(click(this::goBack));
+            stage.addActor(back);
+        }
+        TextureRegion crown = textures.region("IMAGE_UI_GAMECENTER_ANDROID_LEADERBOARD");
+        if (crown != null) {
+            Image icon = new Image(crown);
+            icon.setScaling(Scaling.fit);
+            icon.setBounds(135f, HEIGHT - 77f, 64f, 50f);
+            stage.addActor(icon);
+        }
         Label title = new Label("LEADERBOARD", skin);
         Typography.setReadableScale(title, 1.45f);
-        title.setAlignment(Align.center);
-        title.setBounds(300f, HEIGHT - 70f, 600f, 48f);
+        title.setBounds(214f, HEIGHT - 76f, 430f, 48f);
         stage.addActor(title);
 
         TextButton refresh = new TextButton("REFRESH", skin, "brown");
-        refresh.setBounds(165f, HEIGHT - 72f, 125f, 48f);
+        refresh.setBounds(710f, HEIGHT - 74f, 155f, 46f);
         Typography.setReadableScale(refresh.getLabel(), 0.78f);
         refresh.addListener(click(() -> refreshLeaderboard(true)));
+        HoverEffect.addScale(refresh);
         stage.addActor(refresh);
-
         diamondLabel = new Label("", skin);
-        diamondLabel.setAlignment(Align.right);
-        diamondLabel.setBounds(930f, HEIGHT - 69f, 150f, 44f);
-        stage.addActor(diamondLabel);
-
         coinLabel = new Label("", skin);
-        coinLabel.setAlignment(Align.right);
-        coinLabel.setBounds(1080f, HEIGHT - 69f, 175f, 44f);
-        stage.addActor(coinLabel);
+        addCurrency("IMAGE_UI_QUESTS_GEM_ICON", diamondLabel, 916f);
+        addCurrency("IMAGE_UI_QUESTS_COIN_ICON", coinLabel, 1084f);
+    }
+
+    private void addCurrency(String key, Label label, float x) {
+        addCurrencyBadge(key, label, x, this::refreshCurrencies);
     }
 
     private void buildLeaderboardPanel() {
         Table frame = new Table();
-        frame.setBackground(skin.getDrawable(
-                "image_ui_dialog_asset_inner_bkgd_10"
+        frame.setBackground(skin.newDrawable(
+                "image_ui_dialog_asset_inner_bkgd_10", Color.valueOf("142e3c")
         ));
         frame.setBounds(PANEL_X, PANEL_Y, PANEL_WIDTH, PANEL_HEIGHT);
         frame.pad(12f);
 
         countLabel = new Label("", skin);
-        countLabel.setColor(Color.DARK_GRAY);
+        countLabel.setColor(SECONDARY);
         countLabel.setAlignment(Align.left);
         frame.add(countLabel)
                 .growX()
@@ -149,7 +177,7 @@ public final class LeaderboardScreen extends BaseScreen {
                 .row();
 
         rowsTable.top().left();
-        rowsTable.defaults().padBottom(4f);
+        rowsTable.defaults().padBottom(7f);
 
         rowsScroll = new ScrollPane(rowsTable, skin);
         rowsScroll.setFadeScrollBars(false);
@@ -162,6 +190,7 @@ public final class LeaderboardScreen extends BaseScreen {
 
     private Table buildColumnHeader() {
         Table header = new Table();
+        header.left();
         header.defaults().padRight(4f);
 
         addHeaderButton(
@@ -179,7 +208,7 @@ public final class LeaderboardScreen extends BaseScreen {
         addHeaderButton(
                 header,
                 LeaderboardSortKey.MINIGAME_COMPLETIONS,
-                "MINIGAMES",
+                "MINIGAME\nSTAGES",
                 MINIGAME_WIDTH
         );
         addHeaderButton(
@@ -222,6 +251,7 @@ public final class LeaderboardScreen extends BaseScreen {
     private void buildStatusBar() {
         statusLabel = new Label("", skin);
         statusLabel.setAlignment(Align.center);
+        statusLabel.setWrap(true);
         statusLabel.setBounds(150f, 22f, 980f, 38f);
         stage.addActor(statusLabel);
     }
@@ -254,7 +284,7 @@ public final class LeaderboardScreen extends BaseScreen {
         String label = switch (key) {
             case USERNAME -> "PLAYER";
             case ADVENTURE_PROGRESS -> "ADVENTURE";
-            case MINIGAME_COMPLETIONS -> "MINIGAMES";
+            case MINIGAME_COMPLETIONS -> "MINIGAME\nSTAGES";
             case DAILY_QUEST_COMPLETIONS -> "DAILY";
             case NON_DAILY_QUEST_COMPLETIONS -> "QUESTS";
             case MAX_MEW_POINT -> "MEW POINT";
@@ -286,16 +316,17 @@ public final class LeaderboardScreen extends BaseScreen {
                         skin
                 );
                 empty.setAlignment(Align.center);
-                empty.setColor(Color.DARK_GRAY);
+                empty.setColor(TEXT);
                 rowsTable.add(empty)
                         .width(USER_WIDTH + ADVENTURE_WIDTH
                                 + MINIGAME_WIDTH + DAILY_WIDTH
                                 + QUEST_WIDTH + SCORE_WIDTH)
                         .height(120f);
             } else {
+                int rowIndex = 0;
                 for (LeaderboardEntry entry : entries) {
-                    rowsTable.add(buildRow(entry))
-                            .growX()
+                    rowsTable.add(buildRow(entry, rowIndex++))
+                            .left()
                             .height(ROW_HEIGHT)
                             .row();
                 }
@@ -331,13 +362,13 @@ public final class LeaderboardScreen extends BaseScreen {
         }
     }
 
-    private Table buildRow(LeaderboardEntry entry) {
+    private Table buildRow(LeaderboardEntry entry, int rowIndex) {
         boolean currentUser = isCurrentUser(entry);
 
         Table row = new Table();
-        row.setBackground(skin.getDrawable(
-                "image_ui_dialog_asset_inner_bkgd_10"
-        ));
+        Color background = currentUser ? Color.valueOf("245b51")
+                : (rowIndex % 2 == 0 ? Color.valueOf("284351") : Color.valueOf("203945"));
+        row.setBackground(skin.newDrawable("image_ui_dialog_asset_inner_bkgd_10", background));
         row.defaults().padRight(4f);
 
         row.add(playerCell(entry, currentUser))
@@ -371,21 +402,37 @@ public final class LeaderboardScreen extends BaseScreen {
                 skin
         );
         Typography.setReadableScale(username, 0.78f);
-        username.setColor(currentUser ? Color.YELLOW : Color.DARK_GRAY);
+        username.setColor(currentUser ? ACCENT : TEXT);
         username.setEllipsis(true);
         username.setAlignment(Align.left);
-        cell.add(username).growX().left().row();
+        cell.add(username).growX().left();
+        if (currentUser) {
+            Label marker = new Label("YOU", skin);
+            Typography.setReadableScale(marker, 0.60f);
+            marker.setColor(ACCENT);
+            cell.add(marker).width(48f).padLeft(4f);
+        }
+        cell.row();
+        Table details = new Table();
+        details.setBackground(skin.getDrawable("image_ui_dialog_asset_inner_bkgd_10"));
+        details.pad(12f);
+        Label fullName = new Label(entry.username() + "\n" + entry.nickname(), skin);
+        Typography.setReadableScale(fullName, 0.78f);
+        fullName.setColor(Color.DARK_GRAY);
+        fullName.setWrap(true);
+        details.add(fullName).width(480f);
+        cell.addListener(new Tooltip<Table>(details));
 
         String secondary = LeaderboardPresentation.secondaryPlayerText(
                 entry,
-                currentUser
+                false
         );
         Label nickname = new Label(secondary, skin);
         Typography.setReadableScale(nickname, 0.60f);
-        nickname.setColor(currentUser ? Color.YELLOW : Color.GRAY);
+        nickname.setColor(SECONDARY);
         nickname.setEllipsis(true);
         nickname.setAlignment(Align.left);
-        cell.add(nickname).growX().left();
+        cell.add(nickname).colspan(currentUser ? 2 : 1).growX().left();
 
         return cell;
     }
@@ -401,7 +448,7 @@ public final class LeaderboardScreen extends BaseScreen {
         Typography.setReadableScale(label, 0.66f);
         label.setAlignment(Align.center);
         label.setWrap(true);
-        label.setColor(currentUser ? Color.YELLOW : Color.DARK_GRAY);
+        label.setColor(currentUser ? ACCENT : TEXT);
         return label;
     }
 
@@ -409,7 +456,7 @@ public final class LeaderboardScreen extends BaseScreen {
         Label label = new Label(Integer.toString(value), skin);
         Typography.setReadableScale(label, 0.82f);
         label.setAlignment(Align.center);
-        label.setColor(currentUser ? Color.YELLOW : Color.DARK_GRAY);
+        label.setColor(currentUser ? ACCENT : TEXT);
         return label;
     }
 
@@ -423,19 +470,19 @@ public final class LeaderboardScreen extends BaseScreen {
     private void refreshCurrencies() {
         User user = appState.getCurrentUser();
         if (user == null) {
-            diamondLabel.setText("Gems: 0");
-            coinLabel.setText("Coins: 0");
+            diamondLabel.setText("0");
+            coinLabel.setText("0");
             return;
         }
-        diamondLabel.setText("Gems: " + user.getDiamonds());
-        coinLabel.setText("Coins: " + user.getCoins());
+        diamondLabel.setText(String.valueOf(user.getDiamonds()));
+        coinLabel.setText(String.valueOf(user.getCoins()));
     }
 
     private String sortStatusMessage() {
         String column = switch (sort.key()) {
             case USERNAME -> "player";
             case ADVENTURE_PROGRESS -> "adventure progress";
-            case MINIGAME_COMPLETIONS -> "minigame completions";
+            case MINIGAME_COMPLETIONS -> "completed minigame stages";
             case DAILY_QUEST_COMPLETIONS -> "daily quest completions";
             case NON_DAILY_QUEST_COMPLETIONS -> "quest completions";
             case MAX_MEW_POINT -> "Mew Point";
@@ -448,7 +495,7 @@ public final class LeaderboardScreen extends BaseScreen {
 
     private void showStatus(String message, boolean error) {
         statusLabel.setText(message == null ? "" : message);
-        statusLabel.setColor(error ? Color.RED : Color.WHITE);
+        statusLabel.setColor(error ? Color.SALMON : SECONDARY);
     }
 
     private void goBack() {

@@ -189,21 +189,7 @@ public final class TravelLogScreen extends BaseScreen {
     }
 
     private void addCurrency(String key, Label label, float x) {
-        Table badge = new Table();
-        badge.setBackground(skin.newDrawable("image_ui_dialog_asset_inner_bkgd_10",
-                new Color(0.08f, 0.16f, 0.21f, 1f)));
-        badge.setBounds(x, HEIGHT - 79f, 156f, 54f);
-        TextureRegion source = textures.region(key);
-        if (source != null) {
-            Image image = new Image(source);
-            image.setScaling(Scaling.fit);
-            badge.add(image).width(52f).height(52f);
-        }
-        label.setColor(Color.WHITE);
-        label.setAlignment(Align.center);
-        label.setEllipsis(true);
-        badge.add(label).width(92f).height(42f);
-        stage.addActor(badge);
+        addCurrencyBadge(key, label, x, this::refreshCurrencies);
     }
 
     /** Nine-patch stretching preserves the authored corners of quest assets. */
@@ -454,7 +440,9 @@ public final class TravelLogScreen extends BaseScreen {
         for (ChapterSpec chapter : levelCatalog.chapters()) {
             List<LevelSpec> levels = levelCatalog.levelsInChapter(chapter.id());
             configuredLevels += levels.size();
-            if (user != null && user.isChapterUnlocked(chapter.id())) {
+            if (user != null && game.getGameData()
+                    .levelProgressService()
+                    .isChapterAccessible(user, chapter.id())) {
                 unlockedChapters++;
             }
             if (user != null) {
