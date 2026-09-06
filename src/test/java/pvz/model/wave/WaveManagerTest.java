@@ -1,6 +1,7 @@
 package pvz.model.wave;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.util.List;
@@ -59,4 +60,58 @@ class WaveManagerTest {
         assertEquals(2, manager.getCurrentWaveNumber());
         assertEquals(2, world.getZombies().size());
     }
+    @Test
+    void exposesStableProgressForHudAndPreWaveWarning() throws IOException {
+        ZombieFactory zombieFactory = new ZombieFactory(
+                ZombieCsvLoader.load("assets/Data/zombies.csv")
+        );
+        Game game = new Game();
+        Board board = new Board(9, 5);
+        World world = new World(game, board, new BattleResources(50, 0));
+        Wave first = new Wave(
+                1,
+                List.of(new WaveZombieEntry("ZombieDefault", 1, 100)),
+                20,
+                0,
+                false
+        );
+        Wave second = new Wave(
+                2,
+                List.of(new WaveZombieEntry("ZombieDefault", 2, 100)),
+                10,
+                0,
+                true
+        );
+        WaveManager manager = new WaveManager(
+                world,
+                zombieFactory,
+                List.of(first, second),
+                3
+        );
+        game.register(board);
+        game.register(manager);
+        manager.start(0);
+
+        WaveProgressSnapshot waiting = manager.progressSnapshot();
+        assertEquals(0, waiting.currentWaveNumber());
+        assertEquals(1, waiting.nextWaveNumber());
+        assertEquals(20, waiting.ticksUntilNextWave());
+        assertEquals(0d, waiting.overallProgress());
+
+        game.advance(20);
+        WaveProgressSnapshot fighting = manager.progressSnapshot();
+        assertEquals(1, fighting.currentWaveNumber());
+        assertEquals(1, fighting.spawnedZombies());
+        assertTrue(fighting.overallProgress() > 0d);
+
+        Zombie firstZombie = world.getZombies().get(0);
+        firstZombie.takeDirectDamage(142.5);
+        game.advance(1);
+        WaveProgressSnapshot nextWave = manager.progressSnapshot();
+        assertTrue(nextWave.isWaitingForWave());
+        assertEquals(2, nextWave.nextWaveNumber());
+        assertTrue(nextWave.nextWaveFinal());
+        assertEquals(0.5d, nextWave.overallProgress());
+    }
+
 }

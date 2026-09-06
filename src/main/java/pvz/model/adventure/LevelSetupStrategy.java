@@ -19,4 +19,12 @@ public interface LevelSetupStrategy {
     default PlantSelectionRules plantSelectionRules(LevelSpec level) {
         return PlantSelectionRules.normal();
     }
+
+    /**
+     * Player-facing mission text shown before simulation time begins.
+     * Special-level strategies can replace this when their objectives exist.
+     */
+    default LevelObjectivePresentation objectivePresentation(LevelSpec level) {
+        return LevelObjectivePresentation.forObjective(level.objectiveType());
+    }
 }

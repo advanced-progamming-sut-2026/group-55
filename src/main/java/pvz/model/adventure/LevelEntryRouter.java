@@ -37,6 +37,20 @@ public final class LevelEntryRouter {
         );
     }
 
+    public LevelObjectivePresentation objectivePresentation(LevelSpec level) {
+        Objects.requireNonNull(level, "level cannot be null");
+        LevelSetupStrategy strategy = strategies.get(level.type());
+        if (strategy == null) {
+            throw new IllegalStateException(
+                    "no setup strategy for level: " + level.id()
+            );
+        }
+        return Objects.requireNonNull(
+                strategy.objectivePresentation(level),
+                "level setup strategy returned a null objective presentation"
+        );
+    }
+
     public LevelEntryRoute route(LevelSpec level) {
         Objects.requireNonNull(level, "level cannot be null");
         LevelSetupStrategy strategy = strategies.get(level.type());

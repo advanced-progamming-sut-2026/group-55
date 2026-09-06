@@ -11,6 +11,7 @@ import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.InputListener;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
+import com.badlogic.gdx.scenes.scene2d.ui.Image;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
@@ -18,6 +19,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.utils.Align;
+import com.badlogic.gdx.utils.Scaling;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -25,8 +27,10 @@ import java.util.Locale;
 import java.util.Map;
 import pvz.graphics.BaseScreen;
 import pvz.graphics.PvzGame;
+import pvz.graphics.actor.BattleDebugActionActor;
 import pvz.graphics.actor.BattleSeedPacketActor;
 import pvz.graphics.actor.BattleToolButtonActor;
+import pvz.graphics.actor.BattleWaveProgressActor;
 import pvz.graphics.actor.BattlefieldActor;
 import pvz.graphics.asset.PlantVisualResolver;
 import pvz.graphics.asset.ZombieVisualResolver;
@@ -38,6 +42,8 @@ import pvz.libpvz.textures.TextureBank;
 import pvz.model.account.User;
 import pvz.model.account.UserManager;
 import pvz.model.adventure.ChapterSpec;
+import pvz.model.adventure.LevelEntryRouter;
+import pvz.model.adventure.LevelObjectivePresentation;
 import pvz.model.adventure.LevelProgressService;
 import pvz.model.adventure.LevelSpec;
 import pvz.model.core.Game;
@@ -53,6 +59,7 @@ import pvz.model.session.GameSessionConfig;
 import pvz.model.session.GameSessionStatus;
 import pvz.model.utils.AppState;
 import pvz.model.utils.MenuName;
+import pvz.model.wave.WaveProgressSnapshot;
 
 /** First playable graphical battle screen. */
 public final class BattleScreen extends BaseScreen {
@@ -75,13 +82,19 @@ public final class BattleScreen extends BaseScreen {
     private final TextureRegion backgroundRight;
     private final Map<String, BattleSeedPacketActor> seedPackets =
             new LinkedHashMap<>();
+    private final List<BattleDebugActionActor> debugActions = new ArrayList<>();
+    private final LevelEntryRouter levelEntryRouter = new LevelEntryRouter();
 
     private GameSession session;
     private BattlefieldActor battlefield;
     private Label hudLabel;
     private Label waveLabel;
+    private Label coinLabel;
+    private Label diamondLabel;
+    private Label waveAnnouncementLabel;
     private Label statusLabel;
     private Label toolLabel;
+    private BattleWaveProgressActor waveProgressActor;
     private Label resultTitle;
     private Label resultDetails;
     private TextButton pauseButton;
@@ -89,13 +102,18 @@ public final class BattleScreen extends BaseScreen {
     private BattleToolButtonActor shovelButton;
     private BattleToolButtonActor plantFoodButton;
     private Actor pauseInputBlocker;
+    private Actor objectiveInputBlocker;
     private Table pausePanel;
     private Table resultPanel;
+    private Table objectivePanel;
+    private Table waveAnnouncementPanel;
+    private Table debugPanel;
 
     private String selectedPlant;
     private BattlefieldActor.ToolMode toolMode =
             BattlefieldActor.ToolMode.PLANT;
     private boolean paused;
+    private boolean objectiveActive = true;
     private boolean resultHandled;
     private boolean rewardsSettled;
     private boolean rewardsSaved;
@@ -148,26 +166,74 @@ public final class BattleScreen extends BaseScreen {
 
         pauseButton = new TextButton("PAUSE", skin, "brown");
         pauseButton.setBounds(15f, 670f, 95f, 40f);
+        pauseButton.setDisabled(true);
         pauseButton.addListener(click(this::togglePause));
         stage.addActor(pauseButton);
 
         hudLabel = new Label("", skin);
         hudLabel.setAlignment(Align.left);
-        hudLabel.setBounds(125f, 670f, 560f, 42f);
+        hudLabel.setFontScale(0.70f);
+        hudLabel.setBounds(125f, 670f, 325f, 42f);
         stage.addActor(hudLabel);
+
+        buildBattleCurrencyReadouts();
 
         waveLabel = new Label("", skin);
         waveLabel.setAlignment(Align.right);
-        waveLabel.setBounds(690f, 670f, 570f, 42f);
+        waveLabel.setFontScale(0.70f);
+        waveLabel.setBounds(665f, 687f, 590f, 22f);
         stage.addActor(waveLabel);
+
+        waveProgressActor = new BattleWaveProgressActor(
+                skin,
+                session.waveManager().getTotalWaves()
+        );
+        waveProgressActor.setBounds(670f, 673f, 580f, 9f);
+        stage.addActor(waveProgressActor);
 
         addHudBackdrop(105f, 576f, 1162f, 88f, 0.76f);
         buildSeedBank();
+        buildWaveAnnouncement();
         addHudBackdrop(8f, 5f, 1264f, 70f, 0.82f);
         buildBottomControls();
         buildPauseInputBlocker();
         buildPausePanel();
         buildResultPanel();
+        buildObjectiveIntro();
+    }
+
+    private void buildBattleCurrencyReadouts() {
+        coinLabel = addBattleCurrencyReadout(
+                "IMAGE_UI_QUESTS_COIN_ICON",
+                458f
+        );
+        diamondLabel = addBattleCurrencyReadout(
+                "IMAGE_UI_QUESTS_GEM_ICON",
+                558f
+        );
+    }
+
+    private Label addBattleCurrencyReadout(String textureKey, float x) {
+        Table badge = new Table();
+        badge.setBackground(skin.newDrawable(
+                "image_ui_dialog_asset_inner_bkgd_10",
+                Color.valueOf("35484b")
+        ));
+        badge.setBounds(x, 672f, 94f, 36f);
+        TextureRegion region = textures.region(textureKey);
+        if (region != null) {
+            Image icon = new Image(region);
+            icon.setScaling(Scaling.fit);
+            badge.add(icon).size(25f, 25f).padLeft(4f);
+        }
+        Label value = new Label("0", skin);
+        value.setAlignment(Align.center);
+        value.setFontScale(0.66f);
+        value.setColor(Color.WHITE);
+        badge.add(value).width(58f).height(28f);
+        badge.setTouchable(Touchable.disabled);
+        stage.addActor(badge);
+        return value;
     }
 
     private void addHudBackdrop(
@@ -240,7 +306,7 @@ public final class BattleScreen extends BaseScreen {
         toolLabel.setBounds(320f, 43f, 360f, 24f);
         stage.addActor(toolLabel);
 
-        statusLabel = new Label("Mission started. Select a seed packet.", skin);
+        statusLabel = new Label("Review the objective, then press START.", skin);
         statusLabel.setAlignment(Align.center);
         statusLabel.setWrap(true);
         statusLabel.setBounds(320f, 5f, 585f, 38f);
@@ -253,22 +319,104 @@ public final class BattleScreen extends BaseScreen {
     }
 
     private void buildDebugControls() {
-        Table debug = new Table();
-        debug.defaults().pad(2f);
-        debug.setBounds(910f, 10f, 355f, 58f);
+        debugPanel = new Table();
+        debugPanel.defaults().pad(2f);
+        debugPanel.setBounds(906f, 10f, 360f, 58f);
 
-        TextButton sun = new TextButton("+250 SUN", skin, "green");
-        sun.addListener(click(() -> execute("cheat add -n 250 suns")));
-        debug.add(sun).size(112f, 45f);
+        addDebugAction(new BattleDebugActionActor(
+                skin,
+                textures.region("IMAGE_EFFECTS_SUN_SUN_78X78"),
+                "+250",
+                () -> execute("cheat add -n 250 suns")
+        ));
+        addDebugAction(BattleDebugActionActor.fromInternalTexture(
+                skin,
+                "assets/custom-ui/battle/plantfood.png",
+                "+1",
+                () -> execute("cheat add-plant-food")
+        ));
+        addDebugAction(new BattleDebugActionActor(
+                skin,
+                textures.region(
+                        "IMAGE_UI_QUESTS_DAILY_QUEST_CLOCK_ICON_"
+                                + "DAILY_QUEST_CLOCK_ICON_77X78"
+                ),
+                "NO CD",
+                () -> execute("cheat remove-cooldown")
+        ));
+        addDebugAction(new BattleDebugActionActor(
+                skin,
+                textures.region("IMAGE_UI_QUESTS_COIN_ICON"),
+                "+100",
+                () -> addDebugCurrency(false)
+        ));
+        addDebugAction(new BattleDebugActionActor(
+                skin,
+                textures.region("IMAGE_UI_QUESTS_GEM_ICON"),
+                "+100",
+                () -> addDebugCurrency(true)
+        ));
+        stage.addActor(debugPanel);
+    }
 
-        TextButton food = new TextButton("+ FOOD", skin, "green");
-        food.addListener(click(() -> execute("cheat add-plant-food")));
-        debug.add(food).size(105f, 45f);
+    private void addDebugAction(BattleDebugActionActor action) {
+        debugActions.add(action);
+        debugPanel.add(action).size(66f, 52f);
+    }
 
-        TextButton cooldown = new TextButton("NO CD", skin, "green");
-        cooldown.addListener(click(() -> execute("cheat remove-cooldown")));
-        debug.add(cooldown).size(105f, 45f);
-        stage.addActor(debug);
+    private void addDebugCurrency(boolean diamonds) {
+        User user = appState.getCurrentUser();
+        if (user == null || !user.isDebugMode()) {
+            return;
+        }
+        int before = diamonds ? user.getDiamonds() : user.getCoins();
+        if (diamonds) {
+            user.addDiamonds(100);
+        } else {
+            user.addCoins(100);
+        }
+        int after = diamonds ? user.getDiamonds() : user.getCoins();
+        int added = after - before;
+        if (!userManager.save()) {
+            rollbackDebugCurrency(user, diamonds, added);
+            showStatus("Could not save debug currency.", true);
+        } else {
+            showStatus(diamonds ? "+100 diamonds." : "+100 coins.", false);
+        }
+        updateUi();
+    }
+
+    private static void rollbackDebugCurrency(
+            User user,
+            boolean diamonds,
+            int added
+    ) {
+        if (added <= 0) {
+            return;
+        }
+        if (diamonds) {
+            user.spendDiamonds(added);
+        } else {
+            user.spendCoins(added);
+        }
+    }
+
+    private void buildWaveAnnouncement() {
+        waveAnnouncementPanel = new Table();
+        waveAnnouncementPanel.setBackground(skin.newDrawable(
+                "image_ui_dialog_asset_inner_bkgd_10",
+                Color.valueOf("3a2720")
+        ));
+        waveAnnouncementPanel.setBounds(405f, 536f, 470f, 36f);
+        waveAnnouncementPanel.setTouchable(Touchable.disabled);
+
+        waveAnnouncementLabel = new Label("", skin);
+        waveAnnouncementLabel.setAlignment(Align.center);
+        waveAnnouncementLabel.setFontScale(0.78f);
+        waveAnnouncementLabel.setColor(Color.valueOf("ff6a48"));
+        waveAnnouncementPanel.add(waveAnnouncementLabel).grow();
+        waveAnnouncementPanel.setVisible(false);
+        stage.addActor(waveAnnouncementPanel);
     }
 
     /** Blocks every gameplay control while leaving the top pause button free. */
@@ -355,6 +503,130 @@ public final class BattleScreen extends BaseScreen {
         stage.addActor(resultPanel);
     }
 
+    private void buildObjectiveIntro() {
+        Table blocker = new Table();
+        blocker.setBackground(skin.newDrawable(
+                "image_ui_dialog_asset_inner_bkgd_10",
+                new Color(0.08f, 0.08f, 0.08f, 0.68f)
+        ));
+        blocker.setBounds(0f, 0f, WIDTH, HEIGHT);
+        blocker.setTouchable(Touchable.enabled);
+        blocker.addListener(blockingListener());
+        objectiveInputBlocker = blocker;
+        stage.addActor(blocker);
+
+        LevelSpec level = currentLevelSpec();
+        LevelObjectivePresentation objective =
+                levelEntryRouter.objectivePresentation(level);
+
+        objectivePanel = new Table();
+        objectivePanel.setBackground(skin.getDrawable(
+                "image_ui_dialog_asset_inner_bkgd_10"
+        ));
+        objectivePanel.setBounds(365f, 205f, 550f, 310f);
+        objectivePanel.defaults().pad(7f);
+        addObjectiveCopy(level, objective);
+
+        TextButton start = new TextButton("START", skin, "green");
+        start.addListener(click(this::dismissObjectiveIntro));
+        objectivePanel.add(start).size(280f, 56f);
+        stage.addActor(objectivePanel);
+    }
+
+    private void addObjectiveCopy(
+            LevelSpec level,
+            LevelObjectivePresentation objective
+    ) {
+        Label header = objectiveLabel(
+                "LEVEL OBJECTIVE",
+                1.25f,
+                Color.valueOf("5b8f2f")
+        );
+        objectivePanel.add(header).height(52f).growX().row();
+
+        Label levelName = objectiveLabel(level.name(), 0.82f, Color.DARK_GRAY);
+        objectivePanel.add(levelName).height(34f).growX().row();
+
+        Label objectiveTitle = objectiveLabel(
+                objective.title(),
+                0.88f,
+                Color.DARK_GRAY
+        );
+        objectivePanel.add(objectiveTitle).height(34f).growX().row();
+
+        Label description = objectiveLabel(
+                objective.description(),
+                0.72f,
+                Color.DARK_GRAY
+        );
+        description.setWrap(true);
+        objectivePanel.add(description).width(480f).height(78f).row();
+    }
+
+    private Label objectiveLabel(String text, float scale, Color color) {
+        Label label = new Label(text, skin);
+        label.setAlignment(Align.center);
+        label.setFontScale(scale);
+        label.setColor(color);
+        return label;
+    }
+
+    private InputListener blockingListener() {
+        return new InputListener() {
+            @Override
+            public boolean touchDown(
+                    InputEvent event,
+                    float x,
+                    float y,
+                    int pointer,
+                    int button
+            ) {
+                event.stop();
+                return true;
+            }
+
+            @Override
+            public boolean mouseMoved(InputEvent event, float x, float y) {
+                event.stop();
+                return true;
+            }
+        };
+    }
+
+    private void dismissObjectiveIntro() {
+        objectiveActive = false;
+        objectiveInputBlocker.setVisible(false);
+        objectivePanel.setVisible(false);
+        pauseButton.setDisabled(false);
+        tickClock.reset();
+        if (battlefield != null) {
+            battlefield.setPaused(isBattleFrozen());
+        }
+        showStatus("Select a seed packet to begin defending.", false);
+        updateUi();
+    }
+
+    private void showObjectiveIntro() {
+        objectiveActive = true;
+        objectiveInputBlocker.setVisible(true);
+        objectivePanel.setVisible(true);
+        objectivePanel.toFront();
+        pauseButton.setDisabled(true);
+        if (battlefield != null) {
+            battlefield.setPaused(true);
+        }
+        if (waveAnnouncementPanel != null) {
+            waveAnnouncementPanel.setVisible(false);
+        }
+    }
+
+    private LevelSpec currentLevelSpec() {
+        return game.getGameData()
+                .adventureData()
+                .catalog()
+                .requireLevel(restartConfig.levelId());
+    }
+
     private void bindBattlefield() {
         disposeBattlefield();
         battlefield = new BattlefieldActor(
@@ -389,12 +661,12 @@ public final class BattleScreen extends BaseScreen {
         battlefield.setToolMode(toolMode);
         battlefield.setShowGrid(showGrid());
         battlefield.setAnimationTimeScale(effectiveTimeScale());
-        battlefield.setPaused(paused);
+        battlefield.setPaused(isBattleFrozen());
         stage.getRoot().addActorAt(0, battlefield);
     }
 
     private void handleCellClick(int column, int row) {
-        if (paused || !runtime.isActive()) {
+        if (isBattleFrozen() || !runtime.isActive()) {
             return;
         }
 
@@ -434,7 +706,8 @@ public final class BattleScreen extends BaseScreen {
             int collectionColumn,
             int collectionRow
     ) {
-        if (paused || !runtime.isActive() || sun == null || sun.isRemoved()) {
+        if (isBattleFrozen() || !runtime.isActive()
+                || sun == null || sun.isRemoved()) {
             return null;
         }
 
@@ -484,7 +757,7 @@ public final class BattleScreen extends BaseScreen {
     }
 
     private void selectPlant(String plantName) {
-        if (paused || !runtime.isActive()) {
+        if (isBattleFrozen() || !runtime.isActive()) {
             return;
         }
         if (toolMode == BattlefieldActor.ToolMode.PLANT
@@ -502,7 +775,7 @@ public final class BattleScreen extends BaseScreen {
     }
 
     private void selectTool(BattlefieldActor.ToolMode mode) {
-        if (paused || !runtime.isActive()) {
+        if (isBattleFrozen() || !runtime.isActive()) {
             return;
         }
         if (mode == BattlefieldActor.ToolMode.PLANT_FOOD
@@ -560,7 +833,7 @@ public final class BattleScreen extends BaseScreen {
         int ticks = tickClock.consume(
                 delta,
                 effectiveTimeScale(),
-                paused
+                isBattleFrozen()
         );
         if (ticks <= 0) {
             return;
@@ -597,6 +870,12 @@ public final class BattleScreen extends BaseScreen {
 
         resultHandled = true;
         setBattlePaused(true);
+        if (waveAnnouncementPanel != null) {
+            waveAnnouncementPanel.setVisible(false);
+        }
+        if (debugPanel != null) {
+            debugPanel.setVisible(false);
+        }
 
         boolean saved = settleRewardsAndProgress(
                 status == GameSessionStatus.WON
@@ -874,29 +1153,15 @@ public final class BattleScreen extends BaseScreen {
     }
 
     private void togglePause() {
-        if (resultHandled || !runtime.isActive()) {
+        if (objectiveActive || resultHandled || !runtime.isActive()) {
             return;
         }
         setBattlePaused(!paused);
     }
 
     private void restartBattle() {
-        if (rewardsSettled) {
-            if (session.resources().isPlantFoodReturned()) {
-                showStatus(
-                        "This attempt has already returned persistent "
-                                + "resources; exit instead of retrying.",
-                        true
-                );
-                return;
-            }
-            if (!saveSettledRewards()) {
-                showStatus(
-                        "Retry is blocked until battle rewards are saved.",
-                        true
-                );
-                return;
-            }
+        if (!canRestartAfterSettlement()) {
+            return;
         }
 
         stage.cancelTouchFocus();
@@ -914,9 +1179,43 @@ public final class BattleScreen extends BaseScreen {
             );
             return;
         }
+
+        resetRestartedSessionState();
+        resetRestartedBattleUi();
+        bindBattlefield();
+        setBattlePaused(false);
+        showObjectiveIntro();
+        showStatus("Level restarted. Review the objective, then start.", false);
+        updateUi();
+    }
+
+    private boolean canRestartAfterSettlement() {
+        if (!rewardsSettled) {
+            return true;
+        }
+        if (session.resources().isPlantFoodReturned()) {
+            showStatus(
+                    "This attempt has already returned persistent "
+                            + "resources; exit instead of retrying.",
+                    true
+            );
+            return false;
+        }
+        if (!saveSettledRewards()) {
+            showStatus(
+                    "Retry is blocked until battle rewards are saved.",
+                    true
+            );
+            return false;
+        }
+        return true;
+    }
+
+    private void resetRestartedSessionState() {
         session = runtime.session();
         selectedPlant = null;
         toolMode = BattlefieldActor.ToolMode.PLANT;
+        objectiveActive = true;
         resultHandled = false;
         rewardsSettled = false;
         rewardsSaved = false;
@@ -924,16 +1223,17 @@ public final class BattleScreen extends BaseScreen {
         settlementResult = null;
         tickClock.reset();
         GameEvents.drain();
+    }
+
+    private void resetRestartedBattleUi() {
         pausePanel.setVisible(false);
         resultPanel.setVisible(false);
         resultRetryButton.setVisible(true);
         resultRetryButton.setDisabled(false);
-        pauseButton.setDisabled(false);
         pauseButton.setText("PAUSE");
-        bindBattlefield();
-        setBattlePaused(false);
-        showStatus("Level restarted.", false);
-        updateUi();
+        if (debugPanel != null) {
+            debugPanel.setVisible(true);
+        }
     }
 
     private void exitBattle() {
@@ -993,19 +1293,81 @@ public final class BattleScreen extends BaseScreen {
                         + "   PLANT FOOD "
                         + session.resources().getPlantFoodCount()
         );
-        waveLabel.setText(
-                "WAVE " + session.waveManager().getCurrentWaveNumber()
-                        + "/" + session.waveManager().getTotalWaves()
-                        + "   " + session.waveManager().getState()
-                        + "   TICK " + session.game().getCurrentTick()
-                        + "   SPEED x" + gameSpeed()
-                        + "   TIME x" + formattedTimeScale()
-        );
+        updateCurrencyReadouts();
+
+        WaveProgressSnapshot progress = session.waveManager().progressSnapshot();
+        waveLabel.setText(waveStatusText(progress));
+        waveProgressActor.update(progress);
+        updateWaveAnnouncement(progress);
+
         updateToolControls();
         battlefield.setShowGrid(showGrid());
         battlefield.setAnimationTimeScale(effectiveTimeScale());
         battlefield.setSelectedPlant(selectedPlant);
         updateSeedPackets();
+    }
+
+    private void updateCurrencyReadouts() {
+        User user = appState.getCurrentUser();
+        long coins = user == null ? 0L : user.getCoins();
+        long diamonds = user == null ? 0L : user.getDiamonds();
+        if (!session.battleWallet().isTransferred()) {
+            coins += session.battleWallet().getCollectedCoins();
+            diamonds += session.battleWallet().getCollectedDiamonds();
+        }
+        coinLabel.setText(Long.toString(coins));
+        diamondLabel.setText(Long.toString(diamonds));
+    }
+
+    private String waveStatusText(WaveProgressSnapshot progress) {
+        String prefix;
+        if (progress.isCompleted()) {
+            prefix = "WAVE " + progress.totalWaves() + "/"
+                    + progress.totalWaves() + "   COMPLETED";
+        } else if (progress.currentWaveNumber() == 0) {
+            prefix = "PREPARING   " + progress.totalWaves() + " WAVES";
+        } else {
+            prefix = "WAVE " + progress.currentWaveNumber()
+                    + "/" + progress.totalWaves()
+                    + "   " + progress.state();
+        }
+        return prefix
+                + "   TICK " + session.game().getCurrentTick()
+                + "   SPEED x" + gameSpeed()
+                + "   TIME x" + formattedTimeScale();
+    }
+
+    private void updateWaveAnnouncement(WaveProgressSnapshot progress) {
+        if (objectiveActive || resultHandled || !progress.isWaitingForWave()
+                || progress.ticksUntilNextWave() <= 0L) {
+            waveAnnouncementPanel.setVisible(false);
+            return;
+        }
+        double seconds = (double) progress.ticksUntilNextWave()
+                / Game.TICKS_PER_SECOND;
+        String text;
+        if (progress.nextWaveNumber() == 1) {
+            text = String.format(
+                    Locale.ROOT,
+                    "ZOMBIES ARE COMING  •  %.1fs",
+                    seconds
+            );
+        } else if (progress.nextWaveFinal()) {
+            text = String.format(
+                    Locale.ROOT,
+                    "FINAL WAVE IN %.1fs",
+                    seconds
+            );
+        } else {
+            text = String.format(
+                    Locale.ROOT,
+                    "NEXT WAVE %d IN %.1fs",
+                    progress.nextWaveNumber(),
+                    seconds
+            );
+        }
+        waveAnnouncementLabel.setText(text);
+        waveAnnouncementPanel.setVisible(true);
     }
 
     private void updateToolControls() {
@@ -1116,10 +1478,14 @@ public final class BattleScreen extends BaseScreen {
             pauseInputBlocker.setVisible(shouldPause);
         }
         if (battlefield != null) {
-            battlefield.setPaused(shouldPause);
+            battlefield.setPaused(isBattleFrozen());
         }
-        pausePanel.setVisible(shouldPause && !resultHandled);
+        pausePanel.setVisible(shouldPause && !resultHandled && !objectiveActive);
         pauseButton.setText(shouldPause ? "RESUME" : "PAUSE");
+    }
+
+    private boolean isBattleFrozen() {
+        return paused || objectiveActive || resultHandled;
     }
 
     private int gameSpeed() {
@@ -1209,7 +1575,8 @@ public final class BattleScreen extends BaseScreen {
     @Override
     public void render(float delta) {
         handleFinishedBattleIfNeeded();
-        if (!resultHandled
+        if (!objectiveActive
+                && !resultHandled
                 && (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)
                 || Gdx.input.isKeyJustPressed(Input.Keys.SPACE))) {
             togglePause();
@@ -1218,7 +1585,7 @@ public final class BattleScreen extends BaseScreen {
         advanceBattle(delta);
         updateUi();
         renderBackground();
-        renderStage(paused ? 0f : delta);
+        renderStage(isBattleFrozen() ? 0f : delta);
     }
 
     @Override
@@ -1284,6 +1651,7 @@ public final class BattleScreen extends BaseScreen {
         disposeBattlefield();
         disposeSeedPackets();
         disposeToolButtons();
+        disposeDebugActions();
         clearActorCallbacks(stage.getRoot());
         clearActorReferences();
         super.dispose();
@@ -1316,6 +1684,13 @@ public final class BattleScreen extends BaseScreen {
         }
     }
 
+    private void disposeDebugActions() {
+        for (BattleDebugActionActor action : debugActions) {
+            action.dispose();
+        }
+        debugActions.clear();
+    }
+
     /**
      * Severs screen-capturing callbacks from every remaining stage actor.
      * Drawables and TextureRegions are deliberately left alone because they
@@ -1333,12 +1708,20 @@ public final class BattleScreen extends BaseScreen {
 
     private void clearActorReferences() {
         pauseInputBlocker = null;
+        objectiveInputBlocker = null;
         pausePanel = null;
         resultPanel = null;
+        objectivePanel = null;
+        waveAnnouncementPanel = null;
+        debugPanel = null;
         pauseButton = null;
         resultRetryButton = null;
         hudLabel = null;
         waveLabel = null;
+        coinLabel = null;
+        diamondLabel = null;
+        waveAnnouncementLabel = null;
+        waveProgressActor = null;
         statusLabel = null;
         toolLabel = null;
         resultTitle = null;

@@ -68,6 +68,23 @@ public final class PlantCompactCardContent extends Table {
         statusLabel.setColor(Objects.requireNonNull(color, "status color cannot be null"));
     }
 
+    /**
+     * Direct scale override for very compact in-battle cards. Unlike the menu
+     * readability helper, this deliberately permits smaller text.
+     */
+    public void setTextScales(
+            float nameScale,
+            float costScale,
+            float statusScale
+    ) {
+        if (nameScale <= 0f || costScale <= 0f || statusScale <= 0f) {
+            throw new IllegalArgumentException("text scales must be positive");
+        }
+        nameLabel.setFontScale(nameScale);
+        costLabel.setFontScale(costScale);
+        statusLabel.setFontScale(statusScale);
+    }
+
     private static Label label(Skin skin, String text, float scale) {
         Label label = new Label(text, skin);
         Typography.applyBody(label, skin);

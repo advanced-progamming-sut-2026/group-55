@@ -57,6 +57,7 @@ public final class BattleSeedPacketActor extends Table implements Disposable {
                 48f,
                 77f
         );
+        content.setTextScales(0.55f, 0.48f, 0.45f);
         add(content).grow();
 
         clickListener = new ClickListener() {
