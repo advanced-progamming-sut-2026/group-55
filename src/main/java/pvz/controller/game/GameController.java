@@ -110,7 +110,10 @@ public final class GameController {
             return type + " was not selected for this level!";
         }
 
-        boolean boosted = session.isPlantBoosted(type);
+        boolean manuallyBoosted = session.isPlantManuallyBoosted(type);
+        boolean storedBoostActive = session.isStoredBoostActivated(type);
+        boolean storedBoostPending = session.hasPendingStoredBoost(type);
+        boolean boosted = manuallyBoosted || storedBoostActive || storedBoostPending;
 
         if (boosted && !plant.supportsPlantFood()) {
             return "plant food effect for "
@@ -145,7 +148,7 @@ public final class GameController {
         }
 
         world.sunBank().spend(cost);
-        session.recordPlanting(type);
+        session.recordPlanting(plant.getName(), cost);
         plant.place(world, x, y, game.getCurrentTick());
 
         if (plant.getSpec().hasUpgrade(PlantUpgradeType.MINT_RESET_FAMILY_COOLDOWNS)) {
@@ -158,7 +161,17 @@ public final class GameController {
             game.register(plant);
         }
 
-        if (boosted) {
+        boolean applyBoost = manuallyBoosted || storedBoostActive;
+        if (storedBoostPending) {
+            if (session.activateStoredBoost(type)) {
+                applyBoost = true;
+            } else {
+                result += "\nStored boost could not be consumed; "
+                        + "the plant was placed without using it.";
+            }
+        }
+
+        if (applyBoost) {
             boolean activated = plant.tryApplyPlantFood(game.getCurrentTick());
 
             if (activated) {

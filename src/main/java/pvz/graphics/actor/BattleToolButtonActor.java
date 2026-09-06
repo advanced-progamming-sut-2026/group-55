@@ -1,5 +1,6 @@
 package pvz.graphics.actor;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
@@ -112,7 +113,24 @@ public final class BattleToolButtonActor extends Table implements Disposable {
         return label;
     }
 
+    private static final String SHOVEL_ICON_PATH =
+            "assets/custom-ui/battle/shovel.png";
+
+    private static final String PLANT_FOOD_ICON_PATH =
+            "assets/custom-ui/battle/plantfood.png";
+
     private static Texture createIconTexture(IconType iconType) {
+        String path = iconType == IconType.SHOVEL
+                ? SHOVEL_ICON_PATH
+                : PLANT_FOOD_ICON_PATH;
+
+        if (Gdx.files.internal(path).exists()) {
+            Texture texture = new Texture(Gdx.files.internal(path));
+            texture.setFilter(Texture.TextureFilter.Linear,
+                    Texture.TextureFilter.Linear);
+            return texture;
+        }
+
         Pixmap pixmap = new Pixmap(48, 48, Pixmap.Format.RGBA8888);
         pixmap.setBlending(Pixmap.Blending.SourceOver);
         pixmap.setColor(Color.CLEAR);

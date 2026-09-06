@@ -8,6 +8,7 @@ public class ShopCommand implements Command {
         BUY
     }
 
+    private pvz.model.shop.DailyOffer expectedOffer;
     private final Action action;
     private final int itemId;
     private final int count;
@@ -26,6 +27,14 @@ public class ShopCommand implements Command {
         this.count = count;
         this.plantType = plantType;
     }
+
+    public ShopCommand(Action action, int itemId, int count, String plantType,
+                       pvz.model.shop.DailyOffer expectedOffer) {
+        this(action, itemId, count, plantType);
+        this.expectedOffer = expectedOffer;
+    }
+
+    public pvz.model.shop.DailyOffer getExpectedOffer() { return expectedOffer; }
 
     public Action getAction() { return action; }
     public int getItemId() { return itemId; }

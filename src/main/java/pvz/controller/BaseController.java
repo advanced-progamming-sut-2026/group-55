@@ -105,7 +105,7 @@ public abstract class BaseController implements Controller {
                 appState.setCurrentMenu(MenuName.GAME);
                 view.showSuccess(SystemMessage.ENTERED_GAME.getMessage());
             }
-            case GAME, SETTINGS, NEWS, PROFILE -> {
+            case GAME, SETTINGS, NEWS, PROFILE, MINIGAMES -> {
                 appState.setCurrentMenu(MenuName.MAIN);
                 view.showSuccess(SystemMessage.ENTERED_MAIN.getMessage());
                 showMenuHelp(MenuName.MAIN);

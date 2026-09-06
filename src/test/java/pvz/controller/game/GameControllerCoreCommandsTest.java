@@ -19,6 +19,8 @@ import pvz.model.entity.zombie.HypnosisService;
 import pvz.model.entity.zombie.Zombie;
 import pvz.model.entity.zombie.ZombieFactory;
 import pvz.model.entity.projectile.ProjectileType;
+import pvz.model.quest.QuestEvent;
+import pvz.model.quest.QuestMetric;
 import pvz.model.adventure.AdventureData;
 import pvz.model.session.GameSession;
 import pvz.model.session.GameSessionConfig;
@@ -132,6 +134,52 @@ class GameControllerCoreCommandsTest {
         assertTrue(result.contains("plant food cannot be applied"));
         assertEquals(1, session.resources().getPlantFoodCount());
         assertFalse(plant.isPlantFoodActive(session.game().getCurrentTick()));
+    }
+
+    @Test
+    void successfulBattleActionsEmitQuestTelemetry() {
+        Plant preview = session.createPlant("Peashooter");
+        int sunCost = preview.getSpec().getCost();
+        session.world().sunBank().add(sunCost);
+
+        String planted = controller.handle(
+                "plant plant -t Peashooter -l (1, 1)"
+        );
+        assertTrue(planted.startsWith("planted Peashooter"));
+
+        Zombie hostile = session.createZombie("default");
+        hostile.spawn(session.world(), 9, 1);
+        controller.handle("release the nuke");
+
+        List<QuestEvent> events = session.drainQuestEvents();
+        assertTrue(events.stream().anyMatch(event ->
+                event.metric() == QuestMetric.PLANT_PLACED
+                        && "Peashooter".equals(event.subjectId())
+        ));
+        assertTrue(events.stream().anyMatch(event ->
+                event.metric() == QuestMetric.SUN_SPENT
+                        && event.amount() == sunCost
+        ));
+        assertTrue(events.stream().anyMatch(event ->
+                event.metric() == QuestMetric.ZOMBIE_KILLED
+                        && hostile.getSpec().getId().equals(event.subjectId())
+        ));
+    }
+
+    @Test
+    void alliedZombieDeathDoesNotCountAsHostileQuestKill() {
+        Zombie ally = session.createZombie("default");
+        ally.spawn(session.world(), 9, 1);
+        HypnosisService.hypnotize(
+                ally,
+                session.game().getCurrentTick()
+        );
+
+        controller.handle("release the nuke");
+
+        assertFalse(session.drainQuestEvents().stream().anyMatch(event ->
+                event.metric() == QuestMetric.ZOMBIE_KILLED
+        ));
     }
 
     @Test

@@ -27,6 +27,8 @@ import pvz.model.entity.zombie.DamageContext;
 import pvz.model.entity.zombie.PushedObstacle;
 import pvz.model.entity.zombie.Zombie;
 import pvz.model.entity.zombie.ZombieAllegiance;
+import pvz.model.quest.QuestEvent;
+import pvz.model.quest.QuestEventSink;
 
 public final class World {
     private static final int RADIOACTIVE_ZOMBIE_RADIUS = 2;
@@ -51,6 +53,7 @@ public final class World {
     private Function<String, Plant> plantCreator;
     private ZombieDiscoveryListener zombieDiscoveryListener =
             ZombieDiscoveryListener.none();
+    private QuestEventSink questEventSink = QuestEventSink.none();
 
     public World(Game game, Board board, BattleResources resources) {
         this(game, board, resources, new Random());
@@ -664,6 +667,37 @@ public final class World {
                 listener,
                 "zombie discovery listener cannot be null"
         );
+    }
+
+    public void setQuestEventSink(QuestEventSink sink) {
+        questEventSink = Objects.requireNonNull(
+                sink,
+                "quest event sink cannot be null"
+        );
+    }
+
+    public void publishQuestEvent(QuestEvent event) {
+        questEventSink.publish(Objects.requireNonNull(
+                event,
+                "quest event cannot be null"
+        ));
+    }
+
+    /**
+     * Counts only hostile zombies as defeated enemies. Allied/hypnotized
+     * zombies dying later must not advance hostile-kill quests.
+     */
+    public void recordZombieDefeated(Zombie zombie) {
+        Zombie checked = Objects.requireNonNull(
+                zombie,
+                "zombie cannot be null"
+        );
+        if (!checked.isHostile()) {
+            return;
+        }
+        publishQuestEvent(QuestEvent.zombieKilled(
+                checked.getSpec().getId()
+        ));
     }
 
     public Zombie spawnZombie(

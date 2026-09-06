@@ -40,7 +40,7 @@ public final class GameSessionConfigFactory {
             int difficultyLevel
     ) {
         return create(
-                levelId, selectedPlants, Map.of(), boostedPlants,
+                levelId, selectedPlants, Map.of(), boostedPlants, Set.of(),
                 startingPlantFood, difficultyLevel
         );
     }
@@ -50,6 +50,26 @@ public final class GameSessionConfigFactory {
             List<String> selectedPlants,
             Map<String, Integer> plantLevels,
             Set<String> boostedPlants,
+            int startingPlantFood,
+            int difficultyLevel
+    ) {
+        return create(
+                levelId,
+                selectedPlants,
+                plantLevels,
+                boostedPlants,
+                Set.of(),
+                startingPlantFood,
+                difficultyLevel
+        );
+    }
+
+    public GameSessionConfig create(
+            String levelId,
+            List<String> selectedPlants,
+            Map<String, Integer> plantLevels,
+            Set<String> boostedPlants,
+            Set<String> storedBoostPlants,
             int startingPlantFood,
             int difficultyLevel
     ) {
@@ -77,6 +97,7 @@ public final class GameSessionConfigFactory {
                 .skySunEnabled(level.skySunEnabled())
                 .plantLevels(plantLevels)
                 .boostedPlants(boostedPlants)
+                .storedBoostPlants(storedBoostPlants)
                 .waveConfiguration(waves)
                 .winCondition(
                         winConditionFactory.create(level.objectiveType())

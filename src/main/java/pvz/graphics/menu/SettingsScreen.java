@@ -13,6 +13,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Align;
 
 import pvz.controller.SettingsController;
+import pvz.graphics.ui.HoverEffect;
 import pvz.libpvz.textures.TextureBank;
 import pvz.model.account.User;
 import pvz.model.account.UserManager;
@@ -81,6 +82,7 @@ public class SettingsScreen extends Group {
         Table header = new Table();
         Image back = new Image(textures.region("IMAGE_UI_MAINMENU_BACK_BTN_NORMAL"));
         back.setSize(35f, 35f);
+        HoverEffect.addScale(back);
         back.addListener(new ClickListener() {
             @Override public void clicked(InputEvent event, float x, float y) {
                 hide();
@@ -154,6 +156,7 @@ public class SettingsScreen extends Group {
         for (int i = 0; i < peppers.length; i++) {
             final int level = i + 1;
             peppers[i] = createPepper(level <= user.getDifficultyLevel());
+            HoverEffect.addScale(peppers[i]);
 
             peppers[i].addListener(new ClickListener() {
                 @Override public void clicked(InputEvent event, float x, float y) {
@@ -196,6 +199,9 @@ public class SettingsScreen extends Group {
         speedTable.add(title).width(180f).height(42f).center();
         speedTable.add(increase).size(55f, 42f);
         contentTable.add(speedTable).width(CONTENT_WIDTH).height(52f).center().row();
+
+        HoverEffect.addScale(decrease);
+        HoverEffect.addScale(increase);
 
         decrease.addListener(new ClickListener() {
             @Override public void clicked(InputEvent event, float x, float y) {
@@ -241,6 +247,7 @@ public class SettingsScreen extends Group {
     private void addSaveButton() {
         TextButton save = createButton("SAVE");
         contentTable.add(save).width(220f).height(45f).padTop(10f).center().row();
+        HoverEffect.addScale(save);
 
         save.addListener(new ClickListener() {
             @Override public void clicked(InputEvent event, float x, float y) {

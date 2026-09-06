@@ -9,6 +9,9 @@ import pvz.data.ZombieCsvLoader;
 import pvz.data.ZombieData;
 import pvz.model.adventure.AdventureData;
 import pvz.model.adventure.LevelProgressService;
+import pvz.model.minigame.MinigameCatalog;
+import pvz.model.minigame.MinigameProgressService;
+import pvz.model.quest.QuestCatalog;
 import pvz.model.service.GreenhouseService;
 
 public final class GameDataContext {
@@ -25,6 +28,9 @@ public final class GameDataContext {
     private final AdventureData adventureData;
     private final LevelProgressService levelProgressService;
     private final GreenhouseService greenhouseService;
+    private final QuestCatalog questCatalog;
+    private final MinigameCatalog minigameCatalog;
+    private final MinigameProgressService minigameProgressService;
 
     private GameDataContext(
             PlantData plantData,
@@ -47,6 +53,11 @@ public final class GameDataContext {
                 adventureData.catalog()
         );
         this.greenhouseService = new GreenhouseService(plantData);
+        this.questCatalog = QuestCatalog.createDefault();
+        this.minigameCatalog = MinigameCatalog.createDefault();
+        this.minigameProgressService = new MinigameProgressService(
+                minigameCatalog
+        );
     }
 
     public static GameDataContext loadDefault() throws IOException {
@@ -84,5 +95,17 @@ public final class GameDataContext {
 
     public GreenhouseService greenhouseService() {
         return greenhouseService;
+    }
+
+    public QuestCatalog questCatalog() {
+        return questCatalog;
+    }
+
+    public MinigameCatalog minigameCatalog() {
+        return minigameCatalog;
+    }
+
+    public MinigameProgressService minigameProgressService() {
+        return minigameProgressService;
     }
 }

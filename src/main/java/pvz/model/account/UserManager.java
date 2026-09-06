@@ -7,10 +7,12 @@ import java.util.*;
 
 public class UserManager extends BaseManager<User> {
     public UserManager(String filePath) {
-        super(filePath, new TypeToken<ArrayList<User>>(){}.getType());}
+        super(filePath, new TypeToken<ArrayList<User>>(){}.getType());
+    }
 
     public boolean userExists(String username) {
-        return this.exists(u -> u.getUsername().equals(username));}
+        return this.exists(u -> u.getUsername().equals(username));
+    }
 
     public void updateDifficulty(String username, int newDifficulty) {
         User user = this.find(u -> u.getUsername().equals(username));

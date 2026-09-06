@@ -14,6 +14,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Align;
 
 import pvz.controller.ProfileController;
+import pvz.graphics.ui.HoverEffect;
 import pvz.libpvz.textures.TextureBank;
 import pvz.model.account.User;
 import pvz.model.account.UserManager;
@@ -96,6 +97,7 @@ public class ProfileScreen extends Group {
         Table header = new Table();
         Image back = new Image(textures.region("IMAGE_UI_MAINMENU_BACK_BTN_NORMAL"));
         back.setSize(35f, 35f);
+        HoverEffect.addScale(back);
         back.addListener(new ClickListener() {
             @Override public void clicked(InputEvent event, float x, float y) { hide(); }
         });
@@ -207,6 +209,7 @@ public class ProfileScreen extends Group {
         row.add(field).width(FIELD_WIDTH).height(34f).left();
         row.add(save).width(SAVE_WIDTH).height(34f).padLeft(8f);
         contentTable.add(row).width(CONTENT_WIDTH).height(38f).left().row();
+        HoverEffect.addScale(save);
 
         save.addListener(new ClickListener() {
             @Override public void clicked(InputEvent event, float x, float y) {
@@ -241,6 +244,7 @@ public class ProfileScreen extends Group {
         row.add(newPassword).width(FIELD_WIDTH).height(34f).left();
         row.add(save).width(SAVE_WIDTH).height(34f).padLeft(8f);
         contentTable.add(row).width(CONTENT_WIDTH).height(38f).left().row();
+        HoverEffect.addScale(save);
 
         save.addListener(new ClickListener() {
             @Override public void clicked(InputEvent event, float x, float y) {

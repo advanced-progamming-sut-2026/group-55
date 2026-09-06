@@ -30,6 +30,7 @@ import pvz.graphics.asset.ProjectileVisualResolver;
 import pvz.graphics.asset.SunVisualResolver;
 import pvz.graphics.asset.ZombieVisualResolver;
 import pvz.graphics.battle.BattleCellTargeting;
+import pvz.graphics.battle.BattleTimeScale;
 import pvz.graphics.battle.DamageFlashTracker;
 import pvz.graphics.battle.HealthBarLayout;
 import pvz.graphics.battle.SunShroomAnimationController;
@@ -116,6 +117,7 @@ public final class BattlefieldActor extends Actor implements Disposable {
     private ToolMode toolMode = ToolMode.PLANT;
     private boolean showGrid;
     private boolean paused;
+    private double animationTimeScale = 1d;
     private boolean radioactiveExplosionPreloaded;
     private int nextSunExplosionVariant;
     private float sunClickSuppressionTime;
@@ -180,13 +182,15 @@ public final class BattlefieldActor extends Actor implements Disposable {
             return;
         }
         super.act(delta);
-        float elapsed = Math.max(0f, delta);
+        float realElapsed = Math.max(0f, delta);
+        float battleElapsed = scaledBattleElapsed(realElapsed);
         sunClickSuppressionTime = Math.max(
-                0f, sunClickSuppressionTime - elapsed
+                0f, sunClickSuppressionTime - realElapsed
         );
-        damageFlashes.advance(elapsed);
+        damageFlashes.advance(battleElapsed);
         observeDamage();
-        plantPlaybacks.values().forEach(playback -> playback.advance(elapsed));
+        plantPlaybacks.values().forEach(
+                playback -> playback.advance(battleElapsed));
 
         Set<Plant> livePlants = Collections.newSetFromMap(
                 new IdentityHashMap<>()
@@ -212,15 +216,24 @@ public final class BattlefieldActor extends Actor implements Disposable {
                 iterator.remove();
                 continue;
             }
-            entry.getValue().advance(zombie, elapsed, tick);
+            entry.getValue().advance(zombie, battleElapsed, tick);
         }
 
-        zombieDeaths.forEach(death -> death.advance(elapsed));
+        zombieDeaths.forEach(death -> death.advance(battleElapsed));
         zombieDeaths.removeIf(ZombieDeathPlayback::finished);
 
-        updateProjectilePlaybacks(elapsed);
-        sunExplosions.forEach(explosion -> explosion.advance(elapsed));
+        updateProjectilePlaybacks(battleElapsed);
+        sunExplosions.forEach(
+                explosion -> explosion.advance(battleElapsed));
         sunExplosions.removeIf(SunExplosionPlayback::finished);
+    }
+
+    private float scaledBattleElapsed(float realElapsed) {
+        float boundedElapsed = Math.min(
+                realElapsed,
+                BattleTimeScale.MAX_FRAME_SECONDS
+        );
+        return (float) (boundedElapsed * animationTimeScale);
     }
 
     private void observeDamage() {
@@ -282,6 +295,15 @@ public final class BattlefieldActor extends Actor implements Disposable {
         this.showGrid = showGrid;
     }
 
+    public void setAnimationTimeScale(double animationTimeScale) {
+        if (!Double.isFinite(animationTimeScale) || animationTimeScale <= 0d) {
+            throw new IllegalArgumentException(
+                    "animation time scale must be finite and positive"
+            );
+        }
+        this.animationTimeScale = animationTimeScale;
+    }
+
     public void setPaused(boolean paused) {
         if (disposed) {
             return;
@@ -319,26 +341,28 @@ public final class BattlefieldActor extends Actor implements Disposable {
         if (!showGrid) {
             return;
         }
+
         float cellWidth = cellWidth();
         float cellHeight = cellHeight();
-        for (int column = 1; column <= board.getCols(); column++) {
-            for (int row = 1; row <= board.getRows(); row++) {
-                float left = cellLeft(column);
-                float bottom = cellBottom(row);
-                boolean light = (column + row) % 2 == 0;
-                setColor(batch, light ? 0.78f : 0.62f,
-                        light ? 0.92f : 0.78f, 0.55f,
-                        (light ? 0.08f : 0.045f) * parentAlpha);
-                batch.draw(solid, left, bottom, cellWidth, cellHeight);
+        float lineWidth = 2f;
 
-                setColor(batch, 1f, 1f, 1f, 0.28f * parentAlpha);
-                batch.draw(solid, left, bottom, cellWidth, 1.5f);
-                batch.draw(solid, left, bottom, 1.5f, cellHeight);
+        setColor(batch, 1f, 0f, 0f, 0.62f * parentAlpha);
+
+        for (int column = 0; column <= board.getCols(); column++) {
+            float x = getX() + column * cellWidth;
+            if (column == board.getCols()) {
+                x -= lineWidth;
             }
+            batch.draw(solid, x, getY(), lineWidth, getHeight());
         }
-        setColor(batch, 1f, 1f, 1f, 0.28f * parentAlpha);
-        batch.draw(solid, getX(), getY() + getHeight(), getWidth(), 1.5f);
-        batch.draw(solid, getX() + getWidth(), getY(), 1.5f, getHeight());
+
+        for (int row = 0; row <= board.getRows(); row++) {
+            float y = getY() + row * cellHeight;
+            if (row == board.getRows()) {
+                y -= lineWidth;
+            }
+            batch.draw(solid, getX(), y, getWidth(), lineWidth);
+        }
     }
 
     private void drawTombstones(Batch batch, float parentAlpha) {

@@ -15,6 +15,7 @@ import pvz.model.core.board.Board;
 import pvz.model.entity.collectible.sun.SkySunSpawner;
 import pvz.model.entity.plant.PlantFactory;
 import pvz.model.entity.zombie.ZombieFactory;
+import pvz.model.quest.QuestEventBuffer;
 import pvz.model.wave.Wave;
 import pvz.model.wave.WaveGenerator;
 import pvz.model.wave.WaveManager;
@@ -55,17 +56,37 @@ public final class GameSessionFactory {
 
 
     public GameSession create(GameSessionConfig config) {
-        return create(config, ZombieDiscoveryListener.none());
+        return create(
+                config,
+                ZombieDiscoveryListener.none(),
+                StoredPlantBoostAccess.untracked()
+        );
     }
 
     public GameSession create(
             GameSessionConfig config,
             ZombieDiscoveryListener discoveryListener
     ) {
+        return create(
+                config,
+                discoveryListener,
+                StoredPlantBoostAccess.untracked()
+        );
+    }
+
+    public GameSession create(
+            GameSessionConfig config,
+            ZombieDiscoveryListener discoveryListener,
+            StoredPlantBoostAccess storedBoostAccess
+    ) {
         Objects.requireNonNull(config, "config cannot be null");
         Objects.requireNonNull(
                 discoveryListener,
                 "zombie discovery listener cannot be null"
+        );
+        Objects.requireNonNull(
+                storedBoostAccess,
+                "stored boost access cannot be null"
         );
 
         Game game = new Game();
@@ -80,8 +101,10 @@ public final class GameSessionFactory {
         BattleResources resources =
                 new BattleResources(config.startingSun(), config.startingPlantFood());
 
+        QuestEventBuffer questEvents = new QuestEventBuffer();
         World world =
                 new World(game, board, resources, random);
+        world.setQuestEventSink(questEvents);
 
         world.setPlantCreator(name -> plantFactory.create(
                 name,
@@ -131,7 +154,9 @@ public final class GameSessionFactory {
                 world,
                 plantFactory,
                 zombieFactory,
-                waveManager
+                waveManager,
+                questEvents,
+                storedBoostAccess
         );
     }
 

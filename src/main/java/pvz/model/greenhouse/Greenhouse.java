@@ -75,4 +75,18 @@ public class Greenhouse {
 
         return unlocked;
     }
+
+    public int getLockedPotCount() {
+        int locked = 0;
+
+        for (int y = 1; y <= ROWS; y++) {
+            for (int x = 1; x <= COLS; x++) {
+                if (pots[y - 1][x - 1].isLocked()) {
+                    locked++;
+                }
+            }
+        }
+
+        return locked;
+    }
 }

@@ -1,9 +1,11 @@
 package pvz.model.session;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import pvz.model.core.BattleResources;
 import pvz.model.core.BattleWallet;
@@ -16,6 +18,8 @@ import pvz.model.entity.plant.Plant;
 import pvz.model.entity.plant.PlantFactory;
 import pvz.model.entity.zombie.Zombie;
 import pvz.model.entity.zombie.ZombieFactory;
+import pvz.model.quest.QuestEvent;
+import pvz.model.quest.QuestEventBuffer;
 import pvz.model.session.condition.WinConditionContext;
 import pvz.model.wave.WaveManager;
 
@@ -27,6 +31,10 @@ public final class GameSession {
     private final PlantFactory plantFactory;
     private final ZombieFactory zombieFactory;
     private final WaveManager waveManager;
+    private final QuestEventBuffer questEvents;
+    private final StoredPlantBoostAccess storedBoostAccess;
+    private final Set<String> pendingStoredBoosts;
+    private final Set<String> activatedStoredBoosts = new HashSet<>();
     private final Map<String, Long> lastPlantedTicks = new HashMap<>();
 
     private GameSessionStatus status = GameSessionStatus.CREATED;
@@ -36,7 +44,9 @@ public final class GameSession {
             World world,
             PlantFactory plantFactory,
             ZombieFactory zombieFactory,
-            WaveManager waveManager
+            WaveManager waveManager,
+            QuestEventBuffer questEvents,
+            StoredPlantBoostAccess storedBoostAccess
     ) {
         this.config = Objects.requireNonNull(
                 config,
@@ -58,6 +68,15 @@ public final class GameSession {
                 waveManager,
                 "wave manager cannot be null"
         );
+        this.questEvents = Objects.requireNonNull(
+                questEvents,
+                "quest event buffer cannot be null"
+        );
+        this.storedBoostAccess = Objects.requireNonNull(
+                storedBoostAccess,
+                "stored boost access cannot be null"
+        );
+        this.pendingStoredBoosts = new HashSet<>(config.storedBoostPlants());
         this.game = world.game();
         this.board = world.board();
     }
@@ -101,9 +120,56 @@ public final class GameSession {
     }
 
     public boolean isPlantBoosted(String plantName) {
+        String normalizedName = normalizeName(plantName);
+        return isPlantManuallyBoosted(normalizedName)
+                || isStoredBoostActivated(normalizedName)
+                || hasPendingStoredBoost(normalizedName);
+    }
+
+    public boolean isPlantManuallyBoosted(String plantName) {
         return config.boostedPlants().contains(
                 normalizeName(plantName)
         );
+    }
+
+    public boolean hasPendingStoredBoost(String plantName) {
+        String normalizedName = normalizeName(plantName);
+        return pendingStoredBoosts.contains(normalizedName)
+                && storedBoostAccess.isAvailable(normalizedName);
+    }
+
+    public boolean isStoredBoostActivated(String plantName) {
+        return activatedStoredBoosts.contains(normalizeName(plantName));
+    }
+
+    /**
+     * Consumes a greenhouse boost only after a successful planting operation
+     * and activates the ordinary stage-wide boost for the rest of this run.
+     * The persistent boundary is asked first; on failure the session keeps the
+     * reward pending so a later planting can retry without losing it.
+     */
+    public boolean activateStoredBoost(String plantName) {
+        requireRunning();
+        String normalizedName = normalizeName(plantName);
+        if (!hasPendingStoredBoost(normalizedName)) {
+            return false;
+        }
+        if (!storedBoostAccess.consume(normalizedName)) {
+            return false;
+        }
+        pendingStoredBoosts.remove(normalizedName);
+        activatedStoredBoosts.add(normalizedName);
+        return true;
+    }
+
+    public Set<String> pendingStoredBoostsSnapshot() {
+        return pendingStoredBoosts.stream()
+                .filter(storedBoostAccess::isAvailable)
+                .collect(java.util.stream.Collectors.toUnmodifiableSet());
+    }
+
+    public Set<String> activatedStoredBoostsSnapshot() {
+        return Set.copyOf(activatedStoredBoosts);
     }
 
     public long getRemainingRechargeTicks(
@@ -138,6 +204,43 @@ public final class GameSession {
                 normalizeName(plantName),
                 game.getCurrentTick()
         );
+    }
+
+    /**
+     * Records a successful player planting operation for cooldown and quest
+     * telemetry. Failed placement attempts must never call this overload.
+     */
+    public void recordPlanting(
+            String plantName,
+            int sunCost
+    ) {
+        if (sunCost < 0) {
+            throw new IllegalArgumentException(
+                    "plant sun cost cannot be negative"
+            );
+        }
+
+        recordPlanting(plantName);
+        questEvents.publish(QuestEvent.plantPlaced(plantName));
+        if (sunCost > 0) {
+            questEvents.publish(QuestEvent.sunSpent(sunCost));
+        }
+    }
+
+    public void publishQuestEvent(QuestEvent event) {
+        questEvents.publish(event);
+    }
+
+    public java.util.List<QuestEvent> questEventsSnapshot() {
+        return questEvents.snapshot();
+    }
+
+    public java.util.List<QuestEvent> drainQuestEvents() {
+        return questEvents.drain();
+    }
+
+    public void clearQuestEvents() {
+        questEvents.clear();
     }
 
 

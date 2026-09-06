@@ -1083,6 +1083,8 @@ public final class Zombie extends LivingEntity {
             return;
         }
 
+        world.recordZombieDefeated(this);
+
         for (ZombieBehavior behavior : behaviors) {
             behavior.onDeath(this, world, currentTick());
         }

@@ -1,5 +1,7 @@
 package pvz.graphics.menu;
 
+import pvz.graphics.ui.Typography;
+
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
@@ -12,6 +14,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Align;
 
+import pvz.graphics.ui.HoverEffect;
 import pvz.libpvz.textures.TextureBank;
 import pvz.model.account.NewsItem;
 import pvz.model.account.User;
@@ -69,6 +72,7 @@ public class NewsScreen extends Group {
                 textures.region("IMAGE_UI_MAINMENU_BACK_BTN_NORMAL")
         );
         back.setSize(35f, 35f);
+        HoverEffect.addScale(back);
 
         back.addListener(new ClickListener() {
             @Override
@@ -81,7 +85,7 @@ public class NewsScreen extends Group {
 
         Label title = new Label("NEWS", skin);
         title.setAlignment(Align.center);
-        title.setFontScale(1.15f);
+        Typography.setReadableScale(title, 1.15f);
 
         header.add(title).expandX().fillX().center();
         header.add().size(45f);
@@ -125,7 +129,7 @@ public class NewsScreen extends Group {
         if (user == null || user.getAllNews().isEmpty()) {
             Label empty = new Label("No news available.", skin);
             empty.setColor(Color.BLACK);
-            empty.setFontScale(1.05f);
+            Typography.setReadableScale(empty, 1.05f);
             newsTable.add(empty).center();
             return;
         }
@@ -135,15 +139,15 @@ public class NewsScreen extends Group {
 
             Label title = new Label(news.getTitle(), skin);
             title.setColor(Color.BLACK);
-            title.setFontScale(1.05f);
+            Typography.setReadableScale(title, 1.05f);
 
             Label date = new Label(news.getDate(), skin);
             date.setColor(Color.DARK_GRAY);
-            date.setFontScale(0.8f);
+            Typography.setReadableScale(date, 0.8f);
 
             Label status = new Label(news.isRead() ? "" : "NEW", skin);
             status.setColor(Color.RED);
-            status.setFontScale(0.8f);
+            Typography.setReadableScale(status, 0.8f);
 
             Label message = new Label(news.getMessage(), skin);
             message.setColor(Color.BLACK);

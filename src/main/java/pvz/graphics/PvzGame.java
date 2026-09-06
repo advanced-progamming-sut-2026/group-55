@@ -15,6 +15,9 @@ import pvz.libpvz.textures.TextureBank;
 import pvz.model.account.UserManager;
 import pvz.model.entity.plant.PlantFactory;
 import pvz.model.entity.zombie.ZombieFactory;
+import pvz.model.leaderboard.LeaderboardService;
+import pvz.model.leaderboard.LocalLeaderboardDataSource;
+import pvz.model.service.QuestService;
 import pvz.model.session.GameRuntime;
 import pvz.model.session.GameSessionConfigFactory;
 import pvz.model.session.GameSessionFactory;
@@ -30,6 +33,8 @@ public class PvzGame extends Game {
     private GameRuntime gameRuntime;
     private GameSessionConfigFactory gameSessionConfigFactory;
     private PamAnimationService animationService;
+    private QuestService questService;
+    private LeaderboardService leaderboardService;
 
     private final AppState appState = new AppState();
     private final UserManager userManager = new UserManager("save.json");
@@ -57,6 +62,14 @@ public class PvzGame extends Game {
         );
         gameSessionConfigFactory = new GameSessionConfigFactory(
                 gameData.adventureData()
+        );
+        questService = new QuestService(userManager);
+        leaderboardService = new LeaderboardService(
+                new LocalLeaderboardDataSource(
+                        userManager,
+                        gameData.adventureData().catalog(),
+                        gameData.questCatalog()
+                )
         );
 
         batch = new SpriteBatch();
@@ -138,6 +151,24 @@ public class PvzGame extends Game {
             );
         }
         return animationService;
+    }
+
+    public LeaderboardService getLeaderboardService() {
+        if (leaderboardService == null) {
+            throw new IllegalStateException(
+                    "Leaderboard service is not initialized."
+            );
+        }
+        return leaderboardService;
+    }
+
+    public QuestService getQuestService() {
+        if (questService == null) {
+            throw new IllegalStateException(
+                    "Quest service is not initialized."
+            );
+        }
+        return questService;
     }
 
     @Override

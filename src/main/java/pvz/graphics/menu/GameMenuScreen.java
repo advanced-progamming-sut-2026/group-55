@@ -1,22 +1,29 @@
 package pvz.graphics.menu;
 
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.Pixmap;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
+import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Align;
+import com.badlogic.gdx.utils.Scaling;
 
 import pvz.graphics.BaseScreen;
 import pvz.graphics.PvzGame;
+import pvz.graphics.ui.HoverEffect;
+import pvz.graphics.ui.Typography;
 import pvz.libpvz.textures.TextureBank;
 import pvz.model.account.User;
 import pvz.model.account.UserManager;
 import pvz.model.adventure.ChapterSpec;
 import pvz.model.adventure.LevelCatalog;
 import pvz.model.adventure.LevelSpec;
+import pvz.model.adventure.LevelProgressService;
 import pvz.model.service.GreenhouseService;
 import pvz.model.utils.AppState;
 import pvz.model.utils.MenuName;
@@ -43,8 +50,10 @@ public class GameMenuScreen extends BaseScreen {
     private final Group worldContainer = new Group();
     private final List<ChapterSpec> chapters;
     private final LevelCatalog levelCatalog;
+    private final LevelProgressService levelProgressService;
     private final Image[] worlds;
     private final Label[] worldLabels;
+    private final HoverEffect.ScaleHandle[] worldHoverEffects;
     private final GreenhouseService greenhouseService;
 
     private SettingsScreen settingsScreen;
@@ -54,6 +63,8 @@ public class GameMenuScreen extends BaseScreen {
     private Label coinLabel;
     private TextButton enterChapterButton;
     private Label statusLabel;
+    private TextButton travelLogButton;
+    private Texture travelLogIconTexture;
 
     public GameMenuScreen(
             PvzGame game,
@@ -76,12 +87,15 @@ public class GameMenuScreen extends BaseScreen {
         this.levelCatalog = game.getGameData()
                 .adventureData()
                 .catalog();
+        this.levelProgressService = game.getGameData()
+                .levelProgressService();
         this.chapters = levelCatalog.chapters();
         if (chapters.isEmpty()) {
             throw new IllegalStateException("No chapters are configured.");
         }
         this.worlds = new Image[chapters.size()];
         this.worldLabels = new Label[chapters.size()];
+        this.worldHoverEffects = new HoverEffect.ScaleHandle[chapters.size()];
         this.greenhouseService = game.getGameData()
                 .greenhouseService();
         this.currentPage = selectedChapterIndex();
@@ -105,6 +119,8 @@ public class GameMenuScreen extends BaseScreen {
 
         float size = 55f, gap = 10f, y = HEIGHT - 80f;
 
+        travelLogButton = createTravelLogButton(size);
+
         back.setSize(size, size);
         greenhouse.setSize(size, size);
         collection.setSize(size, size);
@@ -114,6 +130,13 @@ public class GameMenuScreen extends BaseScreen {
         greenhouse.setPosition(25f + size + gap, y);
         collection.setPosition(25f + (size + gap) * 2f, y);
         settings.setPosition(25f + (size + gap) * 3f, y);
+        travelLogButton.setPosition(25f + (size + gap) * 4f, y);
+
+        HoverEffect.addScale(back);
+        HoverEffect.addScale(greenhouse);
+        HoverEffect.addScale(collection);
+        HoverEffect.addScale(settings);
+        HoverEffect.addScale(travelLogButton);
 
         back.addListener(click(() -> game.setScreen(new MainMenuScreen(
                 game,
@@ -134,16 +157,91 @@ public class GameMenuScreen extends BaseScreen {
                 greenhouseService
         ))));
 
-        collection.addListener(click(() -> {
-            // بعداً CollectionScreen
-        }));
+        collection.addListener(click(() -> game.setScreen(new CollectionScreen(
+                game,
+                textures,
+                batch,
+                skin,
+                appState,
+                userManager,
+                MenuName.GAME
+        ))));
 
         settings.addListener(click(() -> settingsScreen.show()));
+
+        travelLogButton.addListener(click(() -> game.setScreen(new TravelLogScreen(
+                game,
+                textures,
+                batch,
+                skin,
+                appState,
+                userManager
+        ))));
 
         stage.addActor(back);
         stage.addActor(greenhouse);
         stage.addActor(collection);
         stage.addActor(settings);
+        stage.addActor(travelLogButton);
+    }
+
+    private TextButton createTravelLogButton(float size) {
+        TextButton button = new TextButton("", skin, "brown");
+        Image icon = new Image(createTravelLogDrawable());
+        icon.setScaling(Scaling.fit);
+        icon.setTouchable(com.badlogic.gdx.scenes.scene2d.Touchable.disabled);
+
+        button.clearChildren();
+        button.add(icon).size(39f, 43f).pad(4f);
+        button.setSize(size, size);
+        return button;
+    }
+
+    private TextureRegionDrawable createTravelLogDrawable() {
+        Pixmap pixmap = new Pixmap(48, 48, Pixmap.Format.RGBA8888);
+        pixmap.setColor(0f, 0f, 0f, 0f);
+        pixmap.fill();
+
+        // Dark log/book backing.
+        pixmap.setColor(0.29f, 0.15f, 0.06f, 1f);
+        pixmap.fillRectangle(6, 5, 36, 39);
+        pixmap.setColor(0.53f, 0.31f, 0.12f, 1f);
+        pixmap.fillRectangle(8, 7, 32, 35);
+
+        // Checklist sheet pinned to the log.
+        pixmap.setColor(0.96f, 0.90f, 0.70f, 1f);
+        pixmap.fillRectangle(13, 8, 24, 31);
+        pixmap.setColor(0.76f, 0.59f, 0.31f, 1f);
+        pixmap.fillRectangle(13, 8, 24, 3);
+        pixmap.fillRectangle(13, 36, 24, 3);
+
+        drawChecklistRow(pixmap, 15);
+        drawChecklistRow(pixmap, 23);
+        drawChecklistRow(pixmap, 31);
+
+        // Small red pin gives the icon the hand-made PvZ UI feel.
+        pixmap.setColor(0.72f, 0.10f, 0.08f, 1f);
+        pixmap.fillCircle(25, 8, 3);
+        pixmap.setColor(1f, 0.47f, 0.24f, 1f);
+        pixmap.fillCircle(24, 7, 1);
+
+        travelLogIconTexture = new Texture(pixmap);
+        travelLogIconTexture.setFilter(
+                Texture.TextureFilter.Linear,
+                Texture.TextureFilter.Linear
+        );
+        pixmap.dispose();
+        return new TextureRegionDrawable(new TextureRegion(travelLogIconTexture));
+    }
+
+    private void drawChecklistRow(Pixmap pixmap, int y) {
+        pixmap.setColor(0.22f, 0.57f, 0.18f, 1f);
+        pixmap.drawRectangle(16, y - 3, 5, 5);
+        pixmap.drawLine(17, y - 1, 19, y + 1);
+        pixmap.drawLine(19, y + 1, 22, y - 3);
+
+        pixmap.setColor(0.28f, 0.20f, 0.10f, 1f);
+        pixmap.fillRectangle(24, y - 1, 10, 2);
     }
 
     private void buildSettingsOverlay() {
@@ -171,12 +269,19 @@ public class GameMenuScreen extends BaseScreen {
         }
 
         premiumLabel = new Label(getPremiumCount(), skin);
+        Typography.applyBody(premiumLabel, skin);
+        premiumLabel.setFontScale(1.05f);
         premiumLabel.setColor(Color.WHITE);
         Group premiumGroup = currencyGroup(premiumRegion, premiumLabel, premiumRegion.getRegionWidth(), 70f);
 
         coinLabel = new Label(getCoinCount(), skin);
+        Typography.applyBody(coinLabel, skin);
+        coinLabel.setFontScale(1.05f);
         coinLabel.setColor(Color.WHITE);
         Group coinGroup = currencyGroup(coinRegion, coinLabel, COIN_WIDTH, 65f);
+
+        HoverEffect.addScale(premiumGroup, this::isDebugModeEnabled);
+        HoverEffect.addScale(coinGroup, this::isDebugModeEnabled);
 
         premiumGroup.addListener(click(() -> {
             if (isDebugModeEnabled()) {
@@ -261,16 +366,21 @@ public class GameMenuScreen extends BaseScreen {
                 skin,
                 "green"
         );
+        Typography.applyBody(enterChapterButton, skin);
+        enterChapterButton.getLabel().setFontScale(1.18f);
         enterChapterButton.setBounds(
                 (WIDTH - 220f) / 2f,
                 50f,
                 220f,
                 55f
         );
+        HoverEffect.addScale(enterChapterButton);
         enterChapterButton.addListener(click(this::enterCurrentChapter));
         stage.addActor(enterChapterButton);
 
         statusLabel = new Label("", skin);
+        Typography.applyBody(statusLabel, skin);
+        statusLabel.setFontScale(0.95f);
         statusLabel.setColor(Color.YELLOW);
         statusLabel.setAlignment(Align.center);
         statusLabel.setBounds(240f, 15f, WIDTH - 480f, 30f);
@@ -294,6 +404,7 @@ public class GameMenuScreen extends BaseScreen {
 
         final int worldIndex = index;
 
+        worldHoverEffects[index] = HoverEffect.addScale(world);
         world.addListener(click(() -> {
             currentPage = worldIndex;
             statusLabel.setText("");
@@ -304,6 +415,7 @@ public class GameMenuScreen extends BaseScreen {
         worldContainer.addActor(world);
 
         Label name = new Label(worldLabelText(index), skin);
+        Typography.applyBody(name, skin);
         name.setAlignment(Align.center);
         name.setSize(WORLD_WIDTH, 60f);
         name.setOrigin(Align.center);
@@ -318,7 +430,7 @@ public class GameMenuScreen extends BaseScreen {
         for (int i = 0; i < worlds.length; i++) {
             boolean selected = i == currentPage;
 
-            worlds[i].setScale(
+            worldHoverEffects[i].setBaseScale(
                     selected ? SELECTED_SCALE : NORMAL_SCALE
             );
 
@@ -363,7 +475,10 @@ public class GameMenuScreen extends BaseScreen {
     private boolean isWorldUnlocked(int index) {
         User user = appState.getCurrentUser();
         return user != null
-                && user.isChapterUnlocked(chapters.get(index).id());
+                && levelProgressService.isChapterAccessible(
+                        user,
+                        chapters.get(index).id()
+                );
     }
 
     private int selectedChapterIndex() {
@@ -392,6 +507,11 @@ public class GameMenuScreen extends BaseScreen {
 
     private String worldLabelText(int index) {
         ChapterSpec chapter = chapters.get(index);
+        if (!isWorldUnlocked(index)) {
+            return chapter.name().toUpperCase(Locale.ROOT)
+                    + "\nLOCKED";
+        }
+
         List<LevelSpec> levels = levelCatalog.levelsInChapter(chapter.id());
         User user = appState.getCurrentUser();
         long completed = user == null
@@ -451,11 +571,30 @@ public class GameMenuScreen extends BaseScreen {
     public void show() {
         super.show();
         appState.setCurrentMenu(MenuName.GAME);
+        reconcileAdventureProgress();
         updateWorlds();
+    }
+
+    private void reconcileAdventureProgress() {
+        User user = appState.getCurrentUser();
+        if (user == null) {
+            return;
+        }
+        LevelProgressService.ReconciliationResult result =
+                levelProgressService.reconcileProgress(user);
+        if (result.changed() && !userManager.save()) {
+            statusLabel.setText(
+                    "Adventure access updated, but saving failed."
+            );
+        }
     }
 
     @Override
     public void dispose() {
+        if (travelLogIconTexture != null) {
+            travelLogIconTexture.dispose();
+            travelLogIconTexture = null;
+        }
         if (settingsScreen != null) {
             settingsScreen.dispose();
         }

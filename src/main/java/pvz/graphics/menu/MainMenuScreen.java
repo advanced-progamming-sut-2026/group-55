@@ -10,11 +10,14 @@ import com.badlogic.gdx.scenes.scene2d.actions.Actions;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
+import com.badlogic.gdx.utils.Align;
 
 import pvz.controller.MainMenuController;
 import pvz.graphics.BaseScreen;
 import pvz.graphics.PvzGame;
+import pvz.graphics.ui.HoverEffect;
 import pvz.libpvz.textures.TextureBank;
+import pvz.model.account.User;
 import pvz.model.account.UserManager;
 import pvz.model.command.Command;
 import pvz.model.utils.AppState;
@@ -38,6 +41,7 @@ public class MainMenuScreen extends BaseScreen {
 
     private Label premiumLabel;
     private Label coinLabel;
+    private Label welcomeLabel;
 
     public MainMenuScreen(PvzGame game, TextureBank textures, SpriteBatch batch,
                           Skin skin, AppState appState, UserManager userManager) {
@@ -84,6 +88,20 @@ public class MainMenuScreen extends BaseScreen {
         logo.setPosition((WIDTH - LOGO_WIDTH) / 2f, HEIGHT - LOGO_HEIGHT - 35f);
         stage.addActor(logo);
 
+        welcomeLabel = new Label("", skin);
+        welcomeLabel.setColor(Color.BROWN);
+        welcomeLabel.setFontScale(0.95f);
+        welcomeLabel.setAlignment(Align.center);
+
+        Table userBox = new Table();
+        userBox.setBackground(skin.getDrawable(
+                "image_ui_dialog_asset_inner_bkgd_10"
+        ));
+        userBox.add(welcomeLabel).growX().pad(8f, 10f, 8f, 10f);
+        userBox.setSize(230f, 55f);
+        userBox.setPosition(90f, HEIGHT - 85f);
+        stage.addActor(userBox);
+
         Image content = image("IMAGE_UI_MAINMENU_MAINMENU_CONTENT_OFFLINE");
         content.setSize(CONTENT_WIDTH, CONTENT_HEIGHT);
         content.setPosition((WIDTH - CONTENT_WIDTH) / 2f, 175f);
@@ -93,8 +111,11 @@ public class MainMenuScreen extends BaseScreen {
         play.setSize(PLAY_WIDTH, PLAY_HEIGHT);
         play.setPosition((WIDTH - PLAY_WIDTH) / 2f, 105f);
         stage.addActor(play);
+        HoverEffect.addScale(play);
 
-        play.addListener(click(() -> game.setScreen(new GameMenuScreen(game, textures, batch, skin, appState, userManager))));
+        play.addListener(click(() -> game.setScreen(new GameMenuScreen(
+                game, textures, batch, skin, appState, userManager
+        ))));
     }
 
     private void buildLogoutButton() {
@@ -102,6 +123,7 @@ public class MainMenuScreen extends BaseScreen {
         logout.setSize(55f, 55f);
         logout.setPosition(25f, HEIGHT - 85f);
         stage.addActor(logout);
+        HoverEffect.addScale(logout);
 
         logout.addListener(click(() -> {
             try {
@@ -128,6 +150,9 @@ public class MainMenuScreen extends BaseScreen {
         coinLabel.setColor(Color.WHITE);
         Group coinGroup = currencyGroup(coinRegion, coinLabel, COIN_WIDTH, 65f);
 
+        HoverEffect.addScale(premiumGroup, this::isDebugModeEnabled);
+        HoverEffect.addScale(coinGroup, this::isDebugModeEnabled);
+
         premiumGroup.addListener(click(() -> {
             if (isDebugModeEnabled()) {
                 appState.getCurrentUser().addDiamonds(100);
@@ -145,7 +170,10 @@ public class MainMenuScreen extends BaseScreen {
         }));
 
         Table currencies = new Table();
-        currencies.add(premiumGroup).width(premiumRegion.getRegionWidth()).height(premiumRegion.getRegionHeight()).padRight(10f);
+        currencies.add(premiumGroup)
+                .width(premiumRegion.getRegionWidth())
+                .height(premiumRegion.getRegionHeight())
+                .padRight(10f);
         currencies.add(coinGroup).width(COIN_WIDTH).height(coinRegion.getRegionHeight());
         currencies.pack();
 
@@ -180,6 +208,34 @@ public class MainMenuScreen extends BaseScreen {
         }
     }
 
+    private void updateWelcomeLabel() {
+        if (welcomeLabel == null) {
+            return;
+        }
+
+        User user = appState.getCurrentUser();
+        String displayName = "Guest";
+        if (user != null) {
+            String nickname = user.getNickname();
+            displayName = nickname != null && !nickname.isBlank()
+                    ? nickname
+                    : user.getUsername();
+        }
+
+        welcomeLabel.setText("WELCOME!  " + truncateDisplayName(displayName));
+    }
+
+    private static String truncateDisplayName(String value) {
+        if (value == null || value.isBlank()) {
+            return "Guest";
+        }
+        int maxLength = 18;
+        if (value.length() <= maxLength) {
+            return value;
+        }
+        return value.substring(0, maxLength - 3) + "...";
+    }
+
     private boolean isDebugModeEnabled() {
         return appState.getCurrentUser() != null && appState.getCurrentUser().isDebugMode();
     }
@@ -196,9 +252,35 @@ public class MainMenuScreen extends BaseScreen {
         Image cup = new Image(textures.region("IMAGE_UI_GAMECENTER_ICON"));
         leaderboard.add(cup).size(35f, 35f).center();
 
+        HoverEffect.addScale(profile);
+        HoverEffect.addScale(miniGames);
+        HoverEffect.addScale(leaderboard);
+
         profile.addListener(click(() -> {
             if (profileScreen != null) profileScreen.show();
         }));
+
+        miniGames.addListener(click(() -> game.setScreen(
+                new MinigamesScreen(
+                        game,
+                        textures,
+                        batch,
+                        skin,
+                        appState,
+                        userManager
+                )
+        )));
+
+        leaderboard.addListener(click(() -> game.setScreen(
+                new LeaderboardScreen(
+                        game,
+                        textures,
+                        batch,
+                        skin,
+                        appState,
+                        userManager
+                )
+        )));
 
         Table bottomLeft = new Table();
         bottomLeft.add(profile).size(MENU_ICON_SIZE).padRight(6f);
@@ -226,6 +308,9 @@ public class MainMenuScreen extends BaseScreen {
         newsGroup.addActor(unreadMark);
 
         unreadMark.setVisible(appState.getCurrentUser() != null && appState.getCurrentUser().hasUnreadNews());
+
+        HoverEffect.addScale(newsGroup);
+        HoverEffect.addScale(settings);
 
         newsGroup.addListener(click(() -> {
             if (newsScreen != null) {
@@ -320,6 +405,7 @@ public class MainMenuScreen extends BaseScreen {
         super.show();
         appState.setCurrentMenu(MenuName.MAIN);
         updateCurrencyLabels();
+        updateWelcomeLabel();
     }
 
     @Override

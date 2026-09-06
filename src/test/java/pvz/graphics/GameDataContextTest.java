@@ -25,5 +25,8 @@ class GameDataContextTest {
         );
         assertNotNull(context.levelProgressService());
         assertNotNull(context.greenhouseService());
+        assertNotNull(context.questCatalog());
+        assertNotNull(context.minigameCatalog());
+        assertNotNull(context.minigameProgressService());
     }
 }

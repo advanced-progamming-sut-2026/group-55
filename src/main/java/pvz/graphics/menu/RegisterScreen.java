@@ -9,6 +9,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import pvz.controller.RegisterController;
 import pvz.graphics.BaseScreen;
 import pvz.graphics.PvzGame;
+import pvz.graphics.ui.HoverEffect;
 import pvz.libpvz.textures.TextureBank;
 import pvz.model.account.UserManager;
 import pvz.model.command.RegisterCommand;
@@ -217,6 +218,8 @@ public class RegisterScreen extends BaseScreen {
                 .padBottom(6)
                 .row();
 
+        HoverEffect.addScale(genderButton);
+
         genderButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
@@ -232,6 +235,9 @@ public class RegisterScreen extends BaseScreen {
         TextButton nextButton = createButton("NEXT", "green");
 
         addTwoButtons(backButton, nextButton);
+
+        HoverEffect.addScale(backButton);
+        HoverEffect.addScale(nextButton);
 
         backButton.addListener(new ClickListener() {
             @Override
@@ -305,6 +311,8 @@ public class RegisterScreen extends BaseScreen {
                 .padBottom(5)
                 .row();
 
+        HoverEffect.addScale(questionButton);
+
         TextField answerField = createField("Enter answer", "");
         TextField confirmAnswerField = createField("Confirm answer", "");
 
@@ -326,6 +334,9 @@ public class RegisterScreen extends BaseScreen {
         TextButton registerButton = createButton("REGISTER", "green");
 
         addTwoButtons(backButton, registerButton);
+
+        HoverEffect.addScale(backButton);
+        HoverEffect.addScale(registerButton);
 
         backButton.addListener(new ClickListener() {
             @Override
