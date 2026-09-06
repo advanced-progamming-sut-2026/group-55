@@ -2,6 +2,7 @@ package pvz.graphics.actor;
 
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
@@ -9,12 +10,13 @@ import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.utils.Disposable;
 import java.util.Objects;
+import pvz.graphics.asset.PamAnimationService;
 import pvz.graphics.battle.SeedPacketState;
 
 /** Reusable graphical seed packet used by the in-battle seed bank. */
 public final class BattleSeedPacketActor extends Table implements Disposable {
     public static final float PACKET_WIDTH = 138f;
-    public static final float PACKET_HEIGHT = 72f;
+    public static final float PACKET_HEIGHT = 80f;
 
     private static final Color READY_COLOR = new Color(1f, 1f, 1f, 1f);
     private static final Color UNAVAILABLE_COLOR =
@@ -36,8 +38,11 @@ public final class BattleSeedPacketActor extends Table implements Disposable {
 
     public BattleSeedPacketActor(
             Skin skin,
+            PamAnimationService animationService,
             String plantName,
             TextureRegion preview,
+            String pamPath,
+            String animationClip,
             Runnable selectionAction
     ) {
         Objects.requireNonNull(skin, "skin cannot be null");
@@ -50,14 +55,32 @@ public final class BattleSeedPacketActor extends Table implements Disposable {
         setSize(PACKET_WIDTH, PACKET_HEIGHT);
         pad(4f);
 
-        content = new PlantCompactCardContent(
-                skin,
-                preview,
-                plantName,
-                48f,
-                77f
-        );
-        content.setTextScales(0.55f, 0.48f, 0.45f);
+        Actor previewActor = pamPath == null
+                ? null
+                : new AnimatedPlantPreviewActor(
+                        animationService,
+                        pamPath,
+                        animationClip,
+                        preview,
+                        48f,
+                        64f
+                );
+        content = previewActor == null
+                ? new PlantCompactCardContent(
+                        skin,
+                        preview,
+                        plantName,
+                        48f,
+                        78f
+                )
+                : new PlantCompactCardContent(
+                        skin,
+                        previewActor,
+                        plantName,
+                        48f,
+                        78f
+                );
+        content.setTextScales(0.44f, 0.39f, 0.36f);
         add(content).grow();
 
         clickListener = new ClickListener() {

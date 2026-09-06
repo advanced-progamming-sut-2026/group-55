@@ -377,7 +377,10 @@ public final class PlantSelectionScreen extends BaseScreen {
         boolean removable = !controller.isForcedPlant(plantName);
         PlantLoadoutSlotActor slot = new PlantLoadoutSlotActor(
                 skin,
+                animationService,
                 plantVisuals.preview(plantName),
+                plantVisuals.animationPath(plantName),
+                plantVisuals.animationClip(plantName),
                 (index + 1) + ". " + plantName,
                 sunCost,
                 status,

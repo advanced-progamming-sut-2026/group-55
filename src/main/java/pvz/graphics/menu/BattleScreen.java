@@ -32,6 +32,7 @@ import pvz.graphics.actor.BattleSeedPacketActor;
 import pvz.graphics.actor.BattleToolButtonActor;
 import pvz.graphics.actor.BattleWaveProgressActor;
 import pvz.graphics.actor.BattlefieldActor;
+import pvz.graphics.asset.PamAnimationService;
 import pvz.graphics.asset.PlantVisualResolver;
 import pvz.graphics.asset.ZombieVisualResolver;
 import pvz.graphics.battle.BattleTickClock;
@@ -76,6 +77,7 @@ public final class BattleScreen extends BaseScreen {
     private final GameSessionConfig restartConfig;
     private final BattleTickClock tickClock = new BattleTickClock();
     private final BattleOutcomeSettlement outcomeSettlement;
+    private final PamAnimationService animationService;
     private final PlantVisualResolver plantVisuals;
     private final ZombieVisualResolver zombieVisuals;
     private final TextureRegion backgroundLeft;
@@ -141,6 +143,7 @@ public final class BattleScreen extends BaseScreen {
                         game.getGameData().adventureData().catalog()
                 )
         );
+        animationService = game.getAnimationService();
         plantVisuals = new PlantVisualResolver(
                 textures,
                 Gdx.files.internal("assets")
@@ -263,8 +266,11 @@ public final class BattleScreen extends BaseScreen {
         for (String plantName : restartConfig.selectedPlants()) {
             BattleSeedPacketActor packet = new BattleSeedPacketActor(
                     skin,
+                    animationService,
                     plantName,
                     plantVisuals.preview(plantName),
+                    plantVisuals.animationPath(plantName),
+                    plantVisuals.animationClip(plantName),
                     () -> selectPlant(plantName)
             );
             seedPackets.put(plantName, packet);

@@ -296,10 +296,12 @@ public class ShopScreen extends BaseScreen {
 
         String cleanTitle = title.replace("[YELLOW]", "").replace("[]", "").replace("\n", " ");
         Label titleLabel = new Label(cleanTitle, skin);
+        Typography.applyBody(titleLabel, skin);
+        titleLabel.setFontScale(1f);
         titleLabel.setWrap(true);
         titleLabel.setAlignment(Align.center);
-        titleLabel.setSize(CARD_WIDTH - 20f, 58f);
-        titleLabel.setPosition(10f, CARD_HEIGHT - 62f);
+        titleLabel.setSize(CARD_WIDTH - 24f, 30f);
+        titleLabel.setPosition(12f, CARD_HEIGHT - 44f);
         card.addActor(titleLabel);
 
         float warpX = 22f;
@@ -356,10 +358,11 @@ public class ShopScreen extends BaseScreen {
 
         card.addActor(buyBtn);
         Label contents = new Label(itemContents(itemId), skin);
-        Typography.setReadableScale(contents, 0.65f);
+        Typography.applyBody(contents, skin);
+        contents.setFontScale(1f);
         contents.setAlignment(Align.center);
         contents.setWrap(true);
-        contents.setBounds(5f, 145f, CARD_WIDTH - 10f, 38f);
+        contents.setBounds(10f, 171f, CARD_WIDTH - 20f, 18f);
         card.addActor(contents);
         return card;
     }

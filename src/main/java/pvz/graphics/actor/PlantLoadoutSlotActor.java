@@ -3,23 +3,28 @@ package pvz.graphics.actor;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
+import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.utils.Align;
 import java.util.Objects;
+import pvz.graphics.asset.PamAnimationService;
 import pvz.graphics.ui.HoverEffect;
 import pvz.graphics.ui.Typography;
 
 /** Compact plant card for loadout/seed-bank style presentations. */
 public final class PlantLoadoutSlotActor extends Table {
-    public static final float WIDTH = 220f;
-    public static final float HEIGHT = 72f;
+    public static final float WIDTH = 224f;
+    public static final float HEIGHT = 80f;
 
     public PlantLoadoutSlotActor(
             Skin skin,
+            PamAnimationService animationService,
             TextureRegion preview,
+            String pamPath,
+            String animationClip,
             String name,
             int sunCost,
             String status,
@@ -34,13 +39,32 @@ public final class PlantLoadoutSlotActor extends Table {
         setSize(WIDTH, HEIGHT);
         pad(4f);
 
-        PlantCompactCardContent content = new PlantCompactCardContent(
-                skin,
-                preview,
-                name,
-                54f,
-                145f
-        );
+        Actor previewActor = pamPath == null
+                ? null
+                : new AnimatedPlantPreviewActor(
+                        animationService,
+                        pamPath,
+                        animationClip,
+                        preview,
+                        54f,
+                        64f
+                );
+        PlantCompactCardContent content = previewActor == null
+                ? new PlantCompactCardContent(
+                        skin,
+                        preview,
+                        name,
+                        54f,
+                        140f
+                )
+                : new PlantCompactCardContent(
+                        skin,
+                        previewActor,
+                        name,
+                        54f,
+                        140f
+                );
+        content.setTextScales(0.50f, 0.45f, 0.41f);
         content.update(sunCost, status);
         content.setStatusColor(status.contains("BOOST") ? Color.FOREST : Color.DARK_GRAY);
         add(content).grow();
@@ -67,7 +91,7 @@ public final class PlantLoadoutSlotActor extends Table {
                 skin
         );
         Typography.applyBody(label, skin);
-        Typography.setReadableScale(label, 0.70f);
+        Typography.setReadableScale(label, 0.62f);
         label.setColor(locked ? Color.LIGHT_GRAY : Color.DARK_GRAY);
         label.setAlignment(Align.center);
         slot.add(label).width(WIDTH - 12f).height(HEIGHT - 8f);
