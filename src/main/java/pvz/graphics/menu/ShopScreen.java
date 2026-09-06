@@ -1,6 +1,12 @@
 package pvz.graphics.menu;
 
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.graphics.g2d.Batch;
+import com.badlogic.gdx.scenes.scene2d.Actor;
+import com.badlogic.gdx.utils.Scaling;
+import pvz.graphics.asset.PlantVisualResolver;
+import pvz.graphics.asset.PamAnimationRenderer;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
@@ -50,6 +56,11 @@ public class ShopScreen extends BaseScreen {
     private final ShopService readOnlyService;
     private final GreenhouseService greenhouseService;
 
+    private DailyOffer displayedOffer;
+    private java.time.LocalDate displayedDate;
+    private boolean dailySaveFailed;
+    private final PlantVisualResolver plantVisuals;
+    private final PamAnimationRenderer plantRenderer;
     private Label diamondLabel;
     private Label coinLabel;
     private Table storeGrid;
@@ -66,6 +77,8 @@ public class ShopScreen extends BaseScreen {
     ) {
         super(game, textures, batch, skin, appState, userManager, "IMAGE_MAINMENU_BACKGROUND");
 
+        this.plantVisuals = new PlantVisualResolver(textures, Gdx.files.internal("assets"));
+        this.plantRenderer = new PamAnimationRenderer(game.getAnimationService());
         this.greenhouseService = greenhouseService;
         this.readOnlyService = new ShopService();
         this.popupDimTexture = createDimTexture();
@@ -75,7 +88,7 @@ public class ShopScreen extends BaseScreen {
             public void showSuccess(String message) {
                 updateCurrencyLabels();
                 refreshStoreGrid();
-                showToast("Purchase Successful!", Color.GREEN);
+                showToast(message, Color.GREEN);
             }
 
             @Override
@@ -209,19 +222,28 @@ public class ShopScreen extends BaseScreen {
 
     private void populateStoreGrid() {
         int col = 0;
+        displayedDate = java.time.LocalDate.now();
+        displayedOffer = null;
 
         try {
             User user = appState.getCurrentUser();
             if (user != null) {
+                DailyOffer previousOffer = user.getDailyOffer();
                 DailyOfferResult result = readOnlyService.getOrGenerateDailyOffer(user);
-                if (result.newlyCreated()) {
-                    userManager.save();
+                if (result.newlyCreated() || dailySaveFailed) {
+                    dailySaveFailed = !userManager.save();
+                    if (dailySaveFailed) {
+                        user.setDailyOffer(previousOffer);
+                        throw new Exception("Daily offer could not be saved. Reopen the store to retry.");
+                    }
                 }
-
+                displayedOffer = result.offer();
                 storeGrid.add(createDailyOfferCard(result.offer())).width(CARD_WIDTH).height(CARD_HEIGHT).pad(PADDING);
                 col++;
             }
-        } catch (Exception ignored) {}
+        } catch (Exception error) {
+            showToast(error.getMessage(), Color.RED);
+        }
 
         for (ShopItem item : ShopData.getAllItems()) {
             storeGrid.add(createItemCard(item)).width(CARD_WIDTH).height(CARD_HEIGHT).pad(PADDING);
@@ -314,7 +336,7 @@ public class ShopScreen extends BaseScreen {
         if (disabled) {
             buttonText = "SOLD OUT";
         } else if (itemId == SELECT_SEED_ID) {
-            buttonText = "Select";
+            buttonText = getPriceText(coinPrice, diamondPrice);
         } else {
             buttonText = getPriceText(coinPrice, diamondPrice);
         }
@@ -330,7 +352,29 @@ public class ShopScreen extends BaseScreen {
         }
 
         card.addActor(buyBtn);
+        Label contents = new Label(itemContents(itemId), skin);
+        contents.setFontScale(0.65f);
+        contents.setAlignment(Align.center);
+        contents.setBounds(5f, 145f, CARD_WIDTH - 10f, 20f);
+        card.addActor(contents);
         return card;
+    }
+
+    private String itemContents(int id) {
+        User user = appState.getCurrentUser();
+        return switch (id) {
+            case 1 -> "1 pot (" + (user == null ? "-" : user.getGreenhouse().getUnlockedPotCount()) + "/12 open)";
+            case 2 -> "1 food (" + (user == null ? "-" : user.getPlantFoodCount()) + "/3 stored)";
+            case 3 -> "5 random plant seeds";
+            case 4, 6 -> "10 plant seeds";
+            case 5 -> "Receive 500 coins";
+            default -> "";
+        };
+    }
+
+    @Override public void render(float delta) {
+        if (!java.time.LocalDate.now().equals(displayedDate)) refreshStoreGrid();
+        super.render(delta);
     }
 
     private String getTextureNameForItem(int itemId, String title) {
@@ -449,14 +493,24 @@ public class ShopScreen extends BaseScreen {
         Table plantTable = new Table();
         int col = 0;
         for (PlayerPlant plant : unlocked) {
-            TextButton plantBtn = new TextButton(plant.getPlantName(), skin, "green");
+            Table plantBtn = new Table();
+            plantBtn.setBackground(skin.getDrawable("image_ui_dialog_asset_inner_bkgd_10"));
+            plantBtn.setTouchable(Touchable.enabled);
+            plantBtn.add(createSeedPlantPreview(plant.getPlantName())).size(88f, 88f).padTop(5f).row();
+            Label name = new Label(plant.getPlantName(), skin);
+            name.setColor(Color.DARK_GRAY);
+            name.setFontScale(0.75f);
+            name.setAlignment(Align.center);
+            name.setWrap(true);
+            name.setTouchable(Touchable.disabled);
+            plantBtn.add(name).width(140f).height(42f).padBottom(5f);
             plantBtn.addListener(click(() -> {
                 dimBackground.remove();
                 popup.remove();
                 showCustomConfirmPopup(itemId, itemName, plant.getPlantName());
             }));
 
-            plantTable.add(plantBtn).width(150f).height(40f).pad(6f);
+            plantTable.add(plantBtn).width(160f).height(145f).pad(6f);
             col++;
             if (col == 3) {
                 plantTable.row();
@@ -480,18 +534,59 @@ public class ShopScreen extends BaseScreen {
         stage.addActor(popup);
     }
 
+    private Actor createSeedPlantPreview(String plantName) {
+        String path = plantVisuals.animationPath(plantName);
+        String clip = plantVisuals.animationClip(plantName);
+        TextureRegion region = plantVisuals.preview(plantName);
+        Image fallback = region == null ? null : new Image(region);
+        if (fallback != null) fallback.setScaling(Scaling.fit);
+        Actor preview = new Actor() {
+            private float stateTime;
+
+            @Override public void act(float delta) {
+                super.act(delta);
+                stateTime += Math.max(0f, delta);
+            }
+
+            @Override public void draw(Batch batch, float parentAlpha) {
+                // Preparation starts only when the scroll pane draws this card.
+                boolean drawn = path != null && plantRenderer.draw(batch, path, clip,
+                        stateTime, getX(), getY(), getWidth(), getHeight(), parentAlpha);
+                if (!drawn && fallback != null) {
+                    fallback.setBounds(getX(), getY(), getWidth(), getHeight());
+                    fallback.draw(batch, parentAlpha);
+                }
+                // Plants with neither asset keep their preview area empty.
+            }
+        };
+        preview.setTouchable(Touchable.disabled);
+        return preview;
+    }
+
     private void showCustomConfirmPopup(int itemId, String itemName, String plantType) {
+        DailyOffer confirmedOffer = itemId == DAILY_OFFER_ID ? displayedOffer : null;
+        try {
+            readOnlyService.validateSinglePurchase(appState.getCurrentUser(), itemId, plantType, confirmedOffer);
+        } catch (Exception error) {
+            showToast(error.getMessage(), Color.RED);
+            return;
+        }
         String message = plantType != null
                 ? "Purchase " + itemName + " for " + plantType + "?"
                 : "Purchase " + itemName + "?";
 
+        ShopItem item = ShopData.getItemById(itemId);
+        message += "\n" + itemContents(itemId) + "\nCost: "
+                + (confirmedOffer != null ? confirmedOffer.getPrice() + " Coins"
+                : getPriceText(item.getCoinPrice(), item.getDiamondPrice()));
         Table dimBackground = createDimBackground();
         BorderedTable popup = createPopupBox();
 
         Label msgLabel = new Label(message, skin);
         msgLabel.setFontScale(1.1f);
         msgLabel.setAlignment(Align.center);
-        msgLabel.setSize(500f, 50f);
+        msgLabel.setWrap(true);
+        msgLabel.setSize(500f, 130f);
         msgLabel.setPosition((POPUP_WIDTH - 500f) / 2f, POPUP_HEIGHT / 2f + 30f);
         popup.addActor(msgLabel);
 
@@ -501,7 +596,7 @@ public class ShopScreen extends BaseScreen {
         yesBtn.addListener(click(() -> {
             dimBackground.remove();
             popup.remove();
-            ShopCommand cmd = new ShopCommand(ShopCommand.Action.BUY, itemId, 1, plantType);
+            ShopCommand cmd = new ShopCommand(ShopCommand.Action.BUY, itemId, 1, plantType, confirmedOffer);
             try {
                 shopController.handle(cmd);
             } catch (Exception e) {
@@ -536,7 +631,10 @@ public class ShopScreen extends BaseScreen {
         Label label = new Label(message, skin);
         label.setColor(color);
         label.setFontScale(1.2f);
-        label.pack();
+        label.setWrap(true);
+        label.setAlignment(Align.center);
+        label.setWidth(800f);
+        label.setHeight(label.getPrefHeight());
 
         label.setPosition((WIDTH - label.getWidth()) / 2f, HEIGHT / 2f);
         label.getColor().a = 0f;
@@ -572,6 +670,7 @@ public class ShopScreen extends BaseScreen {
 
     @Override
     public void dispose() {
+        plantRenderer.dispose();
         super.dispose();
 
         if (popupDimTexture != null) {

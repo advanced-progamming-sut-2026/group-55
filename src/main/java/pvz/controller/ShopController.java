@@ -68,16 +68,27 @@ public class ShopController extends BaseController {
 
     private void handleBuy(User user, ShopCommand cmd) {
         try {
-            if (cmd.getItemId() == 6) {
+            if (cmd.getItemId() == 6 && cmd.getExpectedOffer() == null) {
                 var result = shopService.getOrGenerateDailyOffer(user);
-                if (result.newlyCreated()) userManager.save();
+                if (result.newlyCreated() && !userManager.save()) {
+                    view.showError("Failed to save the new daily offer.");
+                    return;
+                }
             }
 
-            shopService.buy(user, cmd.getItemId(), cmd.getCount(), cmd.getPlantType());
+            java.util.Map<String, Integer> previousSeeds = new java.util.HashMap<>();
+            user.getUnlockedPlants().forEach(p -> previousSeeds.put(p.getPlantName(), p.getSeedPackets()));
+            shopService.buy(user, cmd.getItemId(), cmd.getCount(), cmd.getPlantType(), cmd.getExpectedOffer());
 
 
             if (userManager.save()) {
-                view.showSuccess("Purchase successful!");
+                StringBuilder result = new StringBuilder("Purchase successful!");
+                for (var plant : user.getUnlockedPlants()) {
+                    int gained = plant.getSeedPackets() - previousSeeds.getOrDefault(plant.getPlantName(), 0);
+                    if (gained > 0) result.append("\n").append(plant.getPlantName())
+                            .append(": +").append(gained).append(" seeds");
+                }
+                view.showSuccess(result.toString());
             } else {
                 userManager.reload();
                 appState.setCurrentUser(userManager.find(u -> u.getUsername().equals(user.getUsername())));

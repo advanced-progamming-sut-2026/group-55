@@ -16,13 +16,18 @@ public class ShopService {
     private static final int DAILY_OFFER_PRICE = 1600;
 
     public void buy(User user, int itemId, int count, String plantType) throws Exception {
+        buy(user, itemId, count, plantType, null);
+    }
+
+    public void buy(User user, int itemId, int count, String plantType,
+                    DailyOffer expectedOffer) throws Exception {
         if (count <= 0) throw new Exception(SystemMessage.SHOP_INVALID_COUNT.getMessage());
 
         if (itemId == DAILY_OFFER_ID) {
             if (plantType != null && !plantType.trim().isEmpty()) {
                 throw new Exception("Invalid command: Daily offer does not require a plant type (-t).");
             }
-            buyDailyOffer(user, count);
+            buyDailyOffer(user, count, expectedOffer);
             return;
         }
 
@@ -51,6 +56,42 @@ public class ShopService {
             case DIAMOND_TO_COIN -> buyDiamondExchange(user, count, totalDiamond);
             default -> throw new Exception(SystemMessage.SHOP_UNKNOWN_ITEM_TYPE.getMessage());
         }
+    }
+
+    public void validateSinglePurchase(User user, int itemId, String plantType,
+                                       DailyOffer expectedOffer) throws Exception {
+        if (user == null) throw new Exception("No active user.");
+        if (itemId == DAILY_OFFER_ID) {
+            if (expectedOffer == null || user.getDailyOffer() != expectedOffer
+                    || !expectedOffer.getDate().equals(LocalDate.now()))
+                throw new Exception("Daily offer changed. Please review the new offer.");
+            if (expectedOffer.isPurchased())
+                throw new Exception(SystemMessage.SHOP_DAILY_OFFER_ALREADY_BOUGHT.getMessage());
+            if (user.getCoins() < expectedOffer.getPrice())
+                throw new Exception(SystemMessage.SHOP_NOT_ENOUGH_COINS.getMessage());
+            return;
+        }
+        ShopItem item = ShopData.getItemById(itemId);
+        if (item == null) throw new Exception(SystemMessage.SHOP_INVALID_ITEM_ID.getMessage());
+        if (item.getType() == ShopItemType.POT && user.getGreenhouse().getLockedPotCount() == 0)
+            throw new Exception(SystemMessage.SHOP_POTS_MAX_CAPACITY.getMessage());
+        if (item.getType() == ShopItemType.PLANT_FOOD && user.getPlantFoodCount() >= 3)
+            throw new Exception(SystemMessage.SHOP_PLANT_FOOD_MAX_CAPACITY.getMessage());
+        if (item.getType() == ShopItemType.RANDOM_SEED && user.getUnlockedPlants().isEmpty())
+            throw new Exception(SystemMessage.SHOP_NO_UNLOCKED_PLANTS.getMessage());
+        if (item.getType() == ShopItemType.SELECT_SEED) {
+            PlayerPlant plant = user.getOwnedPlant(plantType);
+            if (plant == null) throw new Exception(SystemMessage.SHOP_PLANT_NOT_UNLOCKED.getMessage());
+            if ((long) plant.getSeedPackets() + 10 > Integer.MAX_VALUE)
+                throw new Exception("Seed capacity reached.");
+        }
+        if (item.getType() == ShopItemType.DIAMOND_TO_COIN
+                && (long) user.getCoins() + 500 > Integer.MAX_VALUE)
+            throw new Exception("Coin capacity reached.");
+        if (user.getCoins() < item.getCoinPrice())
+            throw new Exception(SystemMessage.SHOP_NOT_ENOUGH_COINS.getMessage());
+        if (user.getDiamonds() < item.getDiamondPrice())
+            throw new Exception(SystemMessage.SHOP_NOT_ENOUGH_DIAMONDS.getMessage());
     }
 
     private void buyPot(User user, int count, int totalCoin) throws Exception {
@@ -131,12 +172,17 @@ public class ShopService {
         user.addCoins((int) addedCoins);
     }
 
-    private void buyDailyOffer(User user, int count) throws Exception {
+    private void buyDailyOffer(User user, int count, DailyOffer expectedOffer) throws Exception {
         if (count > 1) {
             throw new Exception(SystemMessage.SHOP_DAILY_OFFER_ONCE.getMessage());
         }
 
-        DailyOffer offer = getOrGenerateDailyOffer(user).offer();
+        if (expectedOffer != null && (user.getDailyOffer() != expectedOffer
+                || !expectedOffer.getDate().equals(LocalDate.now()))) {
+            throw new Exception("Daily offer changed. Please review the new offer.");
+        }
+        DailyOffer offer = expectedOffer != null ? expectedOffer
+                : getOrGenerateDailyOffer(user).offer();
         if (offer.isPurchased()) {
             throw new Exception(SystemMessage.SHOP_DAILY_OFFER_ALREADY_BOUGHT.getMessage());
         }

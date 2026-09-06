@@ -1,9 +1,15 @@
 package pvz.graphics.menu;
 
 import com.badlogic.gdx.graphics.Color;
-import com.badlogic.gdx.graphics.Pixmap;
-import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.graphics.g2d.NinePatch;
+import com.badlogic.gdx.scenes.scene2d.utils.NinePatchDrawable;
+import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
+import com.badlogic.gdx.scenes.scene2d.ui.ImageButton;
+import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
+import pvz.graphics.ui.Typography;
+import pvz.graphics.ui.HoverEffect;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.ui.Image;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
@@ -15,6 +21,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Scaling;
+import java.time.LocalDate;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -53,9 +60,9 @@ public final class TravelLogScreen extends BaseScreen {
     private static final float PANEL_WIDTH = 1120f;
     private static final float PANEL_HEIGHT = 465f;
     private static final float CARD_WIDTH = 1045f;
-    private static final float CARD_HEIGHT = 142f;
+    private static final float CARD_HEIGHT = 154f;
     private static final float PROGRESS_WIDTH = 225f;
-    private static final float PROGRESS_HEIGHT = 12f;
+    private static final float PROGRESS_HEIGHT = 18f;
     private static final float TAB_Y = 565f;
     private static final float TAB_WIDTH = 235f;
     private static final float TAB_HEIGHT = 46f;
@@ -66,11 +73,6 @@ public final class TravelLogScreen extends BaseScreen {
             QuestCategory.CHALLENGE,
             QuestCategory.MINIGAME
     };
-
-    private static final Color TRACK_COLOR =
-            new Color(0.16f, 0.18f, 0.16f, 0.88f);
-    private static final Color FILL_COLOR =
-            new Color(0.20f, 0.72f, 0.12f, 1f);
 
     private final QuestCatalog questCatalog;
     private final MinigameCatalog minigameCatalog;
@@ -85,8 +87,9 @@ public final class TravelLogScreen extends BaseScreen {
     private Label diamondLabel;
     private Label statusLabel;
 
-    private final Texture progressTrackTexture;
-    private final Texture progressFillTexture;
+    private static final Color INK = new Color(0.16f, 0.22f, 0.25f, 1f);
+    private static final Color MUTED = new Color(0.31f, 0.36f, 0.38f, 1f);
+    private LocalDate lastRefreshDate;
     private QuestCategory selectedCategory = QuestCategory.ADVENTURE;
 
     public TravelLogScreen(
@@ -124,7 +127,7 @@ public final class TravelLogScreen extends BaseScreen {
                 skin,
                 appState,
                 userManager,
-                "IMAGE_MAINMENU_BACKGROUND"
+                "IMAGE_UI_QUESTS_TRAVEL_LOG_FINAL"
         );
         this.questCatalog = game.getGameData().questCatalog();
         this.minigameCatalog = game.getGameData().minigameCatalog();
@@ -134,10 +137,9 @@ public final class TravelLogScreen extends BaseScreen {
         this.selectedCategory = initialCategory == null
                 ? QuestCategory.ADVENTURE
                 : initialCategory;
-        this.progressTrackTexture = createSolidTexture(TRACK_COLOR);
-        this.progressFillTexture = createSolidTexture(FILL_COLOR);
 
         buildUi();
+        refreshCategoryButtons();
     }
 
     private void buildUi() {
@@ -148,26 +150,115 @@ public final class TravelLogScreen extends BaseScreen {
     }
 
     private void buildHeader() {
-        TextButton back = new TextButton("BACK", skin, "brown");
-        back.setBounds(25f, HEIGHT - 72f, 125f, 48f);
-        back.addListener(click(this::goBack));
-        stage.addActor(back);
-
+        TextureRegion normal = textures.region("IMAGE_UI_MAINMENU_BACK_BTN_NORMAL");
+        TextureRegion pressed = textures.region("IMAGE_UI_MAINMENU_BACK_BTN_PRESSED");
+        if (normal != null) {
+            ImageButton.ImageButtonStyle style = new ImageButton.ImageButtonStyle();
+            style.up = new TextureRegionDrawable(normal);
+            style.down = pressed == null ? style.up : new TextureRegionDrawable(pressed);
+            ImageButton back = new ImageButton(style);
+            back.setBounds(28f, HEIGHT - 82f, 56f, 56f);
+            back.addListener(click(this::goBack));
+            HoverEffect.addScale(back);
+            stage.addActor(back);
+        } else {
+            TextButton back = new TextButton("BACK", skin, "brown");
+            back.setBounds(25f, HEIGHT - 72f, 125f, 48f);
+            back.addListener(click(this::goBack));
+            stage.addActor(back);
+        }
+        TextureRegion mascot = textures.region("IMAGE_UI_QUESTS_QUEST_ICON_BROWN");
+        if (mascot != null) {
+            Image icon = new Image(mascot);
+            icon.setScaling(Scaling.fit);
+            icon.setBounds(103f, HEIGHT - 94f, 64f, 70f);
+            stage.addActor(icon);
+        }
         Label title = new Label("TRAVEL LOG", skin);
-        title.setFontScale(1.45f);
-        title.setAlignment(Align.center);
-        title.setBounds(300f, HEIGHT - 70f, 600f, 48f);
+        title.setFontScale(1.55f);
+        title.setBounds(180f, HEIGHT - 72f, 540f, 44f);
         stage.addActor(title);
+        Label subtitle = body("YOUR JOURNEY  /  QUESTS & REWARDS", 0.72f);
+        subtitle.setColor(new Color(0.70f, 0.85f, 0.88f, 1f));
+        subtitle.setBounds(180f, HEIGHT - 96f, 540f, 26f);
+        stage.addActor(subtitle);
+        diamondLabel = body("", 1.05f);
+        coinLabel = body("", 1.05f);
+        addCurrency("IMAGE_UI_QUESTS_GEM_ICON", diamondLabel, 916f);
+        addCurrency("IMAGE_UI_QUESTS_COIN_ICON", coinLabel, 1084f);
+    }
 
-        diamondLabel = new Label("", skin);
-        diamondLabel.setAlignment(Align.right);
-        diamondLabel.setBounds(930f, HEIGHT - 69f, 150f, 44f);
-        stage.addActor(diamondLabel);
+    private void addCurrency(String key, Label label, float x) {
+        Table badge = new Table();
+        badge.setBackground(skin.newDrawable("image_ui_dialog_asset_inner_bkgd_10",
+                new Color(0.08f, 0.16f, 0.21f, 1f)));
+        badge.setBounds(x, HEIGHT - 79f, 156f, 54f);
+        TextureRegion source = textures.region(key);
+        if (source != null) {
+            Image image = new Image(source);
+            image.setScaling(Scaling.fit);
+            badge.add(image).width(52f).height(52f);
+        }
+        label.setColor(Color.WHITE);
+        label.setAlignment(Align.center);
+        label.setEllipsis(true);
+        badge.add(label).width(92f).height(42f);
+        stage.addActor(badge);
+    }
 
-        coinLabel = new Label("", skin);
-        coinLabel.setAlignment(Align.right);
-        coinLabel.setBounds(1080f, HEIGHT - 69f, 175f, 44f);
-        stage.addActor(coinLabel);
+    /** Nine-patch stretching preserves the authored corners of quest assets. */
+    private Drawable questPatch(String id, int border) {
+        TextureRegion region = textures.region(id);
+        if (region == null) {
+            return skin.getDrawable("image_ui_dialog_asset_inner_bkgd_10");
+        }
+        return new NinePatchDrawable(new NinePatch(region, border, border, border, border));
+    }
+
+    private Label body(String text, float scale) {
+        Label label = new Label(text, skin);
+        Typography.applyBody(label, skin);
+        label.setFontScale(scale);
+        label.setColor(INK);
+        return label;
+    }
+
+    private Image categoryArt(QuestCategory category) {
+        String key = switch (category) {
+            case ADVENTURE -> "IMAGE_UI_QUESTS_QUESTICONS_EGYPT";
+            case DAILY -> "IMAGE_UI_QUESTS_DAILY_QUEST_CLOCK_ICON_DAILY_QUEST_CLOCK_ICON_77X78";
+            case CHALLENGE -> "IMAGE_UI_QUESTS_ICON_EPIC";
+            case MINIGAME -> "IMAGE_UI_QUESTS_QUESTICONS_ZOMBIE";
+        };
+        TextureRegion region = textures.region(key);
+        if (region == null) {
+            region = textures.region("IMAGE_UI_QUESTS_QUESTICONS_PREMIUMSEEDS");
+        }
+        Image image = region == null ? new Image() : new Image(region);
+        image.setScaling(Scaling.fit);
+        return image;
+    }
+
+    private Table questArt(QuestSpec spec) {
+        String key = switch (spec.objective().metric()) {
+            case OWNED_PLANTS, PLANT_PLACED -> "IMAGE_UI_QUESTS_QUESTICONS_PLANT";
+            case UPGRADED_PLANTS, PLANT_UPGRADED -> "IMAGE_UI_QUESTS_QUESTICONS_LEVELUP";
+            case SEEN_ZOMBIES -> "IMAGE_UI_QUESTS_QUESTICONS_ZOMBIE";
+            case ZOMBIE_KILLED -> "IMAGE_UI_QUESTS_QUESTICONS_ASH";
+            case SUN_SPENT -> "IMAGE_UI_QUESTS_QUESTICONS_PLANT";
+            case COINS_EARNED -> "IMAGE_UI_QUESTS_EPIC_REWARD_COINS";
+            case DIAMONDS_EARNED -> "IMAGE_UI_QUESTS_EPIC_REWARD_GEMS";
+            case SEED_PACKETS_COLLECTED -> "IMAGE_UI_QUESTS_QUESTICONS_PREMIUMSEEDS";
+            default -> null;
+        };
+        TextureRegion region = key == null ? null : textures.region(key);
+        Image icon = region == null ? categoryArt(spec.category()) : new Image(region);
+        icon.setScaling(Scaling.fit);
+        // Daily's clock is a small atlas sprite: do not enlarge it to card height.
+        float size = spec.category() == QuestCategory.DAILY ? 40f : 72f;
+        Table slot = new Table();
+        slot.add(icon).size(size);
+        return slot;
     }
 
     private void buildCategoryTabs() {
@@ -188,7 +279,8 @@ public final class TravelLogScreen extends BaseScreen {
                     TAB_WIDTH,
                     TAB_HEIGHT
             );
-            button.getLabel().setFontScale(0.72f);
+            button.getLabel().setFontScale(0.82f);
+            HoverEffect.addScale(button, () -> !button.isDisabled());
             button.addListener(click(() -> selectCategory(category)));
             categoryButtons.put(category, button);
             stage.addActor(button);
@@ -201,19 +293,25 @@ public final class TravelLogScreen extends BaseScreen {
         }
         selectedCategory = category;
         refreshCategoryButtons();
-        rebuildQuestList(true);
-        showStatus(categoryStatusMessage(), false);
+        refreshFromModel(true);
     }
 
     private void refreshCategoryButtons() {
         for (Map.Entry<QuestCategory, TextButton> entry
                 : categoryButtons.entrySet()) {
-            String styleName = entry.getKey() == selectedCategory
-                    ? "green"
-                    : "brown";
-            entry.getValue().setStyle(
-                    skin.get(styleName, TextButton.TextButtonStyle.class)
-            );
+            boolean selected = entry.getKey() == selectedCategory;
+            String family = switch (entry.getKey()) {
+                case ADVENTURE, MINIGAME -> "EPIC";
+                case DAILY -> "DAILY";
+                case CHALLENGE -> "ACHIEVEMENTS";
+            };
+            TextButton.TextButtonStyle style = new TextButton.TextButtonStyle(
+                    skin.get("brown", TextButton.TextButtonStyle.class));
+            style.up = questPatch("IMAGE_UI_QUESTS_" + family
+                    + (selected ? "_ACTIVE" : "_INACTIVE"), 10);
+            style.down = questPatch("IMAGE_UI_QUESTS_" + family + "_ACTIVE", 10);
+            style.over = style.down;
+            entry.getValue().setStyle(style);
         }
     }
 
@@ -226,8 +324,9 @@ public final class TravelLogScreen extends BaseScreen {
         questScroll.setScrollingDisabled(true, false);
 
         Table frame = new Table();
-        frame.setBackground(skin.getDrawable(
-                "image_ui_dialog_asset_inner_bkgd_10"
+        frame.setBackground(skin.newDrawable(
+                "image_ui_dialog_asset_inner_bkgd_10",
+                new Color(0.10f, 0.20f, 0.25f, 0.96f)
         ));
         frame.setBounds(PANEL_X, PANEL_Y, PANEL_WIDTH, PANEL_HEIGHT);
         frame.add(questScroll).grow().pad(16f);
@@ -235,13 +334,15 @@ public final class TravelLogScreen extends BaseScreen {
     }
 
     private void buildStatusBar() {
-        statusLabel = new Label("", skin);
+        statusLabel = body("", 0.82f);
+        statusLabel.setWrap(true);
         statusLabel.setAlignment(Align.center);
         statusLabel.setBounds(150f, 22f, 980f, 38f);
         stage.addActor(statusLabel);
     }
 
     private void refreshFromModel(boolean resetScroll) {
+        lastRefreshDate = questService.currentDate();
         User user = appState.getCurrentUser();
         if (user == null) {
             refreshCurrencies();
@@ -277,12 +378,12 @@ public final class TravelLogScreen extends BaseScreen {
     private void refreshCurrencies() {
         User user = appState.getCurrentUser();
         if (user == null) {
-            diamondLabel.setText("Gems: 0");
-            coinLabel.setText("Coins: 0");
+            diamondLabel.setText("0");
+            coinLabel.setText("0");
             return;
         }
-        diamondLabel.setText("Gems: " + user.getDiamonds());
-        coinLabel.setText("Coins: " + user.getCoins());
+        diamondLabel.setText(String.valueOf(user.getDiamonds()));
+        coinLabel.setText(String.valueOf(user.getCoins()));
     }
 
     private void rebuildQuestList(boolean resetScroll) {
@@ -365,16 +466,14 @@ public final class TravelLogScreen extends BaseScreen {
         }
 
         Table card = new Table();
-        card.setBackground(skin.getDrawable(
-                "image_ui_dialog_asset_inner_bkgd_10"
-        ));
+        card.setBackground(questPatch("IMAGE_UI_QUESTS_TRAVEL_LOG_PANEL_DEFAULT", 12));
         card.pad(12f);
 
         Table info = new Table();
         info.left();
         Label title = new Label("ADVENTURE HUB", skin);
         title.setFontScale(1.0f);
-        title.setColor(Color.YELLOW);
+        title.setColor(INK);
         info.add(title).left().row();
 
         Label summary = new Label(
@@ -387,13 +486,16 @@ public final class TravelLogScreen extends BaseScreen {
                 skin
         );
         summary.setFontScale(0.74f);
-        summary.setColor(Color.DARK_GRAY);
+        Typography.applyBody(summary, skin);
+        summary.setColor(MUTED);
         info.add(summary).left().padTop(6f).row();
 
         Label note = new Label(
-                "Phase 6 chapter and level progress will feed Adventure quests through the shared quest system.",
+                "Complete available Adventure stages to advance your quests. More chapters are coming soon.",
                 skin
         );
+        Typography.applyBody(note, skin);
+        note.setColor(MUTED);
         note.setWrap(true);
         note.setFontScale(0.68f);
         info.add(note).left().width(760f).padTop(5f);
@@ -401,6 +503,7 @@ public final class TravelLogScreen extends BaseScreen {
         TextButton open = new TextButton("OPEN ADVENTURE", skin, "green");
         open.getLabel().setFontScale(0.72f);
         open.addListener(click(this::openAdventure));
+        HoverEffect.addScale(open);
 
         card.add(info).growX().left();
         card.add(open).width(190f).height(44f).right().padLeft(16f);
@@ -414,6 +517,7 @@ public final class TravelLogScreen extends BaseScreen {
         TextButton open = new TextButton("OPEN MINIGAMES", skin, "green");
         open.getLabel().setFontScale(0.70f);
         open.addListener(click(this::openMinigames));
+        HoverEffect.addScale(open);
 
         header.add(accessTitle).growX().left();
         header.add(open).width(185f).height(40f).right();
@@ -422,9 +526,7 @@ public final class TravelLogScreen extends BaseScreen {
 
     private Table buildMinigameAccessCard(MinigameSpec spec) {
         Table card = new Table();
-        card.setBackground(skin.getDrawable(
-                "image_ui_dialog_asset_inner_bkgd_10"
-        ));
+        card.setBackground(questPatch("IMAGE_UI_QUESTS_TRAVEL_LOG_PANEL_DEFAULT", 12));
         card.pad(10f);
 
         User user = appState.getCurrentUser();
@@ -439,21 +541,24 @@ public final class TravelLogScreen extends BaseScreen {
         info.left().top();
         Label name = new Label(spec.name(), skin);
         name.setFontScale(0.95f);
-        name.setColor(Color.YELLOW);
+        name.setColor(INK);
         info.add(name).left().row();
 
         Label description = new Label(spec.description(), skin);
+        Typography.applyBody(description, skin);
+        description.setColor(INK);
         description.setWrap(true);
         description.setFontScale(0.68f);
         info.add(description).left().width(555f).padTop(5f).row();
 
         Label phase = new Label(
                 completed + " / " + spec.stageCount()
-                        + " stages cleared - gameplay opens in Phase 7.",
+                        + " stages cleared - coming soon.",
                 skin
         );
         phase.setFontScale(0.64f);
-        phase.setColor(Color.GRAY);
+        Typography.applyBody(phase, skin);
+        phase.setColor(MUTED);
         info.add(phase).left().padTop(5f);
 
         Table stages = new Table();
@@ -492,7 +597,7 @@ public final class TravelLogScreen extends BaseScreen {
     ) {
         return switch (state) {
             case COMPLETED -> "STAGE " + stageNumber + "\nCOMPLETED";
-            case AVAILABLE -> "STAGE " + stageNumber + "\nAVAILABLE";
+            case AVAILABLE -> "STAGE " + stageNumber + "\nCOMING SOON";
             case LOCKED -> "STAGE " + stageNumber + "\nLOCKED";
         };
     }
@@ -538,9 +643,7 @@ public final class TravelLogScreen extends BaseScreen {
         int target = spec.objective().target();
 
         Table card = new Table();
-        card.setBackground(skin.getDrawable(
-                "image_ui_dialog_asset_inner_bkgd_10"
-        ));
+        card.setBackground(questPatch("IMAGE_UI_QUESTS_TRAVEL_LOG_PANEL_DEFAULT", 12));
         card.pad(10f);
 
         Table info = new Table();
@@ -548,7 +651,7 @@ public final class TravelLogScreen extends BaseScreen {
 
         Label name = new Label(spec.name(), skin);
         name.setFontScale(1.02f);
-        name.setColor(priorityColor(spec.priority().name()));
+        name.setColor(INK);
         info.add(name).left().growX();
 
         Label meta = new Label(
@@ -557,17 +660,21 @@ public final class TravelLogScreen extends BaseScreen {
                         + pretty(spec.priority().name()),
                 skin
         );
-        meta.setFontScale(0.72f);
+        Typography.applyBody(meta, skin);
+        meta.setColor(MUTED);
+        meta.setFontScale(0.68f);
         meta.setAlignment(Align.right);
         info.add(meta).right().width(245f).row();
 
         Label description = new Label(spec.description(), skin);
+        Typography.applyBody(description, skin);
+        description.setColor(INK);
         description.setWrap(true);
         description.setFontScale(0.78f);
         info.add(description)
                 .colspan(2)
                 .left()
-                .width(655f)
+                .width(565f)
                 .padTop(4f)
                 .row();
 
@@ -576,19 +683,21 @@ public final class TravelLogScreen extends BaseScreen {
             rewardText += "  |  Resets daily";
         }
         Label rewards = new Label(rewardText, skin);
+        Typography.applyBody(rewards, skin);
         rewards.setWrap(true);
         rewards.setFontScale(0.70f);
-        rewards.setColor(Color.DARK_GRAY);
+        rewards.setColor(new Color(0.24f, 0.34f, 0.16f, 1f));
         info.add(rewards)
                 .colspan(2)
                 .left()
-                .width(655f)
+                .width(565f)
                 .padTop(4f);
 
         Table progressArea = new Table();
         progressArea.top();
 
         Label stateLabel = new Label(stateText(state), skin);
+        Typography.applyBody(stateLabel, skin);
         stateLabel.setAlignment(Align.center);
         stateLabel.setColor(stateColor(state));
         stateLabel.setFontScale(0.82f);
@@ -598,6 +707,8 @@ public final class TravelLogScreen extends BaseScreen {
                 progressText(state, value, target),
                 skin
         );
+        Typography.applyBody(progressLabel, skin);
+        progressLabel.setColor(MUTED);
         progressLabel.setAlignment(Align.center);
         progressLabel.setFontScale(0.75f);
         progressArea.add(progressLabel)
@@ -616,7 +727,8 @@ public final class TravelLogScreen extends BaseScreen {
         TextButton action = buildActionButton(spec, state);
         progressArea.add(action).width(155f).height(38f);
 
-        card.add(info).width(710f).growY().left();
+        card.add(questArt(spec)).width(90f).height(110f).padRight(20f);
+        card.add(info).width(600f).growY().left();
         card.add(progressArea).width(275f).growY().right();
         return card;
     }
@@ -639,6 +751,7 @@ public final class TravelLogScreen extends BaseScreen {
                 state == QuestState.UNAVAILABLE ? 0.62f : 0.72f
         );
         button.setDisabled(!claimable);
+        HoverEffect.addScale(button, () -> !button.isDisabled());
         if (claimable) {
             button.addListener(click(() -> claimQuest(spec)));
         }
@@ -648,22 +761,36 @@ public final class TravelLogScreen extends BaseScreen {
     private Stack progressBar(QuestState state, int value, int target) {
         Stack stack = new Stack();
 
-        Image track = new Image(progressTrackTexture);
+        Image track = new Image(questPatch("IMAGE_UI_QUESTS_QUEST_POINTS_FILLBAR_BG", 5));
         track.setScaling(Scaling.stretch);
         stack.add(track);
 
-        float ratio = state == QuestState.UNAVAILABLE
+        float ratio = state == QuestState.UNAVAILABLE || target <= 0
                 ? 0f
                 : Math.min(1f, Math.max(0f, value / (float) target));
+        if (ratio <= 0f) {
+            return stack;
+        }
 
-        Table fillLayer = new Table();
-        fillLayer.left();
-        Image fill = new Image(progressFillTexture);
-        fill.setScaling(Scaling.stretch);
-        fillLayer.add(fill)
-                .width(PROGRESS_WIDTH * ratio)
-                .height(PROGRESS_HEIGHT);
-        stack.add(fillLayer);
+        TextureRegion source = textures.region(
+                "IMAGE_UI_QUESTS_QUEST_POINTS_FILLBAR_FILL_GREEN");
+        if (source != null) {
+            // A NinePatch has fixed end caps and can overflow at small widths.
+            // Crop the sprite instead, and allow the cell to shrink below its
+            // native width so even very small positive progress stays accurate.
+            TextureRegion portion = new TextureRegion(source, 0, 0,
+                    Math.max(1, (int) Math.ceil(source.getRegionWidth() * ratio)),
+                    source.getRegionHeight());
+            Image fill = new Image(portion);
+            fill.setScaling(Scaling.stretch);
+            Table fillLayer = new Table();
+            fillLayer.left();
+            fillLayer.add(fill).minWidth(0f)
+                    .prefWidth(PROGRESS_WIDTH * ratio)
+                    .maxWidth(PROGRESS_WIDTH * ratio)
+                    .height(PROGRESS_HEIGHT);
+            stack.add(fillLayer);
+        }
 
         return stack;
     }
@@ -680,8 +807,23 @@ public final class TravelLogScreen extends BaseScreen {
             appState.setCurrentUser(result.user());
         }
 
-        refreshCurrencies();
-        rebuildQuestList(false);
+        if (result.status() == QuestService.ClaimStatus.SUCCESS) {
+            // Plant rewards can complete other quests, such as Growing Collection.
+            QuestService.SyncResult sync = questService.synchronizeAndSave(
+                    appState.getCurrentUser(), questCatalog.all());
+            if (sync.user() != null && sync.user() != appState.getCurrentUser()) {
+                appState.setCurrentUser(sync.user());
+            }
+            refreshCurrencies();
+            rebuildQuestList(false);
+            if (!sync.saved()) {
+                showStatus("Reward claimed, but other quest progress could not be saved. Reopen Travel Log to retry.", true);
+                return;
+            }
+        } else {
+            refreshCurrencies();
+            rebuildQuestList(false);
+        }
 
         switch (result.status()) {
             case SUCCESS -> showStatus(
@@ -728,7 +870,7 @@ public final class TravelLogScreen extends BaseScreen {
 
     private String progressText(QuestState state, int value, int target) {
         if (state == QuestState.UNAVAILABLE) {
-            return "Waiting for related gameplay content";
+            return "Coming in a future update";
         }
         return Math.min(value, target) + " / " + target;
     }
@@ -814,19 +956,19 @@ public final class TravelLogScreen extends BaseScreen {
     private String categoryStatusMessage() {
         return switch (selectedCategory) {
             case ADVENTURE ->
-                    "Adventure quests are connected to persistent chapter and level progress.";
+                    "Complete Adventure stages to earn rewards. More adventures are coming soon.";
             case DAILY ->
-                    "Daily quests use the current daily cycle and reset automatically.";
+                    "Daily quests reset each day. Complete them and claim your rewards.";
             case CHALLENGE ->
-                    "Challenges are sorted by priority; future battle metrics stay unavailable until their hooks exist.";
+                    "Grow your collection and complete battle challenges to earn rewards.";
             case MINIGAME ->
-                    "Minigame progress is shared with the Minigames menu; gameplay launches in Phase 7.";
+                    "Browse minigames and their stages. Minigames are coming soon.";
         };
     }
 
     private void showStatus(String message, boolean error) {
         statusLabel.setText(message == null ? "" : message);
-        statusLabel.setColor(error ? Color.SCARLET : Color.GREEN);
+        statusLabel.setColor(error ? new Color(1f, 0.55f, 0.45f, 1f) : new Color(0.75f, 0.87f, 0.90f, 1f));
     }
 
     private void goBack() {
@@ -848,19 +990,11 @@ public final class TravelLogScreen extends BaseScreen {
     }
 
     @Override
-    public void dispose() {
-        progressTrackTexture.dispose();
-        progressFillTexture.dispose();
-        super.dispose();
-    }
-
-    private Texture createSolidTexture(Color color) {
-        Pixmap pixmap = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
-        pixmap.setColor(color);
-        pixmap.fill();
-        Texture texture = new Texture(pixmap);
-        pixmap.dispose();
-        return texture;
+    public void render(float delta) {
+        if (!questService.currentDate().equals(lastRefreshDate)) {
+            refreshFromModel(false);
+        }
+        super.render(delta);
     }
 
     private ClickListener click(Runnable action) {

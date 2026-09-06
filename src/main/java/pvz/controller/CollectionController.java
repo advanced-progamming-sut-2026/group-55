@@ -138,10 +138,19 @@ public class CollectionController extends BaseController {
         } else if (!user.spendCoins(2000)) {
             view.showError(SystemMessage.COLLECTION_NOT_ENOUGH_COINS.getMessage());
         } else {
-            user.addPlant(new PlayerPlant(spec.getName()));
+            PlayerPlant purchased = new PlayerPlant(spec.getName());
+            int previousNewsCount = user.getAllNews().size();
+            user.addPlant(purchased);
             user.addNews("Plant Unlocked", spec.getName() + " has been unlocked!");
-            userManager.save();
-            view.showSuccess(SystemMessage.COLLECTION_PLANT_PURCHASED.getMessage());
+            if (userManager.save()) {
+                view.showSuccess(SystemMessage.COLLECTION_PLANT_PURCHASED.getMessage());
+            } else {
+                // Roll back only this purchase, preserving other in-memory progress.
+                user.getUnlockedPlants().remove(purchased);
+                user.addCoins(2000);
+                user.getAllNews().subList(previousNewsCount, user.getAllNews().size()).clear();
+                view.showError("Failed to save game data. Plant purchase reverted.");
+            }
         }
     }
 

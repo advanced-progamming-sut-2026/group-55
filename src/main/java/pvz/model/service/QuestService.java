@@ -59,6 +59,11 @@ public final class QuestService {
         this.clock = Objects.requireNonNull(clock, "clock cannot be null");
     }
 
+    /** Uses the same clock as daily quest resets. */
+    public LocalDate currentDate() {
+        return LocalDate.now(clock);
+    }
+
     /** Refreshes one quest from persistent user metrics without saving. */
     public boolean synchronize(User user, QuestSpec spec) {
         Objects.requireNonNull(user, "user cannot be null");
@@ -346,7 +351,7 @@ public final class QuestService {
             return false;
         }
 
-        LocalDate today = LocalDate.now(clock);
+        LocalDate today = currentDate();
         LocalDate currentCycle = progress.getCycleDate();
         int sourceValue = snapshotValue(user, spec.objective());
         int baseline = progressSource.supports(spec.objective().metric())

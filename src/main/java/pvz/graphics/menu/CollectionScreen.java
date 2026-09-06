@@ -92,6 +92,9 @@ public final class CollectionScreen extends BaseScreen {
             new HashMap<>();
     private final List<LazyPamPreview> activePreviews = new ArrayList<>();
 
+    private final Map<Table, PlantSpec> plantCards = new HashMap<>();
+    private final Map<Table, ZombieSpec> zombieCards = new HashMap<>();
+
     private final Table entityGrid = new Table();
     private final Table detailContent = new Table();
 
@@ -243,7 +246,7 @@ public final class CollectionScreen extends BaseScreen {
         coinGroup.addListener(click(() -> {
             if (isDebugModeEnabled()) {
                 appState.getCurrentUser().addCoins(100);
-                refreshCurrency();
+                refreshAll(false);
                 userManager.save();
             }
         }));
@@ -484,6 +487,8 @@ public final class CollectionScreen extends BaseScreen {
     private void rebuildGrid(boolean resetScroll) {
         float previousScroll = entityScroll.getScrollY();
         entityGrid.clearChildren();
+        plantCards.clear();
+        zombieCards.clear();
 
         if (activeTab == Tab.PLANTS) {
             rebuildPlantGrid();
@@ -491,6 +496,7 @@ public final class CollectionScreen extends BaseScreen {
             rebuildZombieGrid();
         }
 
+        updateCardSelection();
         entityGrid.invalidateHierarchy();
         entityScroll.validate();
         entityScroll.setScrollY(resetScroll ? 0f : previousScroll);
@@ -503,6 +509,9 @@ public final class CollectionScreen extends BaseScreen {
                 .filter(spec -> matchesPlantFilters(spec, user))
                 .toList();
 
+        if (selectedPlant != null && !plants.contains(selectedPlant)) {
+            selectedPlant = null;
+        }
         if (plants.isEmpty()) {
             Label empty = new Label("NO PLANTS MATCH THESE FILTERS", skin);
             empty.setAlignment(Align.center);
@@ -596,20 +605,16 @@ public final class CollectionScreen extends BaseScreen {
         }
 
         card.addListener(click(() -> selectPlant(spec)));
+        plantCards.put(card, spec);
         return card;
     }
 
     private Actor createPlantImage(PlantSpec spec) {
         AnimationSpec animation = plantAnimation(spec);
-        if (animation == null) {
-            return emptyPreview(74f, 74f);
-        }
-        return createPamPreview(
-                animation,
-                null,
-                74f,
-                74f
-        );
+        TextureRegion fallback = plantVisuals.preview(spec.getName());
+        return animation == null
+                ? fallbackActor(fallback, "?")
+                : createPamPreview(animation, fallback, 74f, 74f);
     }
 
     private String seedProgress(PlayerPlant owned) {
@@ -681,7 +686,7 @@ public final class CollectionScreen extends BaseScreen {
 
         ZombieAnimationSpec animation = zombieAnimation(spec, user);
         Actor preview = animation == null
-                ? emptyPreview(100f, 100f)
+                ? placeholder("?")
                 : createZombiePreview(animation, 100f, 100f);
         card.add(preview).size(100f, 100f).padTop(4f).row();
 
@@ -691,6 +696,7 @@ public final class CollectionScreen extends BaseScreen {
                 .height(42f)
                 .padBottom(4f);
         card.addListener(click(() -> selectZombie(spec)));
+        zombieCards.put(card, spec);
         return card;
     }
 
@@ -756,6 +762,9 @@ public final class CollectionScreen extends BaseScreen {
     }
 
     private void selectPlant(PlantSpec spec) {
+        if (selectedPlant == spec) {
+            return;
+        }
         selectedPlant = spec;
         showStatus("Showing " + spec.getName() + ".", false);
         refreshDetailOnly();
@@ -767,18 +776,41 @@ public final class CollectionScreen extends BaseScreen {
             showStatus("This zombie has not been discovered yet.", true);
             return;
         }
+        if (selectedZombie == spec) {
+            return;
+        }
         selectedZombie = spec;
         showStatus("Showing " + spec.getName() + ".", false);
         refreshDetailOnly();
     }
 
     private void refreshDetailOnly() {
-        cancelPreviews();
-        rebuildGrid(false);
+        updateCardSelection();
         rebuildDetailPanel();
     }
 
+    private void updateCardSelection() {
+        User user = appState.getCurrentUser();
+        plantCards.forEach((card, spec) -> {
+            PlayerPlant owned = user == null ? null : user.getOwnedPlant(spec.getName());
+            card.setColor(spec == selectedPlant ? new Color(0.65f, 0.85f, 1f, 1f)
+                    : owned == null ? LOCKED_COLOR
+                    : canUpgradeNow(user, owned) ? new Color(0.90f, 1f, 0.82f, 1f)
+                    : Color.WHITE);
+        });
+        zombieCards.forEach((card, spec) -> card.setColor(
+                spec == selectedZombie ? new Color(0.65f, 0.85f, 1f, 1f) : Color.WHITE));
+    }
+
     private void rebuildDetailPanel() {
+        // Dispose only requests belonging to the outgoing detail panel.
+        activePreviews.removeIf(preview -> {
+            if (preview.isDescendantOf(detailContent)) {
+                preview.cancel();
+                return true;
+            }
+            return false;
+        });
         detailContent.clearChildren();
         if (activeTab == Tab.PLANTS) {
             if (selectedPlant == null) {
@@ -927,7 +959,7 @@ public final class CollectionScreen extends BaseScreen {
                 appState.getCurrentUser()
         );
         Actor preview = animation == null
-                ? emptyPreview(190f, 190f)
+                ? placeholder("?")
                 : createZombiePreview(animation, 190f, 190f);
         detailContent.add(preview)
                 .size(190f, 190f)
@@ -1258,7 +1290,8 @@ public final class CollectionScreen extends BaseScreen {
         }
     }
 
-    private static final class ZombiePamPreview extends Actor {
+    private final class ZombiePamPreview extends Actor {
+        private final Actor fallback = placeholder("?");
         private final PamAnimationRenderer renderer;
         private final ZombieAnimationSpec animation;
         private float stateTime;
@@ -1288,7 +1321,7 @@ public final class CollectionScreen extends BaseScreen {
 
         @Override
         public void draw(Batch batch, float parentAlpha) {
-            renderer.draw(
+            boolean drawn = renderer.draw(
                     batch,
                     animation.path(),
                     animation.clip(),
@@ -1304,6 +1337,10 @@ public final class CollectionScreen extends BaseScreen {
                     Color.WHITE,
                     animation.partsVisibility()
             );
+            if (!drawn) {
+                fallback.setBounds(getX(), getY(), getWidth(), getHeight());
+                fallback.draw(batch, parentAlpha);
+            }
         }
     }
 
@@ -1326,9 +1363,9 @@ public final class CollectionScreen extends BaseScreen {
             this.service = service;
             this.animation = animation;
             setSize(width, height);
-            if (fallback != null) {
-                addActor(fallbackActor(fallback, "?"));
-            }
+            Actor fallbackImage = fallbackActor(fallback, "?");
+            fallbackImage.setBounds(0f, 0f, width, height);
+            addActor(fallbackImage);
         }
 
         @Override
