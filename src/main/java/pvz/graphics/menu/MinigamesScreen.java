@@ -1,5 +1,7 @@
 package pvz.graphics.menu;
 
+import pvz.graphics.ui.Typography;
+
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
@@ -104,7 +106,7 @@ public final class MinigamesScreen extends BaseScreen {
         stage.addActor(back);
 
         Label title = new Label("MINIGAMES", skin);
-        title.setFontScale(1.45f);
+        Typography.setReadableScale(title, 1.45f);
         title.setAlignment(Align.center);
         title.setBounds(300f, HEIGHT - 70f, 600f, 48f);
         stage.addActor(title);
@@ -155,7 +157,7 @@ public final class MinigamesScreen extends BaseScreen {
                 "Stage progression is ready; gameplay opens in Phase 7.",
                 skin
         );
-        statusLabel.setFontScale(0.72f);
+        Typography.setReadableScale(statusLabel, 0.72f);
         statusLabel.setColor(Color.LIGHT_GRAY);
         statusLabel.setAlignment(Align.center);
         statusLabel.setBounds(220f, 28f, 840f, 34f);
@@ -205,7 +207,7 @@ public final class MinigamesScreen extends BaseScreen {
         for (MinigameSpec spec : catalog.all()) {
             minigameTable.add(buildMinigameCard(spec, user))
                     .width(CARD_WIDTH)
-                    .height(CARD_HEIGHT)
+                    .minHeight(CARD_HEIGHT)
                     .row();
         }
 
@@ -223,13 +225,13 @@ public final class MinigamesScreen extends BaseScreen {
         info.top().left();
 
         Label name = new Label(spec.name(), skin);
-        name.setFontScale(1.02f);
+        Typography.setReadableScale(name, 1.02f);
         name.setColor(Color.YELLOW);
         info.add(name).left().row();
 
         Label description = new Label(spec.description(), skin);
         description.setWrap(true);
-        description.setFontScale(0.70f);
+        Typography.setReadableScale(description, 0.70f);
         description.setColor(Color.DARK_GRAY);
         info.add(description)
                 .width(475f)
@@ -244,7 +246,7 @@ public final class MinigamesScreen extends BaseScreen {
                 completed + " / " + spec.stageCount() + " stages cleared",
                 skin
         );
-        progress.setFontScale(0.68f);
+        Typography.setReadableScale(progress, 0.68f);
         progress.setColor(Color.GRAY);
         info.add(progress).left().padTop(7f);
 
@@ -284,7 +286,8 @@ public final class MinigamesScreen extends BaseScreen {
                 skin,
                 style
         );
-        button.getLabel().setFontScale(0.61f);
+        Typography.setReadableScale(button.getLabel(), 0.61f);
+        button.getLabel().setWrap(true);
         button.getLabel().setAlignment(Align.center);
 
         if (state == MinigameStageState.LOCKED) {

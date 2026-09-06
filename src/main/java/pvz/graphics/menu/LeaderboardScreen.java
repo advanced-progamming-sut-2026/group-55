@@ -1,5 +1,7 @@
 package pvz.graphics.menu;
 
+import pvz.graphics.ui.Typography;
+
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -100,14 +102,14 @@ public final class LeaderboardScreen extends BaseScreen {
         stage.addActor(back);
 
         Label title = new Label("LEADERBOARD", skin);
-        title.setFontScale(1.45f);
+        Typography.setReadableScale(title, 1.45f);
         title.setAlignment(Align.center);
         title.setBounds(300f, HEIGHT - 70f, 600f, 48f);
         stage.addActor(title);
 
         TextButton refresh = new TextButton("REFRESH", skin, "brown");
         refresh.setBounds(165f, HEIGHT - 72f, 125f, 48f);
-        refresh.getLabel().setFontScale(0.78f);
+        Typography.setReadableScale(refresh.getLabel(), 0.78f);
         refresh.addListener(click(() -> refreshLeaderboard(true)));
         stage.addActor(refresh);
 
@@ -209,10 +211,11 @@ public final class LeaderboardScreen extends BaseScreen {
             float width
     ) {
         TextButton button = new TextButton(text, skin, "brown");
-        button.getLabel().setFontScale(0.72f);
+        Typography.setReadableScale(button.getLabel(), 0.72f);
         button.getLabel().setAlignment(Align.center);
         button.addListener(click(() -> selectSort(key)));
         headerButtons.put(key, button);
+        button.getLabel().setWrap(true);
         header.add(button).width(width).height(HEADER_HEIGHT);
     }
 
@@ -242,7 +245,7 @@ public final class LeaderboardScreen extends BaseScreen {
                     skin.get(styleName, TextButton.TextButtonStyle.class)
             );
             button.setText(headerText(key, selected));
-            button.getLabel().setFontScale(0.72f);
+            Typography.setReadableScale(button.getLabel(), 0.72f);
             button.getLabel().setAlignment(Align.center);
         }
     }
@@ -367,8 +370,9 @@ public final class LeaderboardScreen extends BaseScreen {
                 LeaderboardPresentation.username(entry),
                 skin
         );
-        username.setFontScale(0.78f);
+        Typography.setReadableScale(username, 0.78f);
         username.setColor(currentUser ? Color.YELLOW : Color.DARK_GRAY);
+        username.setEllipsis(true);
         username.setAlignment(Align.left);
         cell.add(username).growX().left().row();
 
@@ -377,8 +381,9 @@ public final class LeaderboardScreen extends BaseScreen {
                 currentUser
         );
         Label nickname = new Label(secondary, skin);
-        nickname.setFontScale(0.60f);
+        Typography.setReadableScale(nickname, 0.60f);
         nickname.setColor(currentUser ? Color.YELLOW : Color.GRAY);
+        nickname.setEllipsis(true);
         nickname.setAlignment(Align.left);
         cell.add(nickname).growX().left();
 
@@ -393,7 +398,7 @@ public final class LeaderboardScreen extends BaseScreen {
                 LeaderboardPresentation.adventure(standing),
                 skin
         );
-        label.setFontScale(0.66f);
+        Typography.setReadableScale(label, 0.66f);
         label.setAlignment(Align.center);
         label.setWrap(true);
         label.setColor(currentUser ? Color.YELLOW : Color.DARK_GRAY);
@@ -402,7 +407,7 @@ public final class LeaderboardScreen extends BaseScreen {
 
     private Label numberCell(int value, boolean currentUser) {
         Label label = new Label(Integer.toString(value), skin);
-        label.setFontScale(0.82f);
+        Typography.setReadableScale(label, 0.82f);
         label.setAlignment(Align.center);
         label.setColor(currentUser ? Color.YELLOW : Color.DARK_GRAY);
         return label;

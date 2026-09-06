@@ -175,7 +175,7 @@ public final class TravelLogScreen extends BaseScreen {
             stage.addActor(icon);
         }
         Label title = new Label("TRAVEL LOG", skin);
-        title.setFontScale(1.55f);
+        Typography.setReadableScale(title, 1.55f);
         title.setBounds(180f, HEIGHT - 72f, 540f, 44f);
         stage.addActor(title);
         Label subtitle = body("YOUR JOURNEY  /  QUESTS & REWARDS", 0.72f);
@@ -218,7 +218,7 @@ public final class TravelLogScreen extends BaseScreen {
     private Label body(String text, float scale) {
         Label label = new Label(text, skin);
         Typography.applyBody(label, skin);
-        label.setFontScale(scale);
+        Typography.setReadableScale(label, scale);
         label.setColor(INK);
         return label;
     }
@@ -279,7 +279,7 @@ public final class TravelLogScreen extends BaseScreen {
                     TAB_WIDTH,
                     TAB_HEIGHT
             );
-            button.getLabel().setFontScale(0.82f);
+            Typography.setReadableScale(button.getLabel(), 0.82f);
             HoverEffect.addScale(button, () -> !button.isDisabled());
             button.addListener(click(() -> selectCategory(category)));
             categoryButtons.put(category, button);
@@ -393,7 +393,7 @@ public final class TravelLogScreen extends BaseScreen {
         if (selectedCategory == QuestCategory.ADVENTURE) {
             questTable.add(buildAdventureAccessCard())
                     .width(CARD_WIDTH)
-                    .height(112f)
+                    .minHeight(145f)
                     .padBottom(12f)
                     .row();
         }
@@ -406,7 +406,7 @@ public final class TravelLogScreen extends BaseScreen {
             for (MinigameSpec minigame : minigameCatalog.all()) {
                 questTable.add(buildMinigameAccessCard(minigame))
                         .width(CARD_WIDTH)
-                        .height(126f)
+                        .minHeight(155f)
                         .row();
             }
             questTable.add(sectionLabel("MINIGAME QUESTS"))
@@ -429,7 +429,7 @@ public final class TravelLogScreen extends BaseScreen {
             for (QuestSpec spec : quests) {
                 questTable.add(buildQuestCard(spec))
                         .width(CARD_WIDTH)
-                        .height(CARD_HEIGHT)
+                        .minHeight(CARD_HEIGHT)
                         .row();
             }
         }
@@ -472,7 +472,7 @@ public final class TravelLogScreen extends BaseScreen {
         Table info = new Table();
         info.left();
         Label title = new Label("ADVENTURE HUB", skin);
-        title.setFontScale(1.0f);
+        Typography.setReadableScale(title, 1.0f);
         title.setColor(INK);
         info.add(title).left().row();
 
@@ -485,7 +485,7 @@ public final class TravelLogScreen extends BaseScreen {
                         + levelCatalog.chapters().size(),
                 skin
         );
-        summary.setFontScale(0.74f);
+        Typography.setReadableScale(summary, 0.74f);
         Typography.applyBody(summary, skin);
         summary.setColor(MUTED);
         info.add(summary).left().padTop(6f).row();
@@ -497,11 +497,11 @@ public final class TravelLogScreen extends BaseScreen {
         Typography.applyBody(note, skin);
         note.setColor(MUTED);
         note.setWrap(true);
-        note.setFontScale(0.68f);
+        Typography.setReadableScale(note, 0.68f);
         info.add(note).left().width(760f).padTop(5f);
 
         TextButton open = new TextButton("OPEN ADVENTURE", skin, "green");
-        open.getLabel().setFontScale(0.72f);
+        Typography.setReadableScale(open.getLabel(), 0.72f);
         open.addListener(click(this::openAdventure));
         HoverEffect.addScale(open);
 
@@ -515,7 +515,7 @@ public final class TravelLogScreen extends BaseScreen {
 
         Label accessTitle = sectionLabel("MINIGAME ACCESS");
         TextButton open = new TextButton("OPEN MINIGAMES", skin, "green");
-        open.getLabel().setFontScale(0.70f);
+        Typography.setReadableScale(open.getLabel(), 0.70f);
         open.addListener(click(this::openMinigames));
         HoverEffect.addScale(open);
 
@@ -540,7 +540,7 @@ public final class TravelLogScreen extends BaseScreen {
         Table info = new Table();
         info.left().top();
         Label name = new Label(spec.name(), skin);
-        name.setFontScale(0.95f);
+        Typography.setReadableScale(name, 0.95f);
         name.setColor(INK);
         info.add(name).left().row();
 
@@ -548,7 +548,7 @@ public final class TravelLogScreen extends BaseScreen {
         Typography.applyBody(description, skin);
         description.setColor(INK);
         description.setWrap(true);
-        description.setFontScale(0.68f);
+        Typography.setReadableScale(description, 0.68f);
         info.add(description).left().width(555f).padTop(5f).row();
 
         Label phase = new Label(
@@ -556,10 +556,11 @@ public final class TravelLogScreen extends BaseScreen {
                         + " stages cleared - coming soon.",
                 skin
         );
-        phase.setFontScale(0.64f);
+        Typography.setReadableScale(phase, 0.64f);
         Typography.applyBody(phase, skin);
         phase.setColor(MUTED);
-        info.add(phase).left().padTop(5f);
+        phase.setWrap(true);
+        info.add(phase).width(555f).left().padTop(5f);
 
         Table stages = new Table();
         stages.defaults().padLeft(5f);
@@ -580,10 +581,11 @@ public final class TravelLogScreen extends BaseScreen {
                             ? "green"
                             : "brown"
             );
-            stageButton.getLabel().setFontScale(0.60f);
+            Typography.setReadableScale(stageButton.getLabel(), 0.60f);
+            stageButton.getLabel().setWrap(true);
             stageButton.getLabel().setAlignment(Align.center);
             stageButton.setDisabled(true);
-            stages.add(stageButton).width(128f).height(58f);
+            stages.add(stageButton).width(128f).height(76f);
         }
 
         card.add(info).width(585f).growY().left();
@@ -604,7 +606,7 @@ public final class TravelLogScreen extends BaseScreen {
 
     private Label sectionLabel(String text) {
         Label label = new Label(text, skin);
-        label.setFontScale(0.90f);
+        Typography.setReadableScale(label, 0.90f);
         label.setColor(Color.WHITE);
         label.setAlignment(Align.left);
         return label;
@@ -650,9 +652,10 @@ public final class TravelLogScreen extends BaseScreen {
         info.top().left();
 
         Label name = new Label(spec.name(), skin);
-        name.setFontScale(1.02f);
+        Typography.setReadableScale(name, 1.02f);
         name.setColor(INK);
-        info.add(name).left().growX();
+        name.setWrap(true);
+        info.add(name).left().width(565f).colspan(2).row();
 
         Label meta = new Label(
                 pretty(spec.category().name())
@@ -662,15 +665,16 @@ public final class TravelLogScreen extends BaseScreen {
         );
         Typography.applyBody(meta, skin);
         meta.setColor(MUTED);
-        meta.setFontScale(0.68f);
+        Typography.setReadableScale(meta, 0.68f);
         meta.setAlignment(Align.right);
-        info.add(meta).right().width(245f).row();
+        meta.setWrap(true);
+        info.add(meta).left().width(565f).colspan(2).padTop(4f).row();
 
         Label description = new Label(spec.description(), skin);
         Typography.applyBody(description, skin);
         description.setColor(INK);
         description.setWrap(true);
-        description.setFontScale(0.78f);
+        Typography.setReadableScale(description, 0.78f);
         info.add(description)
                 .colspan(2)
                 .left()
@@ -685,7 +689,7 @@ public final class TravelLogScreen extends BaseScreen {
         Label rewards = new Label(rewardText, skin);
         Typography.applyBody(rewards, skin);
         rewards.setWrap(true);
-        rewards.setFontScale(0.70f);
+        Typography.setReadableScale(rewards, 0.70f);
         rewards.setColor(new Color(0.24f, 0.34f, 0.16f, 1f));
         info.add(rewards)
                 .colspan(2)
@@ -698,10 +702,11 @@ public final class TravelLogScreen extends BaseScreen {
 
         Label stateLabel = new Label(stateText(state), skin);
         Typography.applyBody(stateLabel, skin);
+        stateLabel.setWrap(true);
         stateLabel.setAlignment(Align.center);
         stateLabel.setColor(stateColor(state));
-        stateLabel.setFontScale(0.82f);
-        progressArea.add(stateLabel).width(245f).height(26f).row();
+        Typography.setReadableScale(stateLabel, 0.82f);
+        progressArea.add(stateLabel).width(245f).minHeight(44f).row();
 
         Label progressLabel = new Label(
                 progressText(state, value, target),
@@ -709,11 +714,12 @@ public final class TravelLogScreen extends BaseScreen {
         );
         Typography.applyBody(progressLabel, skin);
         progressLabel.setColor(MUTED);
+        progressLabel.setWrap(true);
         progressLabel.setAlignment(Align.center);
-        progressLabel.setFontScale(0.75f);
+        Typography.setReadableScale(progressLabel, 0.75f);
         progressArea.add(progressLabel)
                 .width(245f)
-                .height(24f)
+                .minHeight(28f)
                 .padTop(2f)
                 .row();
 
@@ -725,7 +731,8 @@ public final class TravelLogScreen extends BaseScreen {
                 .row();
 
         TextButton action = buildActionButton(spec, state);
-        progressArea.add(action).width(155f).height(38f);
+        action.getLabel().setWrap(true);
+        progressArea.add(action).width(225f).height(48f);
 
         card.add(questArt(spec)).width(90f).height(110f).padRight(20f);
         card.add(info).width(600f).growY().left();
@@ -747,7 +754,7 @@ public final class TravelLogScreen extends BaseScreen {
                 skin,
                 claimable ? "green" : "brown"
         );
-        button.getLabel().setFontScale(
+        Typography.setReadableScale(button.getLabel(), 
                 state == QuestState.UNAVAILABLE ? 0.62f : 0.72f
         );
         button.setDisabled(!claimable);

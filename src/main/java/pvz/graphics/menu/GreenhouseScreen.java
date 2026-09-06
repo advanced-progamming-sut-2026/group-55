@@ -1,5 +1,7 @@
 package pvz.graphics.menu;
 
+import pvz.graphics.ui.Typography;
+
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
@@ -222,7 +224,7 @@ public class GreenhouseScreen extends BaseScreen {
     private Label createCurrencyLabel(String text, float scale) {
         Label label = new Label(text, skin);
         label.setColor(Color.WHITE);
-        label.setFontScale(scale);
+        Typography.setReadableScale(label, scale);
         return label;
     }
 
@@ -434,7 +436,7 @@ public class GreenhouseScreen extends BaseScreen {
 
         Label label = new Label(plant.getExactRemainingTime(), skin);
         label.setColor(Color.WHITE);
-        label.setFontScale(TIMER_SCALE);
+        Typography.setReadableScale(label, TIMER_SCALE);
         label.pack();
         label.setPosition(3f, -19f);
 
@@ -452,7 +454,7 @@ public class GreenhouseScreen extends BaseScreen {
 
         Label cost = new Label(String.valueOf(plant.getRemainingHours()), skin);
         cost.setColor(Color.WHITE);
-        cost.setFontScale(0.9f);
+        Typography.setReadableScale(cost, 0.9f);
         cost.setPosition(18f, 8f);
         costLabels[potY - 1][potX - 1] = cost;
         buttonGroup.addActor(cost);
@@ -478,8 +480,8 @@ public class GreenhouseScreen extends BaseScreen {
             addPlantAnimation(group, plant.getPlantName());
             addPlantName(group, plant.getPlantName());
         }
-        Label ready = new Label("READY - COLLECT", skin);
-        ready.setFontScale(0.65f);
+        Label ready = new Label("READY", skin);
+        Typography.setReadableScale(ready, 0.65f);
         ready.setColor(Color.YELLOW);
         ready.setAlignment(Align.center);
         ready.setBounds(-25f, -25f, POT_SIZE + 50f, 24f);
@@ -493,10 +495,10 @@ public class GreenhouseScreen extends BaseScreen {
 
     private void addPlantName(Group group, String plantName) {
         Label name = new Label(plantName, skin);
-        name.setFontScale(0.6f);
+        Typography.setReadableScale(name, 0.6f);
         name.setAlignment(Align.center);
         name.setWrap(true);
-        name.setBounds(-25f, 91f, POT_SIZE + 50f, 28f);
+        name.setBounds(-25f, 90f, POT_SIZE + 50f, 30f);
         name.setTouchable(Touchable.disabled);
         group.addActor(name);
     }
@@ -599,7 +601,7 @@ public class GreenhouseScreen extends BaseScreen {
     private void showRewardNotification(String message) {
         Label label = new Label(message, skin);
         label.setColor(Color.YELLOW);
-        label.setFontScale(1.0f);
+        Typography.setReadableScale(label, 1.0f);
         label.setWrap(true);
         label.setAlignment(Align.center);
         label.setWidth(720f);
@@ -680,7 +682,7 @@ public class GreenhouseScreen extends BaseScreen {
 
         Label label = new Label(errorMessage, skin);
         label.setColor(Color.RED);
-        label.setFontScale(1.05f);
+        Typography.setReadableScale(label, 1.05f);
         label.pack();
         label.setPosition(
                 (WIDTH - label.getWidth()) / 2f,

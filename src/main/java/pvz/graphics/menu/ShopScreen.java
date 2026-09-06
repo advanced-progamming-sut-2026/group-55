@@ -1,5 +1,7 @@
 package pvz.graphics.menu;
 
+import pvz.graphics.ui.Typography;
+
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.g2d.Batch;
@@ -47,7 +49,7 @@ public class ShopScreen extends BaseScreen {
     private static final int SELECT_SEED_ID = 4;
     private static final int DAILY_OFFER_ID = 6;
     private static final float CARD_WIDTH = 155f;
-    private static final float CARD_HEIGHT = 205f;
+    private static final float CARD_HEIGHT = 245f;
     private static final float PADDING = 12f;
     private static final float POPUP_WIDTH = 600f;
     private static final float POPUP_HEIGHT = 430f;
@@ -296,8 +298,8 @@ public class ShopScreen extends BaseScreen {
         Label titleLabel = new Label(cleanTitle, skin);
         titleLabel.setWrap(true);
         titleLabel.setAlignment(Align.center);
-        titleLabel.setSize(CARD_WIDTH - 20f, 35f);
-        titleLabel.setPosition(10f, CARD_HEIGHT - 38f);
+        titleLabel.setSize(CARD_WIDTH - 20f, 58f);
+        titleLabel.setPosition(10f, CARD_HEIGHT - 62f);
         card.addActor(titleLabel);
 
         float warpX = 22f;
@@ -344,7 +346,8 @@ public class ShopScreen extends BaseScreen {
         TextButton buyBtn = new TextButton(buttonText, skin, btnStyle);
         buyBtn.setSize(btnWidth, btnHeight);
         buyBtn.setPosition((CARD_WIDTH - btnWidth) / 2f, 18f);
-        buyBtn.getLabel().setFontScale(0.85f);
+        Typography.setReadableScale(buyBtn.getLabel(), 0.85f);
+        buyBtn.getLabel().setWrap(true);
         buyBtn.setDisabled(disabled);
 
         if (!disabled) {
@@ -353,9 +356,10 @@ public class ShopScreen extends BaseScreen {
 
         card.addActor(buyBtn);
         Label contents = new Label(itemContents(itemId), skin);
-        contents.setFontScale(0.65f);
+        Typography.setReadableScale(contents, 0.65f);
         contents.setAlignment(Align.center);
-        contents.setBounds(5f, 145f, CARD_WIDTH - 10f, 20f);
+        contents.setWrap(true);
+        contents.setBounds(5f, 145f, CARD_WIDTH - 10f, 38f);
         card.addActor(contents);
         return card;
     }
@@ -483,7 +487,7 @@ public class ShopScreen extends BaseScreen {
         popup.addActor(backBtn);
 
         Label header = new Label("Select Plant", skin);
-        header.setFontScale(1.2f);
+        Typography.setReadableScale(header, 1.2f);
         header.setColor(Color.BLACK);
         header.setAlignment(Align.center);
         header.setSize(300f, 35f);
@@ -499,18 +503,18 @@ public class ShopScreen extends BaseScreen {
             plantBtn.add(createSeedPlantPreview(plant.getPlantName())).size(88f, 88f).padTop(5f).row();
             Label name = new Label(plant.getPlantName(), skin);
             name.setColor(Color.DARK_GRAY);
-            name.setFontScale(0.75f);
+            Typography.setReadableScale(name, 0.75f);
             name.setAlignment(Align.center);
             name.setWrap(true);
             name.setTouchable(Touchable.disabled);
-            plantBtn.add(name).width(140f).height(42f).padBottom(5f);
+            plantBtn.add(name).width(140f).height(58f).padBottom(5f);
             plantBtn.addListener(click(() -> {
                 dimBackground.remove();
                 popup.remove();
                 showCustomConfirmPopup(itemId, itemName, plant.getPlantName());
             }));
 
-            plantTable.add(plantBtn).width(160f).height(145f).pad(6f);
+            plantTable.add(plantBtn).width(160f).height(165f).pad(6f);
             col++;
             if (col == 3) {
                 plantTable.row();
@@ -583,7 +587,7 @@ public class ShopScreen extends BaseScreen {
         BorderedTable popup = createPopupBox();
 
         Label msgLabel = new Label(message, skin);
-        msgLabel.setFontScale(1.1f);
+        Typography.setReadableScale(msgLabel, 1.1f);
         msgLabel.setAlignment(Align.center);
         msgLabel.setWrap(true);
         msgLabel.setSize(500f, 130f);
@@ -630,7 +634,7 @@ public class ShopScreen extends BaseScreen {
     private void showToast(String message, Color color) {
         Label label = new Label(message, skin);
         label.setColor(color);
-        label.setFontScale(1.2f);
+        Typography.setReadableScale(label, 1.2f);
         label.setWrap(true);
         label.setAlignment(Align.center);
         label.setWidth(800f);

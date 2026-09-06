@@ -1,5 +1,7 @@
 package pvz.graphics.menu;
 
+import pvz.graphics.ui.Typography;
+
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.Batch;
@@ -63,10 +65,10 @@ public final class CollectionScreen extends BaseScreen {
     private static final float GRID_X = 22f;
     private static final float GRID_Y = 72f;
     private static final float GRID_WIDTH = 805f;
-    private static final float GRID_HEIGHT = 462f;
+    private static final float GRID_HEIGHT = 448f;
     private static final float CARD_WIDTH = 188f;
-    private static final float PLANT_CARD_HEIGHT = 226f;
-    private static final float ZOMBIE_CARD_HEIGHT = 180f;
+    private static final float PLANT_CARD_HEIGHT = 284f;
+    private static final float ZOMBIE_CARD_HEIGHT = 210f;
     private static final float DETAIL_X = 850f;
     private static final float DETAIL_Y = 72f;
     private static final float DETAIL_WIDTH = 408f;
@@ -195,7 +197,7 @@ public final class CollectionScreen extends BaseScreen {
         stage.addActor(back);
 
         Label title = new Label("COLLECTION", skin);
-        title.setFontScale(1.35f);
+        Typography.setReadableScale(title, 1.35f);
         title.setAlignment(Align.center);
         title.setBounds(255f, HEIGHT - 70f, 650f, 48f);
         stage.addActor(title);
@@ -320,26 +322,29 @@ public final class CollectionScreen extends BaseScreen {
 
     private void buildFilters() {
         filters = new Table();
-        filters.setBounds(GRID_X, 540f, GRID_WIDTH, 42f);
-        filters.defaults().height(40f).padRight(6f);
+        filters.setBounds(GRID_X, 527f, GRID_WIDTH, 56f);
+        filters.defaults().height(54f).padRight(6f);
 
         familyFilterButton = new TextButton("", skin, "brown");
-        familyFilterButton.getLabel().setFontScale(0.75f);
+        Typography.setReadableScale(familyFilterButton.getLabel(), 0.75f);
+        familyFilterButton.getLabel().setWrap(true);
         familyFilterButton.addListener(click(this::cycleFamilyFilter));
         filters.add(familyFilterButton).width(230f);
 
         ownershipFilterButton = new TextButton("", skin, "brown");
-        ownershipFilterButton.getLabel().setFontScale(0.75f);
+        Typography.setReadableScale(ownershipFilterButton.getLabel(), 0.75f);
+        ownershipFilterButton.getLabel().setWrap(true);
         ownershipFilterButton.addListener(click(this::cycleOwnershipFilter));
         filters.add(ownershipFilterButton).width(185f);
 
         upgradeFilterButton = new TextButton("", skin, "brown");
-        upgradeFilterButton.getLabel().setFontScale(0.75f);
+        Typography.setReadableScale(upgradeFilterButton.getLabel(), 0.75f);
+        upgradeFilterButton.getLabel().setWrap(true);
         upgradeFilterButton.addListener(click(this::toggleUpgradeFilter));
         filters.add(upgradeFilterButton).width(190f);
 
         TextButton reset = new TextButton("RESET", skin, "brown");
-        reset.getLabel().setFontScale(0.75f);
+        Typography.setReadableScale(reset.getLabel(), 0.75f);
         reset.addListener(click(this::resetFilters));
         filters.add(reset).width(120f);
 
@@ -569,22 +574,22 @@ public final class CollectionScreen extends BaseScreen {
                 .row();
 
         Label name = cardLabel(spec.getName(), 0.82f);
-        card.add(name).width(CARD_WIDTH - 16f).height(30f).row();
+        card.add(name).width(CARD_WIDTH - 16f).minHeight(44f).row();
 
         Label family = cardLabel(pretty(spec.getCategory()), 0.62f);
         family.setColor(Color.GRAY);
-        card.add(family).width(CARD_WIDTH - 16f).height(20f).row();
+        card.add(family).width(CARD_WIDTH - 16f).minHeight(30f).row();
 
         String levelText = owned == null
                 ? "LOCKED"
                 : "LEVEL " + owned.getLevel();
         Label level = cardLabel(levelText, 0.72f);
         level.setColor(owned == null ? Color.GRAY : Color.DARK_GRAY);
-        card.add(level).width(CARD_WIDTH - 16f).height(22f).row();
+        card.add(level).width(CARD_WIDTH - 16f).minHeight(26f).row();
 
         Label seeds = cardLabel(seedProgress(owned), 0.68f);
         seeds.setColor(owned == null ? Color.GRAY : Color.DARK_GRAY);
-        card.add(seeds).width(CARD_WIDTH - 16f).height(22f).row();
+        card.add(seeds).width(CARD_WIDTH - 16f).minHeight(26f).row();
 
         if (owned == null) {
             TextButton buy = new TextButton(
@@ -592,7 +597,7 @@ public final class CollectionScreen extends BaseScreen {
                     skin,
                     "green"
             );
-            buy.getLabel().setFontScale(0.72f);
+            Typography.setReadableScale(buy.getLabel(), 0.72f);
             buy.addListener(click(() -> purchasePlant(spec)));
             card.add(buy).width(145f).height(36f).padBottom(5f);
         } else {
@@ -984,21 +989,22 @@ public final class CollectionScreen extends BaseScreen {
     private void addDetailRow(String name, String value) {
         Label key = new Label(name + ":", skin);
         key.setColor(Color.DARK_GRAY);
-        key.setFontScale(0.82f);
+        Typography.setReadableScale(key, 0.82f);
+        key.setWrap(true);
         key.setAlignment(Align.left);
 
         Label detail = new Label(value == null ? "-" : value, skin);
         detail.setColor(Color.DARK_GRAY);
-        detail.setFontScale(0.82f);
+        Typography.setReadableScale(detail, 0.82f);
         detail.setWrap(true);
         detail.setAlignment(Align.left);
 
         detailContent.add(key)
-                .width(112f)
-                .height(30f)
+                .width(130f)
+                .minHeight(40f)
                 .left();
         detailContent.add(detail)
-                .width(DETAIL_CONTENT_WIDTH - 122f)
+                .width(DETAIL_CONTENT_WIDTH - 140f)
                 .minHeight(30f)
                 .left()
                 .row();
@@ -1007,11 +1013,11 @@ public final class CollectionScreen extends BaseScreen {
     private void addDetailParagraph(String heading, String body) {
         Label title = new Label(heading, skin);
         title.setColor(Color.DARK_GRAY);
-        title.setFontScale(0.78f);
+        Typography.setReadableScale(title, 0.78f);
         title.setAlignment(Align.left);
         detailContent.add(title)
                 .width(DETAIL_CONTENT_WIDTH)
-                .height(26f)
+                .minHeight(32f)
                 .colspan(2)
                 .left()
                 .padTop(5f)
@@ -1029,7 +1035,7 @@ public final class CollectionScreen extends BaseScreen {
     private Label detailTitle(String text) {
         Label label = new Label(text, skin);
         label.setColor(Color.DARK_GRAY);
-        label.setFontScale(1.12f);
+        Typography.setReadableScale(label, 1.12f);
         label.setAlignment(Align.center);
         label.setWrap(true);
         return label;
@@ -1038,7 +1044,7 @@ public final class CollectionScreen extends BaseScreen {
     private Label detailText(String text) {
         Label label = new Label(text == null ? "-" : text, skin);
         label.setColor(Color.DARK_GRAY);
-        label.setFontScale(0.78f);
+        Typography.setReadableScale(label, 0.78f);
         label.setWrap(true);
         label.setAlignment(Align.left);
         return label;
@@ -1105,7 +1111,7 @@ public final class CollectionScreen extends BaseScreen {
     private Label cardLabel(String text, float fontScale) {
         Label label = new Label(text, skin);
         label.setColor(Color.DARK_GRAY);
-        label.setFontScale(fontScale);
+        Typography.setReadableScale(label, fontScale);
         label.setAlignment(Align.center);
         label.setWrap(true);
         return label;
@@ -1114,7 +1120,7 @@ public final class CollectionScreen extends BaseScreen {
     private Actor placeholder(String text) {
         Label label = new Label(text, skin);
         label.setColor(Color.GRAY);
-        label.setFontScale(2f);
+        Typography.setReadableScale(label, 2f);
         label.setAlignment(Align.center);
         return label;
     }

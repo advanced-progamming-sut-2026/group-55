@@ -31,6 +31,16 @@ public final class Typography {
         button.setStyle(style);
     }
 
+    /** Keep menu text readable in the 1280x720 virtual viewport.
+     * Uses the actual font cap height, so different skin fonts remain legible.
+     * Does not mutate shared BitmapFont data.
+     */
+    public static void setReadableScale(Label label, float requestedScale) {
+        float capHeight = label.getStyle().font.getCapHeight();
+        float minimumScale = capHeight > 0f ? 17f / capHeight : 1f;
+        label.setFontScale(Math.max(requestedScale, minimumScale));
+    }
+
     private static BitmapFont resolveBodyFont(Skin skin) {
         Objects.requireNonNull(skin, "skin");
         if (skin.has(BODY_FONT_NAME, BitmapFont.class)) {
